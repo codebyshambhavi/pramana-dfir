@@ -23,8 +23,6 @@ and produces findings that link back to the exact artifact they came from, so ev
 
 <br/>
 
-Built for SUTRAM 2026.
-
 ---
 
 ## The Problem
