@@ -81,24 +81,24 @@ PRAMANA does not try to replace forensic engines. It is an investigation-intelli
 
 ## Core Features
 
-| | Capability | What it does | Where it lives |
+| S.No. | Capability | What it does | Where it lives |
 | :-: | :--- | :--- | :--- |
-| 🔐 | **Evidence hashing and IDs** | Streaming SHA-256, `EVID-###` evidence IDs, intake record | `evidence-engine/intake/hashing.py` |
-| 🔐 | **Chain of custody** | Append-only, hash-chained custody log with a tamper check | `evidence-engine/intake/custody.py` |
-| 🗄 | **Evidence Vault** | Upload, hash and list evidence together with its custody entries | `backend/app/routers/evidence.py`, `frontend/src/pages/EvidenceVault.tsx` |
-| 🧩 | **Evidence normalization** | One normalized event shape for browser, chat, log, PCAP and image sources | `contracts/event.schema.json`, `evidence-engine/parsers/` |
-| 🕸 | **Evidence graph** | Person, device, file, IP and location nodes linked by event actions | `backend/app/graph/builder.py` |
-| 🔎 | **Cross-source correlation** | Groups events sharing an actor, device, IP or hash within a time window (120 s by default) | `intelligence/correlate.py` |
-| ⏱ | **Timeline reconstruction** | Time-ordered events, filterable by range and source | `GET /cases/{id}/events`, `frontend/src/pages/Timeline.tsx` |
-| ⚠️ | **Anomaly detection** | Rule-based: odd-hour login, unusual extension, file-access burst | `intelligence/anomalies.py` |
-| ⚠️ | **Contradiction detection** | Image location vs GPS vs IP, modified-before-created, same name with two hashes | `intelligence/contradictions.py` |
-| 🧠 | **Alternative hypotheses** | 2–3 competing explanations with the evidence needed to tell them apart | `intelligence/hypotheses.py` |
-| 🖼 | **Authenticity assessment** | Multi-signal low / medium / high rating for images, never a verdict of "fake" | `intelligence/authenticity.py` |
-| 🤖 | **Explainable AI narrative** | A local LLM (Ollama) writes a timeline that may cite only the events it is given | `intelligence/narrative.py` |
-| 🔗 | **Evidence lineage** | Walk a finding to its events, evidence, SHA-256 and source file | `backend/app/reports/lineage.py` |
-| 👤 | **Human verification** | The investigator approves or rejects each finding | `contracts/finding.schema.json`, `PATCH /findings/{id}` |
-| 📄 | **Investigation reporting** | Reviewed PDF with evidence table, custody log and approved findings | `backend/app/reports/export_pdf.py` |
-| 🇮🇳 | **India-aware reporting** | Evidence table laid out along BSA Section 63 certificate fields, and clearly stated not to be a legal certificate | `backend/app/reports/export_pdf.py` |
+| 1. | **Evidence hashing and IDs** | Streaming SHA-256, `EVID-###` evidence IDs, intake record | `evidence-engine/intake/hashing.py` |
+| 2. | **Chain of custody** | Append-only, hash-chained custody log with a tamper check | `evidence-engine/intake/custody.py` |
+| 3. | **Evidence Vault** | Upload, hash and list evidence together with its custody entries | `backend/app/routers/evidence.py`, `frontend/src/pages/EvidenceVault.tsx` |
+| 4. | **Evidence normalization** | One normalized event shape for browser, chat, log, PCAP and image sources | `contracts/event.schema.json`, `evidence-engine/parsers/` |
+| 5. | **Evidence graph** | Person, device, file, IP and location nodes linked by event actions | `backend/app/graph/builder.py` |
+| 6. | **Cross-source correlation** | Groups events sharing an actor, device, IP or hash within a time window (120 s by default) | `intelligence/correlate.py` |
+| 7. | **Timeline reconstruction** | Time-ordered events, filterable by range and source | `GET /cases/{id}/events`, `frontend/src/pages/Timeline.tsx` |
+| 8. | **Anomaly detection** | Rule-based: odd-hour login, unusual extension, file-access burst | `intelligence/anomalies.py` |
+| 9. | **Contradiction detection** | Image location vs GPS vs IP, modified-before-created, same name with two hashes | `intelligence/contradictions.py` |
+| 10. | **Alternative hypotheses** | 2–3 competing explanations with the evidence needed to tell them apart | `intelligence/hypotheses.py` |
+| 11. | **Authenticity assessment** | Multi-signal low / medium / high rating for images, never a verdict of "fake" | `intelligence/authenticity.py` |
+| 12. | **Explainable AI narrative** | A local LLM (Ollama) writes a timeline that may cite only the events it is given | `intelligence/narrative.py` |
+| 13. | **Evidence lineage** | Walk a finding to its events, evidence, SHA-256 and source file | `backend/app/reports/lineage.py` |
+| 14. | **Human verification** | The investigator approves or rejects each finding | `contracts/finding.schema.json`, `PATCH /findings/{id}` |
+| 15. | **Investigation reporting** | Reviewed PDF with evidence table, custody log and approved findings | `backend/app/reports/export_pdf.py` |
+| 16. | **India-aware reporting** | Evidence table laid out along BSA Section 63 certificate fields, and clearly stated not to be a legal certificate | `backend/app/reports/export_pdf.py` |
 
 ---
 
