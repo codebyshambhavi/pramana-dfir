@@ -121,8 +121,11 @@ export default function EvidenceNetwork({ className = "" }: { className?: string
           paperColor="#ffffff"
           contrast={1.15}
           brightness={0.08}
-          revealRadius={140}
-          softness={0.55}
+          revealRadius={150}
+          revealGain={2.6}
+          softness={0.8}
+          rim={0.18}
+          rimColor="#5c1621"
           linger={1.1}
           style={{ position: "absolute", inset: 0 }}
         />
@@ -193,7 +196,7 @@ export default function EvidenceNetwork({ className = "" }: { className?: string
           {/* Finding */}
           <Card
             tone="alert"
-            style={{ left: "63.4%", top: "59.4%", width: "29.4%", transform: "rotateY(-9deg) rotateZ(-0.4deg)" }}
+            style={{ left: "66.6%", top: "61.6%", width: "28.6%", transform: "rotateY(-8deg) rotateZ(-0.4deg)" }}
           >
             <div className="flex items-start gap-[1.6cqw]">
               <AlertTriangle size="4cqw" strokeWidth={1.7} className="text-alert drop-shadow-[0_0_0.8cqw_rgba(239,43,60,0.8)]" />

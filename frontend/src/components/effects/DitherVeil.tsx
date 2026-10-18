@@ -27,6 +27,8 @@ export interface DitherVeilProps {
   contrast?: number;
   brightness?: number;
   revealRadius?: number;
+  /** Brightens the revealed full-colour layer; above 1 makes the reveal glow against the dither. */
+  revealGain?: number;
   softness?: number;
   linger?: number;
   rimColor?: string;
@@ -320,6 +322,7 @@ uniform float uKey;
 uniform vec2 uSize;
 uniform vec4 uBursts[4];
 uniform float uBurstWidth;
+uniform float uRevealGain;
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -398,13 +401,14 @@ void main() {
   vec3 backdrop = mix(uInk, uPaper, toned(uMatte));
   vec2 photoUv = imageUv(vUv);
   vec3 raw = texture(tImage, photoUv).rgb;
+  if (uRevealGain != 1.0) raw = 1.0 - exp(-raw * uRevealGain * 1.6);
   float plain = uKey * (1.0 - smoothstep(0.05, 0.22, distance(raw, uMatte)));
   vec3 photo = mix(mix(uInk, backdrop, uKey), mix(raw, backdrop, plain), within(photoUv));
 
   vec2 point = vec2(cellUv.x, 1.0 - cellUv.y) * uSize;
   float mask = max(clamp(texture(tMask, cellUv).r * uHold, 0.0, 1.0), shockwave(point));
   float shown = mix(mask, 1.0 - mask, uReverse);
-  float order = bayer(cell.yx);
+  float order = uPattern == 1 ? blueNoise(cell.yx) : bayer(cell.yx);
   float low = order * (1.0 - uRim);
   color = mix(color, uRimColor, step(low, shown) * step(0.001, uRim));
   color = mix(color, photo, step(low + uRim, shown));
@@ -430,6 +434,7 @@ const DitherVeil = ({
   contrast = 1.15,
   brightness = 0,
   revealRadius = 200,
+  revealGain = 1,
   softness = 0.6,
   linger = 1,
   rimColor = "#a78bfa",
@@ -460,6 +465,7 @@ const DitherVeil = ({
       contrast,
       brightness,
       revealRadius,
+      revealGain,
       softness,
       linger,
       rimColor,
@@ -570,7 +576,8 @@ const DitherVeil = ({
       uKey: { value: 0 },
       uSize: { value: [1, 1] },
       uBursts: { value: Array.from({ length: MAX_BURSTS * 4 }, () => 0) },
-      uBurstWidth: { value: 60 }
+      uBurstWidth: { value: 60 },
+      uRevealGain: { value: 1 }
     };
     const program = (fragment: string, uniforms: Record<string, { value: unknown }>) =>
       new Program(gl, { vertex, fragment, uniforms, depthTest: false, depthWrite: false });
@@ -814,6 +821,7 @@ const DitherVeil = ({
       viewUniforms.uContrast.value = s.contrast;
       viewUniforms.uBrightness.value = s.brightness;
       viewUniforms.uReverse.value = s.reverse ? 1 : 0;
+      viewUniforms.uRevealGain.value = s.revealGain;
       const intro = image ? (reducedMotion ? 1 : Math.min(1, (now - introStart) / INTRO_MS)) : 0;
       viewUniforms.uIntro.value = 1 - Math.pow(1 - intro, 2);
       renderer.render({ scene: viewMesh! });

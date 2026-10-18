@@ -179,49 +179,53 @@ function InvestigationTimeline() {
   return (
     <section
       id="timeline"
-      className="relative mt-10 flex flex-col gap-10 border-t border-white/[0.06] pt-6 lg:mt-1 lg:flex-row lg:items-center lg:justify-between lg:gap-12"
+      className="relative mt-10 flex flex-col gap-10 border-t border-white/[0.06] pt-6 lg:mt-1 xl:flex-row xl:items-center xl:justify-between xl:gap-12"
     >
-      <div className="min-w-0 lg:w-[57%]">
+      <div className="min-w-0 xl:flex-1">
         <p className="flex items-center gap-3 text-[11px] font-semibold tracking-[0.36em] text-soft/80">
           <Flag size={14} className="text-alert" />
           INVESTIGATION TIMELINE
         </p>
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <ol className="relative mt-6 flex min-w-[560px] pl-6">
-            {/* Track: evidence-blue up to the contradiction, then fading out. */}
-            <span className="absolute top-0 left-0 h-8 w-[2px] -translate-y-[45%] bg-alert/90" aria-hidden="true" />
-            <span
-              className="absolute top-0 right-0 left-0 h-px bg-[linear-gradient(90deg,rgba(59,140,255,0.7)_0%,rgba(59,140,255,0.55)_45%,rgba(239,43,60,0.6)_60%,rgba(255,255,255,0.12)_68%,rgba(255,255,255,0.04)_100%)]"
-              aria-hidden="true"
-            />
-            {TIMELINE.map(item => (
-              <li key={item.label} className="relative w-[155px] shrink-0 pt-5 pl-6">
-                <span
-                  className={`absolute top-0 left-0 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${
-                    item.alert
-                      ? "bg-alert shadow-[0_0_0_4px_rgba(239,43,60,0.2),0_0_16px_rgba(239,43,60,0.95)]"
-                      : "bg-trace shadow-[0_0_10px_rgba(59,140,255,0.9)]"
-                  }`}
-                  aria-hidden="true"
-                />
-                <span
-                  className={`absolute top-0 left-0 h-6 w-px ${item.alert ? "bg-alert/50" : "bg-trace/40"}`}
-                  aria-hidden="true"
-                />
-                <p className="text-[13.5px] whitespace-nowrap text-white/90 tabular-nums">{item.time}</p>
-                <p className="mt-1 text-[13.5px] whitespace-nowrap text-soft/80">{item.label}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
+        {/* Vertical on phones, horizontal from sm up, so all four events always show without scrolling. */}
+        <ol className="relative mt-6 grid gap-6 pl-[5px] sm:grid-cols-[repeat(4,minmax(0,155px))] sm:gap-0 sm:pl-6">
+          <span className="absolute top-0 left-0 hidden h-8 w-[2px] -translate-y-[45%] bg-alert/90 sm:block" aria-hidden="true" />
+          <span
+            className="absolute top-0 right-0 left-0 hidden h-px bg-[linear-gradient(90deg,rgba(59,140,255,0.7)_0%,rgba(59,140,255,0.55)_45%,rgba(239,43,60,0.6)_60%,rgba(255,255,255,0.12)_68%,rgba(255,255,255,0.04)_100%)] sm:block"
+            aria-hidden="true"
+          />
+          <span
+            className="absolute top-1 bottom-1 left-[5px] w-px bg-[linear-gradient(180deg,rgba(59,140,255,0.7)_0%,rgba(59,140,255,0.55)_55%,rgba(239,43,60,0.7)_100%)] sm:hidden"
+            aria-hidden="true"
+          />
+          {TIMELINE.map(item => (
+            <li key={item.label} className="relative pl-7 sm:pt-5 sm:pl-6">
+              <span
+                className={`absolute top-2 left-0 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full sm:top-0 ${
+                  item.alert
+                    ? "bg-alert shadow-[0_0_0_4px_rgba(239,43,60,0.2),0_0_16px_rgba(239,43,60,0.95)]"
+                    : "bg-trace shadow-[0_0_10px_rgba(59,140,255,0.9)]"
+                }`}
+                aria-hidden="true"
+              />
+              <span
+                className={`absolute top-0 left-0 hidden h-6 w-px sm:block ${item.alert ? "bg-alert/50" : "bg-trace/40"}`}
+                aria-hidden="true"
+              />
+              <p className="text-[13.5px] whitespace-nowrap text-white/90 tabular-nums">{item.time}</p>
+              <p className={`mt-1 text-[13.5px] whitespace-nowrap ${item.alert ? "text-alert-soft sm:text-soft/80" : "text-soft/80"}`}>
+                {item.label}
+              </p>
+            </li>
+          ))}
+        </ol>
       </div>
 
-      <div id="pipeline" className="relative self-start px-7 py-6 lg:mr-[2%] lg:self-center">
+      <div id="pipeline" className="relative w-fit max-w-full shrink-0 self-start px-7 py-6 xl:mr-[2%] xl:self-center">
         <span className="absolute inset-y-0 left-0 w-2.5 border-y border-l border-alert/80" aria-hidden="true" />
         <span className="absolute inset-y-0 right-0 w-2.5 border-y border-r border-alert/80" aria-hidden="true" />
-        <ol className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10.5px] font-medium tracking-[0.3em] text-soft/75 sm:gap-x-5">
+        <ol className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10.5px] font-medium tracking-[0.3em] text-soft/80 sm:gap-x-5 xl:flex-nowrap xl:tracking-[0.26em] 2xl:tracking-[0.3em]">
           {PIPELINE.map((step, i) => (
-            <li key={step} className="flex items-center gap-4 sm:gap-5">
+            <li key={step} className="flex items-center gap-4 whitespace-nowrap sm:gap-5">
               <span className={i === PIPELINE.length - 1 ? "text-white" : ""}>{step}</span>
               {i < PIPELINE.length - 1 && <ArrowRight size={12} className="text-soft/60" />}
             </li>
@@ -232,26 +236,32 @@ function InvestigationTimeline() {
   );
 }
 
+// Dividers per layout: one column (rule above each), two columns (rule above row two, rule between columns),
+// four columns (rules between columns only).
+const stepBorders = (i: number) =>
+  [
+    i > 0 && "border-t border-white/[0.07]",
+    i < 2 && "sm:border-t-0",
+    i % 2 === 1 ? "sm:border-l sm:border-white/[0.07] sm:pl-6" : "sm:pr-6",
+    "xl:border-t-0 xl:pr-0",
+    i > 0 ? "xl:border-l xl:border-white/[0.07] xl:pl-[clamp(1.5rem,2.6vw,2.6rem)]" : "xl:pl-0"
+  ]
+    .filter(Boolean)
+    .join(" ");
+
 function Workflow() {
   return (
-    <section id="how-it-works" className="mt-12 border-t border-white/[0.06] lg:mt-11">
+    <section id="how-it-works" className="mt-12 border-t border-white/[0.07] lg:mt-11">
       <h2 className="sr-only">How it works</h2>
       <ol className="grid sm:grid-cols-2 xl:grid-cols-4">
         {STEPS.map(({ icon: Icon, title, body }, i) => (
-          <li
-            key={title}
-            className={`flex items-start gap-6 py-7 sm:px-6 xl:px-0 ${
-              i > 0 ? "border-t border-white/[0.06] sm:border-t-0" : ""
-            } ${i % 2 === 1 ? "sm:border-l sm:border-white/[0.06]" : ""} ${
-              i > 0 ? "xl:border-l xl:border-white/[0.06] xl:pl-[clamp(1.5rem,2.6vw,2.6rem)]" : "xl:pl-0"
-            }`}
-          >
-            <span className="flex size-[66px] shrink-0 items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.02] text-alert shadow-[inset_0_0_18px_rgba(239,43,60,0.06)]">
-              <Icon size={34} strokeWidth={1.3} />
+          <li key={title} className={`flex items-start gap-5 py-7 sm:gap-6 ${stepBorders(i)}`}>
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.02] text-alert shadow-[inset_0_0_18px_rgba(239,43,60,0.06)] sm:size-[66px]">
+              <Icon size={32} strokeWidth={1.3} />
             </span>
-            <div className="pt-1">
+            <div className="min-w-0 pt-1">
               <h3 className="text-[15px] font-semibold text-white">{title}</h3>
-              <p className="mt-2 max-w-[17rem] text-[14px] leading-[1.5] text-soft/75">{body}</p>
+              <p className="mt-2 max-w-[17rem] text-[14px] leading-[1.5] text-soft/80">{body}</p>
             </div>
           </li>
         ))}
