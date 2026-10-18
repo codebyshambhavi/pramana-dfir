@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: Pramana API
+  version: 0.1.0
+  description: Starter spec. Owner Role 3. Add example responses for every endpoint, then freeze on 22 Oct.
+paths:
+  /cases:
+    post:
+      summary: Create a case
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { name: { type: string } }, required: [name] }
+            example: { name: "Case 001" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              example: { case_id: "CASE-001", name: "Case 001" }
+  /cases/{id}/evidence:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Upload a file, hash it, parse it, return its evidence ID
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties: { file: { type: string, format: binary } }
+      responses:
+        "201":
+          description: Stored
+          content:
+            application/json:
+              example: { evidence_id: "EVID-001", filename: "browser_history.csv", sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", events_created: 120 }
+    get:
+      summary: List evidence with hashes and custody log
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example:
+                - { evidence_id: "EVID-001", filename: "browser_history.csv", sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", intake_time: "2026-10-18T10:00:00Z", custody: [] }
+  /cases/{id}/events:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: from, in: query, schema: { type: string, format: date-time } }
+      - { name: to, in: query, schema: { type: string, format: date-time } }
+      - { name: source, in: query, schema: { type: string } }
+    get:
+      summary: Events, filterable by time range and source
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example:
+                - { event_id: "EV-000123", case_id: "CASE-001", evidence_id: "EVID-003", artifact_ref: "browser_history.csv#row=412", sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", timestamp: "2026-10-18T10:32:12Z", source: "browser", action: "file_upload", object: "secret.zip" }
+  /cases/{id}/graph:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Nodes and edges for the graph view
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example:
+                nodes: [ { id: "user_01", type: "person" }, { id: "device_A", type: "device" } ]
+                edges: [ { source: "user_01", target: "device_A", action: "used" } ]
+  /cases/{id}/analyze:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Run Role 2 analysis and store the findings
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example: { findings_created: 3 }
+  /cases/{id}/findings:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: List findings
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example:
+                - { finding_id: "F-0021", case_id: "CASE-001", type: "contradiction", claim: "Photo EXIF location differs from device GPS and IP location", confidence: 0.62, evidence_event_ids: ["EV-000123", "EV-000131"], reasoning: "Locations disagree", alternatives: [ { claim: "Metadata edited", confidence: 0.62, needed_evidence: ["original file hash"] } ], needs_human_review: true, status: "pending" }
+  /findings/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      summary: Investigator approves or rejects a finding
+      requestBody:
+        content:
+          application/json:
+            example: { status: "approved" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              example: { finding_id: "F-0021", status: "approved" }
+  /findings/{id}/lineage:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Finding, then events, evidence and SHA-256
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example:
+                finding_id: "F-0021"
+                events: [ { event_id: "EV-000123", artifact_ref: "photo_01.jpg#exif", evidence_id: "EVID-003" } ]
+                evidence: [ { evidence_id: "EVID-003", filename: "photo_01.jpg", sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" } ]
+  /cases/{id}/report:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: format, in: query, schema: { type: string, enum: [pdf] } }
+    get:
+      summary: Download the investigator-reviewed report
+      responses:
+        "200":
+          description: PDF file
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }

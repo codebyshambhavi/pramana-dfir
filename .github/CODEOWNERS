@@ -1,0 +1,13 @@
+# Replace the placeholders with real GitHub usernames.
+/evidence-engine/             @ROLE1_USERNAME
+/datasets/                    @ROLE1_USERNAME
+/contracts/event.schema.json  @ROLE1_USERNAME
+/intelligence/                @ROLE2_USERNAME
+/contracts/finding.schema.json @ROLE2_USERNAME
+/backend/                     @ROLE3_USERNAME
+/docker-compose.yml           @ROLE3_USERNAME
+/.github/                     @ROLE3_USERNAME
+/contracts/openapi.yaml       @ROLE3_USERNAME
+/frontend/                    @ROLE4_USERNAME
+/docs/                        @ROLE4_USERNAME
+/README.md                    @ROLE4_USERNAME

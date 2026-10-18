@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pramana/finding.schema.json",
+  "title": "Finding",
+  "description": "One claim, always tied to events. Owner: Role 2. Frozen on 22 Oct.",
+  "type": "object",
+  "required": ["finding_id", "case_id", "type", "claim", "confidence", "evidence_event_ids", "needs_human_review"],
+  "properties": {
+    "finding_id": { "type": "string", "examples": ["F-0021"] },
+    "case_id": { "type": "string" },
+    "type": { "enum": ["contradiction", "anomaly", "correlation", "hypothesis"] },
+    "claim": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "evidence_event_ids": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "reasoning": { "type": "string" },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim", "confidence"],
+        "properties": {
+          "claim": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "needed_evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "needs_human_review": { "type": "boolean" },
+    "status": { "enum": ["pending", "approved", "rejected"], "default": "pending" }
+  },
+  "additionalProperties": false
+}

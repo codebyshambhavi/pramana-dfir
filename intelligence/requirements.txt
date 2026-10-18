@@ -1,0 +1,4 @@
+jsonschema
+ollama
+scikit-learn
+pytest

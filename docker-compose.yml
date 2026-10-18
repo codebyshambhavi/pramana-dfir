@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      PYTHONPATH: /app/evidence-engine:/app
+    depends_on:
+      - db
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
+  uploads:

@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+sqlalchemy
+psycopg2-binary
+networkx
+reportlab
+jsonschema
+pytest
+httpx

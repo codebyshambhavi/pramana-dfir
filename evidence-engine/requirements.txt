@@ -1,0 +1,5 @@
+jsonschema
+scapy
+pillow
+imagehash
+pytest

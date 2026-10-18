@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pramana/event.schema.json",
+  "title": "Event",
+  "description": "One normalized thing that happened. Owner: Role 1. Frozen on 22 Oct.",
+  "type": "object",
+  "required": ["event_id", "case_id", "evidence_id", "artifact_ref", "sha256", "timestamp", "source", "action"],
+  "properties": {
+    "event_id": { "type": "string", "examples": ["EV-000123"] },
+    "case_id": { "type": "string", "examples": ["CASE-001"] },
+    "evidence_id": { "type": "string", "examples": ["EVID-003"] },
+    "artifact_ref": { "type": "string", "description": "File and row, packet or tag the event came from", "examples": ["browser_history.csv#row=412"] },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the source file" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "source": { "enum": ["browser", "chat", "log", "pcap", "image"] },
+    "device": { "type": ["string", "null"] },
+    "actor": { "type": ["string", "null"] },
+    "action": { "type": "string", "examples": ["file_upload"] },
+    "object": { "type": ["string", "null"] },
+    "ip": { "type": ["string", "null"] },
+    "location": {
+      "type": ["object", "null"],
+      "properties": { "lat": { "type": "number" }, "lon": { "type": "number" } },
+      "required": ["lat", "lon"]
+    },
+    "raw": { "type": "object", "description": "Original fields from the source row" }
+  },
+  "additionalProperties": false
+}

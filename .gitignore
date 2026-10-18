@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+# Node
+node_modules/
+dist/
+# Secrets and local data
+.env
+backend/uploads/
+*.db
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+# Never commit real evidence (synthetic data lives in datasets/sample_case_001)
+evidence/
