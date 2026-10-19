@@ -306,3 +306,37 @@ def test_blank_line_is_invalid():
     finally:
         if os.path.exists(log_path):
             os.unlink(log_path)
+
+
+def test_deleted_interior_line_is_detected():
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        log_path = tmp.name
+    try:
+        append_entry(log_path, "actor1", "action", "EVID-001", "a" * 64)
+        append_entry(log_path, "actor2", "action", "EVID-001", "b" * 64)
+        append_entry(log_path, "actor3", "action", "EVID-001", "c" * 64)
+        with open(log_path, "r", encoding="utf-8") as handle:
+            lines = handle.readlines()
+        with open(log_path, "w", encoding="utf-8") as handle:
+            handle.writelines((lines[0], lines[2]))
+        assert verify_log(log_path) is False
+    finally:
+        if os.path.exists(log_path):
+            os.unlink(log_path)
+
+
+def test_reordered_lines_are_detected():
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        log_path = tmp.name
+    try:
+        append_entry(log_path, "actor1", "action", "EVID-001", "a" * 64)
+        append_entry(log_path, "actor2", "action", "EVID-001", "b" * 64)
+        append_entry(log_path, "actor3", "action", "EVID-001", "c" * 64)
+        with open(log_path, "r", encoding="utf-8") as handle:
+            lines = handle.readlines()
+        with open(log_path, "w", encoding="utf-8") as handle:
+            handle.writelines((lines[1], lines[0], lines[2]))
+        assert verify_log(log_path) is False
+    finally:
+        if os.path.exists(log_path):
+            os.unlink(log_path)

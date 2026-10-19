@@ -16,15 +16,21 @@ If Scapy is not available, returns empty list (graceful degradation).
 from __future__ import annotations
 
 import os
+import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
 
+from parsers.timestamps import normalize_timestamp
+
 try:
-    from scapy.all import rdpcap, IP, IPv6, TCP, UDP, ICMP, ARP
+    from scapy.all import rdpcap, IP, IPv6, TCP, UDP, ICMP, ARP, DNS, DNSQR
     from scapy.packet import Packet
     HAS_SCAMPY = True
 except ImportError:
     HAS_SCAMPY = False
+
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_str(obj: Any) -> str:
@@ -39,7 +45,7 @@ def _normalize_packet_info(packet: Packet, packet_idx: int) -> Dict[str, Any]:
     """Extract safe, serializable information from a packet."""
     info = {
         "packet_number": packet_idx,
-        "time": getattr(packet, 'time', 0),
+        "time": float(getattr(packet, 'time', 0)),
         "layers": [],
         "length": len(packet) if hasattr(packet, '__len__') else 0
     }
@@ -104,6 +110,28 @@ def _normalize_packet_info(packet: Packet, packet_idx: int) -> Dict[str, Any]:
     info["src_ip"] = src_ip
     info["dst_ip"] = dst_ip
     info["protocol"] = protocol
+
+    if HAS_SCAMPY and DNS in packet:
+        dns = packet[DNS]
+        query_name = None
+        if dns.qdcount and DNSQR in packet:
+            raw_name = packet[DNSQR].qname
+            if isinstance(raw_name, bytes):
+                query_name = raw_name.decode("ascii", errors="replace").rstrip(".")
+            else:
+                query_name = _safe_str(raw_name).rstrip(".")
+        answer_ips = []
+        answer = dns.an
+        for _ in range(int(dns.ancount or 0)):
+            if not answer:
+                break
+            record_type = getattr(answer, "type", None)
+            if record_type in (1, 28):
+                answer_ips.append(_safe_str(getattr(answer, "rdata", None)))
+            answer = answer.payload
+        info["dns_query"] = query_name
+        info["dns_answers"] = answer_ips
+        info["dns_response"] = bool(dns.qr)
 
     return info
 
@@ -176,9 +204,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
         ValueError: For invalid PCAP files when Scapy is available
     """
     if not HAS_SCAMPY:
-        # If Scapy is not available, we cannot parse PCAPs
-        # Return empty list rather than failing, as this might be expected
-        return []
+        raise RuntimeError("Scapy is required to parse PCAP evidence; install scapy")
 
     try:
         # Read the PCAP file
@@ -187,6 +213,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
         raise ValueError(f"Cannot read PCAP file: {e}")
 
     events = []
+    skipped_packets = 0
     filename = path.split('/')[-1].split('\\')[-1]
 
     for packet_idx, packet in enumerate(packets):
@@ -197,15 +224,34 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
             # Skip packets without usable timestamp
             timestamp_val = packet_info.get("time", 0)
             if timestamp_val <= 0:
+                skipped_packets += 1
                 continue
 
             # Convert timestamp to ISO format
-            timestamp = datetime.fromtimestamp(timestamp_val, tz=timezone.utc).isoformat()
+            timestamp = normalize_timestamp(
+                datetime.fromtimestamp(timestamp_val, tz=timezone.utc).isoformat()
+            )
 
             # Build artifact_ref
             artifact_ref = f"{filename}#packet={packet_idx}"
 
             # Build the event
+            dns_query = packet_info.get("dns_query")
+            dns_answers = packet_info.get("dns_answers", [])
+            dns_response = packet_info.get("dns_response", False)
+            if dns_query:
+                action = "DNS response" if dns_response else "DNS query"
+                action = f"{action} {dns_query}"
+                object_value = dns_query
+                event_ip = next(
+                    (answer for answer in dns_answers if answer and answer != "<unserializable>"),
+                    packet_info.get("src_ip"),
+                )
+            else:
+                action = _describe_packet_action(packet_info)
+                object_value = packet_info.get("protocol")
+                event_ip = packet_info.get("src_ip")
+
             event = {
                 "event_id": f"EV-{packet_idx + 1:06d}",  # Sequential ID starting from 1
                 "case_id": case_id,
@@ -214,30 +260,25 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 "sha256": sha256,
                 "timestamp": timestamp,
                 "source": "pcap",
-                "action": _describe_packet_action(packet_info),
+                "action": action,
                 "raw": packet_info  # Safe normalized metadata
             }
+            if object_value:
+                event["object"] = object_value
 
             # Add optional fields if available
-            src_ip = packet_info.get("src_ip")
-            dst_ip = packet_info.get("dst_ip")
-            if src_ip and src_ip != "<unserializable>":
-                event["ip"] = src_ip  # Using ip field for source IP as per schema
+            if event_ip and event_ip != "<unserializable>":
+                event["ip"] = event_ip
             # Note: The event schema doesn't have a separate dst_ip field,
             # but we could put it in object or raw if needed
-
-            protocol = packet_info.get("protocol")
-            if protocol and protocol != "<unserializable>":
-                # Put protocol in object field if it's meaningful
-                if event.get("object") is None:
-                    event["object"] = protocol
-                # Otherwise it's already set by _describe_packet_action
 
             events.append(event)
 
         except Exception as e:
-            # Skip problematic packets but continue processing
-            # In a real implementation, we might want to log this
+            skipped_packets += 1
+            logger.warning("Skipping PCAP packet %d in %s: %s", packet_idx, filename, e)
             continue
 
+    if skipped_packets:
+        logger.warning("Skipped %d PCAP packet(s) in %s", skipped_packets, filename)
     return events

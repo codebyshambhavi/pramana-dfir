@@ -68,6 +68,8 @@ def test_intake_record_fields():
         assert "size_bytes" in record
         assert "sha256" in record
         assert "intake_time" in record
+        assert record["device"] is None
+        assert record["source"] is None
 
         # Check evidence ID format
         assert record["evidence_id"] == "EVID-001"
@@ -89,6 +91,41 @@ def test_intake_record_fields():
         diff = abs((now - intake_time).total_seconds())
         assert diff < 5
 
+    finally:
+        os.unlink(tmp_path)
+
+
+def test_intake_record_acquisition_fields():
+    """Test optional acquisition metadata while retaining existing fields."""
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        tmp.write(b"synthetic evidence")
+        tmp_path = tmp.name
+
+    try:
+        record = intake_record(tmp_path, 2, device="workstation-7", source="log")
+
+        assert record["evidence_id"] == "EVID-002"
+        assert record["device"] == "workstation-7"
+        assert record["source"] == "log"
+        assert record["size_bytes"] == len(b"synthetic evidence")
+        assert record["sha256"] == hashlib.sha256(b"synthetic evidence").hexdigest()
+    finally:
+        os.unlink(tmp_path)
+
+
+def test_sha256_is_stable_and_changes_with_file_content():
+    """Test identical content hashes consistently and changed bytes do not."""
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        tmp.write(b"original")
+        tmp_path = tmp.name
+
+    try:
+        original_hash = sha256_file(tmp_path)
+        assert sha256_file(tmp_path) == original_hash
+
+        with open(tmp_path, "wb") as handle:
+            handle.write(b"originaL")
+        assert sha256_file(tmp_path) != original_hash
     finally:
         os.unlink(tmp_path)
 

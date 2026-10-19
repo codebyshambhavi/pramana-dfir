@@ -18,9 +18,13 @@ Each image becomes one Event with:
 - location = {"lat": float, "lon": float} when GPS is available
 - raw = dictionary containing all available metadata
 """
+from __future__ import annotations
+
 import os
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
+
+from parsers.timestamps import normalize_timestamp
 
 try:
     from PIL import Image
@@ -28,6 +32,28 @@ try:
     HAS_PILLOW = True
 except ImportError:
     HAS_PILLOW = False
+
+try:
+    import imagehash
+    HAS_IMAGEHASH = True
+except ImportError:
+    HAS_IMAGEHASH = False
+
+
+def _json_safe(value: Any) -> Any:
+    """Convert EXIF values to JSON-compatible primitives."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def _get_exif_data(image: Image.Image) -> Dict[str, Any]:
@@ -99,7 +125,7 @@ def _get_timestamp_from_exif(exif_data: Dict[str, Any]) -> Optional[str]:
                 if len(parts) == 2:
                     date_part = parts[0].replace(":", "-")
                     time_part = parts[1]
-                    return f"{date_part}T{time_part}Z"  # Assume UTC
+                    return normalize_timestamp(f"{date_part}T{time_part}Z")
             except (AttributeError, IndexError):
                 pass  # Invalid format
     return None
@@ -131,9 +157,9 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
         ValueError: For invalid image files or unsupported formats when Pillow is available
     """
     if not HAS_PILLOW:
-        # If Pillow is not available, we cannot parse images
-        # Return empty list rather than failing, as this might be expected in some environments
-        return []
+        raise RuntimeError("Pillow is required to parse image EXIF metadata; install pillow")
+    if not HAS_IMAGEHASH:
+        raise RuntimeError("imagehash is required to compute image perceptual hashes; install imagehash")
 
     try:
         with Image.open(path) as image:
@@ -151,7 +177,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 # Fallback to file modification time (deterministic)
                 mtime = os.path.getmtime(path)
                 dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
-                timestamp = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                timestamp = normalize_timestamp(dt.isoformat())
 
             # Extract GPS location
             location = _get_gps_info(exif_data)
@@ -165,11 +191,12 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
 
             # Build raw metadata (everything we found)
             raw = {
-                "exif": exif_data,
+                "exif": _json_safe(exif_data),
                 "filename": filename,
                 "format": image.format,
                 "mode": image.mode,
-                "size": image.size
+                "size": image.size,
+                "perceptual_hash": str(imagehash.phash(image)),
             }
 
             # Build the event

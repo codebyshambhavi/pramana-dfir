@@ -2,6 +2,7 @@
 import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 
 def sha256_file(path: str, chunk_size: int = 1024 * 1024) -> str:
@@ -13,11 +14,13 @@ def sha256_file(path: str, chunk_size: int = 1024 * 1024) -> str:
     return digest.hexdigest()
 
 
-def intake_record(path: str, sequence: int) -> dict:
-    """Return evidence ID, filename, size, SHA-256 and intake time for a file.
-
-    TODO (Role 1): add acquisition fields the report needs (device, source).
-    """
+def intake_record(
+    path: str,
+    sequence: int,
+    device: Optional[str] = None,
+    source: Optional[str] = None,
+) -> dict:
+    """Return file metadata and optional acquisition device and source."""
     file_path = Path(path)
     return {
         "evidence_id": f"EVID-{sequence:03d}",
@@ -25,4 +28,6 @@ def intake_record(path: str, sequence: int) -> dict:
         "size_bytes": file_path.stat().st_size,
         "sha256": sha256_file(path),
         "intake_time": datetime.now(timezone.utc).isoformat(),
+        "device": device,
+        "source": source,
     }

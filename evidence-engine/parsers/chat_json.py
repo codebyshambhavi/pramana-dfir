@@ -20,6 +20,8 @@ Each item becomes one Event with:
 import json
 from typing import Dict, List, Any
 
+from parsers.timestamps import normalize_timestamp
+
 
 def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[str, Any]]:
     """Parse chat JSON and return Events.
@@ -70,7 +72,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 "evidence_id": evidence_id,
                 "artifact_ref": artifact_ref,
                 "sha256": sha256,
-                "timestamp": item['timestamp'],
+                "timestamp": normalize_timestamp(item['timestamp']),
                 "source": "chat",
                 "action": item['action'],
                 "raw": item  # Preserve original object
