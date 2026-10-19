@@ -56,7 +56,7 @@ def test_find_anomalies_detects_odd_hour_event_at_exact_start() -> None:
     f = findings[0]
     assert f["type"] == "anomaly"
     assert f["evidence_event_ids"] == ["EV-001"]
-    assert "odd-hours" in f["claim"].lower()
+    assert "odd hours" in f["claim"].lower()
     assert f["confidence"] == 0.7
     assert f["needs_human_review"] is True
 
@@ -91,8 +91,8 @@ def test_find_anomalies_detects_multiple_odd_hour_events() -> None:
 
 def test_find_anomalies_mixed_odd_and_non_odd_hour_events() -> None:
     # Mix of odd hour (01:00) and non-odd hour (12:00) events
-    e1 = make_event("EV-ODD", "2026-10-18T01:00:00Z")      # Odd hour
-    e2 = make_event("EV-NORMAL", "2026-10-18T12:00:00Z")   # Not odd hour
+    e1 = make_event("EV-ODD", "2026-10-18T01:00:00Z")
+    e2 = make_event("EV-NORMAL", "2026-10-18T12:00:00Z")
     findings = find_anomalies([e1, e2])
     assert len(findings) == 1
     f = findings[0]
@@ -133,10 +133,12 @@ def test_find_anomalies_finding_id_is_order_independent() -> None:
     findings1 = find_anomalies([e1, e2])
     findings2 = find_anomalies([e2, e1])
     assert len(findings1) == len(findings2) == 2
+
     # Sort findings by evidence_event_ids for comparison
     sorted1 = sorted(findings1, key=lambda f: f["evidence_event_ids"][0])
     sorted2 = sorted(findings2, key=lambda f: f["evidence_event_ids"][0])
     assert sorted1 == sorted2
+
     for f1, f2 in zip(sorted1, sorted2):
         assert f1["finding_id"] == f2["finding_id"]
 
@@ -145,6 +147,7 @@ def test_find_anomalies_with_realistic_fixtures() -> None:
     # Test with the fixtures from conftest.py to ensure they work
     events = all_events()
     findings = find_anomalies(events)
+
     # login_event is at 02:30:00Z which is within odd hours [0,5)
     # archive_event is at 02:41:00Z which is within odd hours [0,5)
     # upload_event is at 02:45:00Z which is within odd hours [0,5)

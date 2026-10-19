@@ -47,13 +47,13 @@ def find_anomalies(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if is_odd_hour:
             # Build an anomaly finding for this event
             claim = (
-                f"Event occurred during the configured odd-hours period "
+                f"Event occurred during the configured odd hours period "
                 f"[{ODD_HOUR_START:02d}:00, {ODD_HOUR_END:02d}:00) UTC."
             )
             reasoning = (
                 f"Event {event.event_id} ({event.source}:{event.action}) "
-                f"occurred at {event.timestamp.strftime('%Y-%m-%dT%H:%M:%S')}Z, "
-                f"which is during the configured odd-hours period "
+                f"occurred at {event.timestamp.isoformat()}, which is during "
+                f"the configured odd-hours period "
                 f"[{ODD_HOUR_START:02d}:00, {ODD_HOUR_END:02d}:00) UTC."
             )
 
@@ -68,6 +68,7 @@ def find_anomalies(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 known_event_ids=known_event_ids,
                 needs_human_review=True,
             )
+
             findings.append(finding)
 
     return findings
