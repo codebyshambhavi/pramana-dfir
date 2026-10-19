@@ -4,16 +4,24 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+
 # Node
 node_modules/
 dist/
+
 # Secrets and local data
 .env
 backend/uploads/
+data/
+uploads/
 *.db
+*.sqlite
+*.sqlite3
+
 # OS and editors
 .DS_Store
 .idea/
 .vscode/
+
 # Never commit real evidence (synthetic data lives in datasets/sample_case_001)
 evidence/

@@ -2,137 +2,912 @@ openapi: 3.0.3
 info:
   title: Pramana API
   version: 0.1.0
-  description: Starter spec. Owner Role 3. Add example responses for every endpoint, then freeze on 22 Oct.
+  description: >
+    Forensic investigation platform API for evidence intake, chain of custody,
+    NetworkX relationship graphs, automated intelligence analysis, and BSA Section 63 aligned PDF reporting.
 paths:
   /cases:
     post:
       summary: Create a case
+      operationId: createCase
+      tags:
+        - cases
       requestBody:
+        required: true
         content:
           application/json:
-            schema: { type: object, properties: { name: { type: string } }, required: [name] }
-            example: { name: "Case 001" }
+            schema:
+              $ref: '#/components/schemas/CaseCreateRequest'
+            examples:
+              standardCase:
+                summary: Standard case creation
+                value:
+                  name: "Operation Northern Star"
+                  case_id: "CASE-001"
       responses:
         "201":
-          description: Created
+          description: Case created successfully
           content:
             application/json:
-              example: { case_id: "CASE-001", name: "Case 001" }
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+              examples:
+                created:
+                  value:
+                    case_id: "CASE-001"
+                    name: "Operation Northern Star"
+        "409":
+          description: Case ID conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Case with ID 'CASE-001' already exists"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
   /cases/{id}/evidence:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string } }
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the case
+        schema:
+          type: string
+        example: "CASE-001"
     post:
       summary: Upload a file, hash it, parse it, return its evidence ID
+      operationId: uploadEvidence
+      tags:
+        - evidence
       requestBody:
+        required: true
         content:
           multipart/form-data:
             schema:
               type: object
-              properties: { file: { type: string, format: binary } }
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Forensic artifact file (CSV, JSON, PCAP, Image, etc.)
+              required:
+                - file
       responses:
         "201":
-          description: Stored
+          description: Evidence ingested, hashed, and parsed
           content:
             application/json:
-              example: { evidence_id: "EVID-001", filename: "browser_history.csv", sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", events_created: 120 }
+              schema:
+                $ref: '#/components/schemas/EvidenceUploadResponse'
+              example:
+                evidence_id: "EVID-001"
+                filename: "browser_history.csv"
+                sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                events_created: 120
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Case 'CASE-001' not found"
+        "422":
+          description: Unprocessable evidence upload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     get:
       summary: List evidence with hashes and custody log
+      operationId: listEvidence
+      tags:
+        - evidence
       responses:
         "200":
-          description: OK
+          description: List of evidence items with custody chains
           content:
             application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvidenceItem'
               example:
-                - { evidence_id: "EVID-001", filename: "browser_history.csv", sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", intake_time: "2026-10-18T10:00:00Z", custody: [] }
+                - evidence_id: "EVID-001"
+                  filename: "browser_history.csv"
+                  sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                  intake_time: "2026-10-18T10:00:00Z"
+                  custody:
+                    - id: 1
+                      evidence_id: "EVID-001"
+                      actor: "Investigator (System Intake)"
+                      action: "Evidence Acquisition & SHA-256 Hash Verification"
+                      time: "2026-10-18T10:00:00Z"
+                      sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                      prev_hash: "0000000000000000000000000000000000000000000000000000000000000000"
+                      entry_hash: "c23f790209e5c46b5a31a44e5bc116f193eb77e923e51a66b7bb059a4358a98b"
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Case 'CASE-001' not found"
+
   /cases/{id}/events:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string } }
-      - { name: from, in: query, schema: { type: string, format: date-time } }
-      - { name: to, in: query, schema: { type: string, format: date-time } }
-      - { name: source, in: query, schema: { type: string } }
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the case
+        schema:
+          type: string
+        example: "CASE-001"
+      - name: from
+        in: query
+        required: false
+        description: Filter events starting at this ISO 8601 timestamp
+        schema:
+          type: string
+          format: date-time
+        example: "2026-10-18T00:00:00Z"
+      - name: to
+        in: query
+        required: false
+        description: Filter events up to this ISO 8601 timestamp
+        schema:
+          type: string
+          format: date-time
+        example: "2026-10-18T23:59:59Z"
+      - name: source
+        in: query
+        required: false
+        description: Filter by evidence source category
+        schema:
+          type: string
+          enum: [browser, chat, log, pcap, image]
+        example: "browser"
     get:
       summary: Events, filterable by time range and source
+      operationId: listEvents
+      tags:
+        - events
       responses:
         "200":
-          description: OK
+          description: Filtered list of schema-compliant forensic events
           content:
             application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
               example:
-                - { event_id: "EV-000123", case_id: "CASE-001", evidence_id: "EVID-003", artifact_ref: "browser_history.csv#row=412", sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", timestamp: "2026-10-18T10:32:12Z", source: "browser", action: "file_upload", object: "secret.zip" }
+                - event_id: "EV-000123"
+                  case_id: "CASE-001"
+                  evidence_id: "EVID-003"
+                  artifact_ref: "browser_history.csv#row=412"
+                  sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                  timestamp: "2026-10-18T10:32:12Z"
+                  source: "browser"
+                  device: "LAPTOP-CORP-44"
+                  actor: "analyst_sec"
+                  action: "file_upload"
+                  object: "secret.zip"
+                  ip: "192.168.1.105"
+                  location:
+                    lat: 28.6139
+                    lon: 77.2090
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Case 'CASE-001' not found"
+
   /cases/{id}/graph:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string } }
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the case
+        schema:
+          type: string
+        example: "CASE-001"
     get:
       summary: Nodes and edges for the graph view
+      operationId: getGraph
+      tags:
+        - graph
       responses:
         "200":
-          description: OK
+          description: NetworkX entity relationship graph
           content:
             application/json:
+              schema:
+                $ref: '#/components/schemas/CaseGraph'
               example:
-                nodes: [ { id: "user_01", type: "person" }, { id: "device_A", type: "device" } ]
-                edges: [ { source: "user_01", target: "device_A", action: "used" } ]
+                nodes:
+                  - id: "analyst_sec"
+                    type: "person"
+                  - id: "LAPTOP-CORP-44"
+                    type: "device"
+                  - id: "secret.zip"
+                    type: "file"
+                  - id: "192.168.1.105"
+                    type: "ip"
+                edges:
+                  - source: "analyst_sec"
+                    target: "LAPTOP-CORP-44"
+                    action: "file_upload"
+                  - source: "LAPTOP-CORP-44"
+                    target: "secret.zip"
+                    action: "file_upload"
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Case 'CASE-001' not found"
+
   /cases/{id}/analyze:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string } }
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the case
+        schema:
+          type: string
+        example: "CASE-001"
     post:
       summary: Run Role 2 analysis and store the findings
+      operationId: analyzeCase
+      tags:
+        - intelligence
       responses:
         "200":
-          description: OK
+          description: Analysis completed and findings created
           content:
             application/json:
-              example: { findings_created: 3 }
+              schema:
+                $ref: '#/components/schemas/AnalyzeResponse'
+              example:
+                findings_created: 3
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Case 'CASE-001' not found"
+
   /cases/{id}/findings:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string } }
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the case
+        schema:
+          type: string
+        example: "CASE-001"
     get:
       summary: List findings
+      operationId: listFindings
+      tags:
+        - findings
       responses:
         "200":
-          description: OK
+          description: List of findings for the case
           content:
             application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Finding'
               example:
-                - { finding_id: "F-0021", case_id: "CASE-001", type: "contradiction", claim: "Photo EXIF location differs from device GPS and IP location", confidence: 0.62, evidence_event_ids: ["EV-000123", "EV-000131"], reasoning: "Locations disagree", alternatives: [ { claim: "Metadata edited", confidence: 0.62, needed_evidence: ["original file hash"] } ], needs_human_review: true, status: "pending" }
+                - finding_id: "F-0021"
+                  case_id: "CASE-001"
+                  type: "contradiction"
+                  claim: "Photo EXIF location differs from device GPS and IP location"
+                  confidence: 0.79
+                  evidence_event_ids:
+                    - "EV-000123"
+                    - "EV-000131"
+                  reasoning: "Locations disagree across evidence artifacts"
+                  alternatives:
+                    - claim: "Metadata edited or spoofed"
+                      confidence: 0.62
+                      needed_evidence:
+                        - "original file hash"
+                  needs_human_review: true
+                  status: "pending"
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Case 'CASE-001' not found"
+
   /findings/{id}:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string } }
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the finding
+        schema:
+          type: string
+        example: "F-0021"
     patch:
       summary: Investigator approves or rejects a finding
+      operationId: updateFindingStatus
+      tags:
+        - findings
       requestBody:
+        required: true
         content:
           application/json:
-            example: { status: "approved" }
+            schema:
+              $ref: '#/components/schemas/FindingStatusUpdatePayload'
+            example:
+              status: "approved"
       responses:
         "200":
-          description: Updated
+          description: Finding status successfully updated
           content:
             application/json:
-              example: { finding_id: "F-0021", status: "approved" }
-  /findings/{id}/lineage:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: string } }
-    get:
-      summary: Finding, then events, evidence and SHA-256
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
+              schema:
+                $ref: '#/components/schemas/FindingStatusUpdate'
               example:
                 finding_id: "F-0021"
-                events: [ { event_id: "EV-000123", artifact_ref: "photo_01.jpg#exif", evidence_id: "EVID-003" } ]
-                evidence: [ { evidence_id: "EVID-003", filename: "photo_01.jpg", sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" } ]
-  /cases/{id}/report:
+                status: "approved"
+        "404":
+          description: Finding not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Finding 'F-0021' not found"
+        "422":
+          description: Validation error (e.g. invalid status value)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /findings/{id}/lineage:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string } }
-      - { name: format, in: query, schema: { type: string, enum: [pdf] } }
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the finding
+        schema:
+          type: string
+        example: "F-0021"
     get:
-      summary: Download the investigator-reviewed report
+      summary: Finding, then events, evidence and SHA-256
+      operationId: getFindingLineage
+      tags:
+        - findings
       responses:
         "200":
-          description: PDF file
+          description: Complete provenance trace for the finding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FindingLineage'
+              example:
+                finding_id: "F-0021"
+                events:
+                  - event_id: "EV-000123"
+                    artifact_ref: "photo_01.jpg#exif"
+                    evidence_id: "EVID-003"
+                evidence:
+                  - evidence_id: "EVID-003"
+                    filename: "photo_01.jpg"
+                    sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        "404":
+          description: Finding not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Finding 'F-0021' not found"
+
+  /cases/{id}/report:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the case
+        schema:
+          type: string
+        example: "CASE-001"
+      - name: format
+        in: query
+        required: false
+        description: Output report format (must be 'pdf')
+        schema:
+          type: string
+          enum: [pdf]
+          default: pdf
+        example: "pdf"
+    get:
+      summary: Download the investigator-reviewed report
+      operationId: getCaseReport
+      tags:
+        - reports
+      responses:
+        "200":
+          description: Forensic PDF report aligned with BSA Section 63 certificate fields
           content:
             application/pdf:
-              schema: { type: string, format: binary }
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid format requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Unsupported format 'docx'. Only 'pdf' is supported."
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Case 'CASE-001' not found"
+
+components:
+  schemas:
+    CaseCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Descriptive name of the case
+          example: "Operation Northern Star"
+        case_id:
+          type: string
+          description: Optional user-specified ID (auto-generated if omitted)
+          example: "CASE-001"
+      required:
+        - name
+
+    CaseResponse:
+      type: object
+      properties:
+        case_id:
+          type: string
+          example: "CASE-001"
+        name:
+          type: string
+          example: "Operation Northern Star"
+      required:
+        - case_id
+        - name
+
+    EvidenceUploadResponse:
+      type: object
+      properties:
+        evidence_id:
+          type: string
+          example: "EVID-001"
+        filename:
+          type: string
+          example: "browser_history.csv"
+        sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          example: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        events_created:
+          type: integer
+          example: 120
+      required:
+        - evidence_id
+        - filename
+        - sha256
+        - events_created
+
+    CustodyEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        evidence_id:
+          type: string
+          example: "EVID-001"
+        actor:
+          type: string
+          example: "Investigator"
+        action:
+          type: string
+          example: "Evidence Acquisition & SHA-256 Hash Verification"
+        time:
+          type: string
+          format: date-time
+          example: "2026-10-18T10:00:00Z"
+        sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          example: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        prev_hash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          example: "0000000000000000000000000000000000000000000000000000000000000000"
+        entry_hash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          example: "c23f790209e5c46b5a31a44e5bc116f193eb77e923e51a66b7bb059a4358a98b"
+      required:
+        - evidence_id
+        - actor
+        - action
+        - sha256
+        - prev_hash
+        - entry_hash
+
+    EvidenceItem:
+      type: object
+      properties:
+        evidence_id:
+          type: string
+          example: "EVID-001"
+        filename:
+          type: string
+          example: "browser_history.csv"
+        sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          example: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        intake_time:
+          type: string
+          format: date-time
+          example: "2026-10-18T10:00:00Z"
+        custody:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustodyEntry'
+      required:
+        - evidence_id
+        - filename
+        - sha256
+        - intake_time
+        - custody
+
+    EventLocation:
+      type: object
+      properties:
+        lat:
+          type: number
+          example: 28.6139
+        lon:
+          type: number
+          example: 77.2090
+      required:
+        - lat
+        - lon
+
+    Event:
+      type: object
+      properties:
+        event_id:
+          type: string
+          example: "EV-000123"
+        case_id:
+          type: string
+          example: "CASE-001"
+        evidence_id:
+          type: string
+          example: "EVID-003"
+        artifact_ref:
+          type: string
+          description: "File and row, packet or tag the event came from"
+          example: "browser_history.csv#row=412"
+        sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          example: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-10-18T10:32:12Z"
+        source:
+          type: string
+          enum: [browser, chat, log, pcap, image]
+          example: "browser"
+        device:
+          type: string
+          nullable: true
+          example: "LAPTOP-CORP-44"
+        actor:
+          type: string
+          nullable: true
+          example: "analyst_sec"
+        action:
+          type: string
+          example: "file_upload"
+        object:
+          type: string
+          nullable: true
+          example: "secret.zip"
+        ip:
+          type: string
+          nullable: true
+          example: "192.168.1.105"
+        location:
+          $ref: '#/components/schemas/EventLocation'
+          nullable: true
+        raw:
+          type: object
+          description: "Original fields from the source row"
+      required:
+        - event_id
+        - case_id
+        - evidence_id
+        - artifact_ref
+        - sha256
+        - timestamp
+        - source
+        - action
+
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "analyst_sec"
+        type:
+          type: string
+          description: "Entity type (person, device, file, ip, location)"
+          example: "person"
+      required:
+        - id
+        - type
+
+    GraphEdge:
+      type: object
+      properties:
+        source:
+          type: string
+          example: "analyst_sec"
+        target:
+          type: string
+          example: "LAPTOP-CORP-44"
+        action:
+          type: string
+          example: "file_upload"
+      required:
+        - source
+        - target
+        - action
+
+    CaseGraph:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+      required:
+        - nodes
+        - edges
+
+    AnalyzeResponse:
+      type: object
+      properties:
+        findings_created:
+          type: integer
+          example: 3
+      required:
+        - findings_created
+
+    FindingAlternative:
+      type: object
+      properties:
+        claim:
+          type: string
+          example: "Metadata edited or spoofed"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.62
+        needed_evidence:
+          type: array
+          items:
+            type: string
+          example: ["original file hash"]
+      required:
+        - claim
+        - confidence
+
+    Finding:
+      type: object
+      properties:
+        finding_id:
+          type: string
+          example: "F-0021"
+        case_id:
+          type: string
+          example: "CASE-001"
+        type:
+          type: string
+          enum: [contradiction, anomaly, correlation, hypothesis]
+          example: "contradiction"
+        claim:
+          type: string
+          example: "Photo EXIF location differs from device GPS and IP location"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.79
+        evidence_event_ids:
+          type: array
+          items:
+            type: string
+          example: ["EV-000123", "EV-000131"]
+        reasoning:
+          type: string
+          nullable: true
+          example: "Locations disagree across evidence artifacts"
+        alternatives:
+          type: array
+          items:
+            $ref: '#/components/schemas/FindingAlternative'
+        needs_human_review:
+          type: boolean
+          example: true
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+          default: pending
+          example: "pending"
+      required:
+        - finding_id
+        - case_id
+        - type
+        - claim
+        - confidence
+        - evidence_event_ids
+        - needs_human_review
+
+    FindingStatusUpdatePayload:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected, pending]
+          example: "approved"
+      required:
+        - status
+
+    FindingStatusUpdate:
+      type: object
+      properties:
+        finding_id:
+          type: string
+          example: "F-0021"
+        status:
+          type: string
+          enum: [approved, rejected, pending]
+          example: "approved"
+      required:
+        - finding_id
+        - status
+
+    LineageEvent:
+      type: object
+      properties:
+        event_id:
+          type: string
+          example: "EV-000123"
+        artifact_ref:
+          type: string
+          example: "photo_01.jpg#exif"
+        evidence_id:
+          type: string
+          example: "EVID-003"
+      required:
+        - event_id
+        - artifact_ref
+        - evidence_id
+
+    LineageEvidence:
+      type: object
+      properties:
+        evidence_id:
+          type: string
+          example: "EVID-003"
+        filename:
+          type: string
+          example: "photo_01.jpg"
+        sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          example: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+      required:
+        - evidence_id
+        - filename
+        - sha256
+
+    FindingLineage:
+      type: object
+      properties:
+        finding_id:
+          type: string
+          example: "F-0021"
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineageEvent'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineageEvidence'
+      required:
+        - finding_id
+        - events
+        - evidence
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Resource not found"
+      required:
+        - detail
+
+    ValidationErrorItem:
+      type: object
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          example: ["body", "status"]
+        msg:
+          type: string
+          example: "Field required"
+        type:
+          type: string
+          example: "value_error.missing"
+      required:
+        - loc
+        - msg
+        - type
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationErrorItem'
