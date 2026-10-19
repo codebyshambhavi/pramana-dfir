@@ -17,6 +17,16 @@
   --color-verified: #34d399;
 }
 
+/* Indeterminate progress bar sweep (upload modal). */
+@keyframes upload {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 @layer base {
   html {
     color-scheme: dark;
@@ -36,4 +46,27 @@
       scroll-behavior: auto;
     }
   }
+}
+
+/* React Flow controls in the console palette (graph tab). */
+.pramana-flow .react-flow__controls {
+  box-shadow: 0 0 18px -6px rgba(59, 140, 255, 0.5);
+  border: 1px solid rgba(59, 140, 255, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pramana-flow .react-flow__controls-button {
+  background: #0b1222;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  fill: #c4cad6;
+}
+.pramana-flow .react-flow__controls-button:hover {
+  background: #13203a;
+}
+.pramana-flow .react-flow__attribution {
+  background: transparent;
+  opacity: 0.35;
+}
+.pramana-flow .react-flow__attribution a {
+  color: #8a93a6;
 }
