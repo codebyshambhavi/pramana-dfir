@@ -135,3 +135,30 @@ def test_nonexistent_routes_and_entities(client: TestClient):
     assert client.patch("/findings/DOES_NOT_EXIST", json={"status": "approved"}).status_code == 404
     assert client.get("/findings/DOES_NOT_EXIST/lineage").status_code == 404
     assert client.get("/cases/DOES_NOT_EXIST/report?format=pdf").status_code == 404
+
+
+def test_path_traversal_sanitization(client: TestClient):
+    """Verify that uploading filenames with path traversal characters are safely contained."""
+    case_id = "CASE-SEC-001"
+    client.post("/cases", json={"name": "Security Test Case", "case_id": case_id})
+
+    # Malicious filename attempting to escape upload directory
+    files = {"file": ("../../../../etc/passwd", io.BytesIO(b"root:x:0:0::/root:/bin/bash\n"), "text/plain")}
+    res = client.post(f"/cases/{case_id}/evidence", files=files)
+    assert res.status_code == 201
+    data = res.json()
+    assert "evidence_id" in data
+    # Filename stored must not contain path traversal ../
+    assert ".." not in data["filename"]
+
+
+def test_invalid_payloads_and_validation(client: TestClient):
+    """Verify appropriate 422 validation errors for malformed requests."""
+    # Missing required 'name' field in case creation
+    res1 = client.post("/cases", json={})
+    assert res1.status_code == 422
+
+    # Malformed JSON in finding status update
+    res2 = client.patch("/findings/F-ANY", json={"status": 12345})
+    assert res2.status_code == 422
+

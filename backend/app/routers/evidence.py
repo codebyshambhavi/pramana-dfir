@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -49,10 +50,20 @@ async def upload_evidence(
     sha256 = hashlib.sha256(content).hexdigest()
     size_bytes = len(content)
 
-    # Persist file to storage directory
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    stored_filename = f"{id}_{uuid.uuid4().hex[:6]}_{file.filename}"
-    stored_path = UPLOAD_DIR / stored_filename
+    # Sanitize filename and prevent path traversal
+    raw_filename = Path(file.filename or "unknown").name
+    safe_basename = re.sub(r"[^a-zA-Z0-9_.-]", "_", raw_filename) or "evidence.bin"
+
+    # Persist file to storage directory safely
+    target_dir = UPLOAD_DIR.resolve()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    stored_filename = f"{id}_{uuid.uuid4().hex[:6]}_{safe_basename}"
+    stored_path = (target_dir / stored_filename).resolve()
+    if not str(stored_path).startswith(str(target_dir)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename: potential path traversal detected",
+        )
     stored_path.write_bytes(content)
 
     # Generate sequential or unique evidence ID
@@ -63,7 +74,7 @@ async def upload_evidence(
     evidence_record = Evidence(
         evidence_id=evidence_id,
         case_id=id,
-        filename=file.filename or "unknown",
+        filename=safe_basename,
         sha256=sha256,
         size_bytes=size_bytes,
         intake_time=intake_time,
@@ -123,7 +134,7 @@ async def upload_evidence(
 
     return {
         "evidence_id": evidence_id,
-        "filename": file.filename or "unknown",
+        "filename": safe_basename,
         "sha256": sha256,
         "events_created": len(parsed_events),
     }

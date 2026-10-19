@@ -173,6 +173,38 @@ def test_custody_tamper_detection(client: TestClient, db_session: Session):
     assert "Tampered entry hash" in error_msg or "Broken chain" in error_msg
 
 
+def test_multi_entry_custody_chain(client: TestClient, db_session: Session):
+    """Verify that multi-step custody actions maintain and validate a cryptographic chain."""
+    from app.db.session import append_custody_record
+    case_id = "CASE-MULTI-CUSTODY"
+    client.post("/cases", json={"name": "Multi Custody Test", "case_id": case_id})
+
+    files = {"file": ("disk.img", io.BytesIO(b"raw-disk-bytes-001"), "application/octet-stream")}
+    res_upload = client.post(f"/cases/{case_id}/evidence", files=files)
+    assert res_upload.status_code == 201
+    evidence_id = res_upload.json()["evidence_id"]
+    file_sha256 = res_upload.json()["sha256"]
+
+    # Add second and third custody transfers
+    append_custody_record(db_session, evidence_id, actor="Examiner B", action="Secured in Evidence Locker", sha256=file_sha256)
+    append_custody_record(db_session, evidence_id, actor="Lab Analyst C", action="Extracted memory dump", sha256=file_sha256)
+
+    # Verify 3-step chain is intact
+    is_valid, msg = verify_custody_log(db_session, evidence_id)
+    assert is_valid is True
+    assert "intact and cryptographically verified" in msg
+
+    # Break chain by altering intermediate entry's prev_hash
+    entries = db_session.query(CustodyEntry).filter(CustodyEntry.evidence_id == evidence_id).order_by(CustodyEntry.id.asc()).all()
+    assert len(entries) == 3
+    entries[1].prev_hash = "f" * 64
+    db_session.commit()
+
+    is_valid_break, break_msg = verify_custody_log(db_session, evidence_id)
+    assert is_valid_break is False
+    assert "Broken chain" in break_msg or "Tampered" in break_msg
+
+
 def test_openapi_spec_validity():
     """Verify that contracts/openapi.yaml is syntactically valid and covers all required paths."""
     repo_root = Path(__file__).resolve().parents[2]

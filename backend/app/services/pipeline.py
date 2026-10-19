@@ -14,6 +14,7 @@ import csv
 import json
 import logging
 import os
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -194,9 +195,19 @@ def _parse_evidence_adapter(path: str, case_id: str, evidence_id: str, sha256: s
 
 
 def execute_parse_evidence(path: str, case_id: str, evidence_id: str, sha256: str) -> list[dict[str, Any]]:
-    """Parse evidence by delegating to Role 1 package, falling back to typed adapter."""
+    """Parse evidence by delegating to Role 1 package, falling back to typed adapter.
+    
+    Expected Role 1 Interface:
+        parse_evidence(path: str, case_id: str) -> list[dict]
+        Each dict must conform to contracts/event.schema.json
+    """
+    # Attempt import from evidence-engine if available
+    ee_dir = REPO_ROOT / "evidence-engine"
+    if ee_dir.exists() and str(ee_dir) not in sys.path:
+        sys.path.insert(0, str(ee_dir))
+
     try:
-        from evidence_engine.parsers import parse_evidence as role1_parse  # type: ignore
+        from parsers import parse_evidence as role1_parse  # type: ignore
         raw_events = role1_parse(path, case_id)
         # Ensure all required linkage fields are attached
         for ev in raw_events:
@@ -346,7 +357,18 @@ def _analyze_adapter(events: list[dict[str, Any]], case_id: str) -> list[dict[st
 
 
 def execute_analyze(events: list[dict[str, Any]], case_id: str) -> list[dict[str, Any]]:
-    """Execute analysis pipeline via Role 2 or typed adapter."""
+    """Execute analysis pipeline via Role 2 or typed adapter.
+    
+    Expected Role 2 Interface:
+        analyze(events: list[dict]) -> list[dict]
+        Each dict must conform to contracts/finding.schema.json
+    """
+    intel_dir = REPO_ROOT / "intelligence"
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    if intel_dir.exists() and str(intel_dir) not in sys.path:
+        sys.path.insert(0, str(intel_dir))
+
     try:
         from intelligence import analyze as role2_analyze  # type: ignore
         findings = role2_analyze(events)
