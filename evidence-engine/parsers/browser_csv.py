@@ -16,8 +16,9 @@ Each row becomes one Event with:
 """
 import csv
 import json
-from datetime import datetime
 from typing import Dict, List, Any
+
+from parsers.timestamps import normalize_timestamp
 
 
 def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[str, Any]]:
@@ -65,11 +66,12 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 if not row['timestamp'] or not row['action'] or not row['url']:
                     raise ValueError(f"Row {row_idx}: missing required field value")
 
-                # Normalize timestamp (ensure it's ISO format)
-                timestamp = row['timestamp']
-                # Basic validation - in a real implementation we might parse and reformat
-                if 'T' not in timestamp and ' ' not in timestamp:
-                    raise ValueError(f"Row {row_idx}: timestamp not in ISO format")
+                try:
+                    timestamp = normalize_timestamp(row['timestamp'])
+                except ValueError as exc:
+                    raise ValueError(
+                        f"Row {row_idx}: timestamp not in ISO format: {exc}"
+                    ) from exc
 
                 # Build artifact_ref
                 filename = path.split('/')[-1].split('\\')[-1]  # Get filename from path

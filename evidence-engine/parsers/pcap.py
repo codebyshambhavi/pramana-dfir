@@ -45,7 +45,7 @@ def _normalize_packet_info(packet: Packet, packet_idx: int) -> Dict[str, Any]:
     """Extract safe, serializable information from a packet."""
     info = {
         "packet_number": packet_idx,
-        "time": getattr(packet, 'time', 0),
+        "time": float(getattr(packet, 'time', 0)),
         "layers": [],
         "length": len(packet) if hasattr(packet, '__len__') else 0
     }

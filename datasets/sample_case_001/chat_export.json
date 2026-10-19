@@ -1,0 +1,26 @@
+[
+  {
+    "action": "location_sync",
+    "actor": "mira.chen",
+    "device": "field-phone-07",
+    "device_gps": {
+      "lat": 40.7128,
+      "lon": -74.006
+    },
+    "ip": "203.0.113.42",
+    "ip_location": {
+      "lat": 38.9072,
+      "lon": -77.0369
+    },
+    "object": "field session location context",
+    "timestamp": "2026-10-18T02:23:00Z"
+  },
+  {
+    "action": "message_sent",
+    "actor": "mira.chen",
+    "device": "field-phone-07",
+    "ip": "203.0.113.42",
+    "object": "Upload complete; archive is in the review vault.",
+    "timestamp": "2026-10-18T19:46:00Z"
+  }
+]

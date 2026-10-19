@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import csv
 import json
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 
 from intake.hashing import sha256_file
 from . import browser_csv, chat_json, image_meta, log_csv, pcap
@@ -20,6 +22,25 @@ from . import browser_csv, chat_json, image_meta, log_csv, pcap
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _SCHEMA_PATH = _PROJECT_ROOT / "contracts" / "event.schema.json"
 
+_DATE_TIME_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
+
+
+def _is_rfc3339_datetime(value: object) -> bool:
+    """Check an RFC 3339 date-time with an explicit timezone offset."""
+    if not isinstance(value, str) or not _DATE_TIME_PATTERN.fullmatch(value):
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
+
+
+_DATE_TIME_FORMAT_CHECKER = FormatChecker()
+_DATE_TIME_FORMAT_CHECKER.checks("date-time")(_is_rfc3339_datetime)
+
 
 def _load_event_validator() -> Draft202012Validator | None:
     """Load the repository Event schema when available."""
@@ -27,7 +48,7 @@ def _load_event_validator() -> Draft202012Validator | None:
         return None
     try:
         schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
-        return Draft202012Validator(schema)
+        return Draft202012Validator(schema, format_checker=_DATE_TIME_FORMAT_CHECKER)
     except (OSError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"Unable to load Event schema: {_SCHEMA_PATH}: {exc}") from exc
 

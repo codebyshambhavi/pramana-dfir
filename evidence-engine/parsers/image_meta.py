@@ -18,6 +18,8 @@ Each image becomes one Event with:
 - location = {"lat": float, "lon": float} when GPS is available
 - raw = dictionary containing all available metadata
 """
+from __future__ import annotations
+
 import os
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
@@ -36,6 +38,22 @@ try:
     HAS_IMAGEHASH = True
 except ImportError:
     HAS_IMAGEHASH = False
+
+
+def _json_safe(value: Any) -> Any:
+    """Convert EXIF values to JSON-compatible primitives."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def _get_exif_data(image: Image.Image) -> Dict[str, Any]:
@@ -173,7 +191,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
 
             # Build raw metadata (everything we found)
             raw = {
-                "exif": exif_data,
+                "exif": _json_safe(exif_data),
                 "filename": filename,
                 "format": image.format,
                 "mode": image.mode,

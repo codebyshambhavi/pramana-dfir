@@ -2,6 +2,7 @@
 import sys
 import os
 import importlib.util
+import json
 import tempfile
 
 import pytest
@@ -127,6 +128,8 @@ def test_dns_query_and_response_events(tmp_path):
     assert events[0]["timestamp"] == "2026-10-18T10:40:00Z"
     assert events[1]["action"] == "DNS response archive.example.test"
     assert events[1]["ip"] == "203.0.113.22"
+    for event in events:
+        json.dumps(event)
 
 
 @pytest.mark.skipif(not pcap.HAS_SCAMPY, reason="Scapy is required for packet construction")

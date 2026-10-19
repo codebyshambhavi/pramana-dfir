@@ -1,0 +1,2 @@
+timestamp,action,url,actor,device,ip
+2026-10-18T19:44:00Z,upload,https://vault.example.test/upload/CASE-001.tar.gz,mira.chen,field-laptop-07,203.0.113.42

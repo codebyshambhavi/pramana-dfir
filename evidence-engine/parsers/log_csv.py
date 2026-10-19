@@ -17,6 +17,8 @@ Each row becomes one Event with:
 import csv
 from typing import Dict, List, Any
 
+from parsers.timestamps import normalize_timestamp
+
 
 def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[str, Any]]:
     """Parse system log CSV and return Events.
@@ -80,7 +82,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                     "evidence_id": evidence_id,
                     "artifact_ref": artifact_ref,
                     "sha256": sha256,
-                    "timestamp": row['timestamp'],
+                    "timestamp": normalize_timestamp(row['timestamp']),
                     "source": "log",
                     "action": row['action'],
                     "object": obj,

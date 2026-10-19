@@ -2,6 +2,7 @@
 import sys
 import os
 import importlib.util
+import json
 import tempfile
 
 # Load the module directly from file
@@ -97,6 +98,7 @@ def test_parse_includes_perceptual_hash(tmp_path):
     events = parse(str(path), "CASE-001", "EVID-001", "a" * 64)
 
     perceptual_hash = events[0]["raw"]["perceptual_hash"]
+    json.dumps(events[0])
     assert len(perceptual_hash) == 16
     assert all(character in "0123456789abcdef" for character in perceptual_hash)
 
