@@ -98,8 +98,12 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 # Add optional fields if present and not empty
                 if row.get('actor'):
                     event["actor"] = row['actor']
+                elif row.get('user'):
+                    event["actor"] = row['user']
                 if row.get('device'):
                     event["device"] = row['device']
+                elif row.get('host'):
+                    event["device"] = row['host']
                 if row.get('ip'):
                     event["ip"] = row['ip']
 
