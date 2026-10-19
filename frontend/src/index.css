@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/* One dark forensic-console palette for every page: near-black ink, restrained red for alerts and actions, blue for verified evidence. */
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #05070c;
+  --color-panel: #0a0e16;
+  --color-line: #1a1f2b;
+  --color-muted: #8a93a6;
+  --color-soft: #c4cad6;
+
+  --color-alert: #ef2b3c;
+  --color-alert-soft: #ff5a66;
+  --color-trace: #3b8cff;
+  --color-trace-soft: #7ab4ff;
+  --color-verified: #34d399;
+}
+
+/* Indeterminate progress bar sweep (upload modal). */
+@keyframes upload {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-ink);
+    color: #fff;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* React Flow controls in the console palette (graph tab). */
+.pramana-flow .react-flow__controls {
+  box-shadow: 0 0 18px -6px rgba(59, 140, 255, 0.5);
+  border: 1px solid rgba(59, 140, 255, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pramana-flow .react-flow__controls-button {
+  background: #0b1222;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  fill: #c4cad6;
+}
+.pramana-flow .react-flow__controls-button:hover {
+  background: #13203a;
+}
+.pramana-flow .react-flow__attribution {
+  background: transparent;
+  opacity: 0.35;
+}
+.pramana-flow .react-flow__attribution a {
+  color: #8a93a6;
+}
