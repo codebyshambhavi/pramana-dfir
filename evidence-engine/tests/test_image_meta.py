@@ -16,7 +16,7 @@ parse = image_meta.parse
 
 
 def test_parse_when_pillow_not_available():
-    """Test behavior when Pillow is not available"""
+    """Test that missing Pillow produces a clear error."""
     # Temporarily disable PILLOW by setting the flag to False
     original_has_pillow = image_meta.HAS_PILLOW
     image_meta.HAS_PILLOW = False
@@ -27,15 +27,16 @@ def test_parse_when_pillow_not_available():
             tmp_path = tmp.name
 
         try:
-            events = parse(
-                path=tmp_path,
-                case_id="CASE-001",
-                evidence_id="EVID-001",
-                sha256="a" * 64
-            )
-
-            # Should return empty list when Pillow is not available
-            assert events == []
+            try:
+                parse(
+                    path=tmp_path,
+                    case_id="CASE-001",
+                    evidence_id="EVID-001",
+                    sha256="a" * 64
+                )
+                assert False, "Expected RuntimeError when Pillow is missing"
+            except RuntimeError as exc:
+                assert "Pillow is required" in str(exc)
 
         finally:
             os.unlink(tmp_path)
@@ -85,6 +86,33 @@ def test_parse_nonexistent_file():
     except Exception as e:
         # Other exceptions are also OK
         pass
+
+
+def test_parse_includes_perceptual_hash(tmp_path):
+    from PIL import Image
+
+    path = tmp_path / "synthetic.jpg"
+    Image.new("RGB", (16, 16), "white").save(path)
+
+    events = parse(str(path), "CASE-001", "EVID-001", "a" * 64)
+
+    perceptual_hash = events[0]["raw"]["perceptual_hash"]
+    assert len(perceptual_hash) == 16
+    assert all(character in "0123456789abcdef" for character in perceptual_hash)
+
+
+def test_parse_when_imagehash_not_available(tmp_path, monkeypatch):
+    from PIL import Image
+
+    path = tmp_path / "synthetic.jpg"
+    Image.new("RGB", (16, 16), "white").save(path)
+    monkeypatch.setattr(image_meta, "HAS_IMAGEHASH", False)
+
+    try:
+        parse(str(path), "CASE-001", "EVID-001", "a" * 64)
+        assert False, "Expected RuntimeError when imagehash is missing"
+    except RuntimeError as exc:
+        assert "imagehash is required" in str(exc)
 
 
 if __name__ == "__main__":
