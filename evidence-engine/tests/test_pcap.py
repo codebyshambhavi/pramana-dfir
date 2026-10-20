@@ -4,6 +4,8 @@ import os
 import importlib.util
 import json
 import tempfile
+import gc
+import time
 
 import pytest
 
@@ -76,7 +78,13 @@ def test_parse_invalid_file():
             # Other exceptions are also OK as long as they're not crashes
             pass
     finally:
-        os.unlink(tmp_path)
+        gc.collect()
+        for _ in range(10):
+            try:
+                os.unlink(tmp_path)
+                break
+            except PermissionError:
+                time.sleep(0.1)
 
 
 def test_parse_nonexistent_file():
