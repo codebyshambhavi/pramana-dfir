@@ -66,8 +66,8 @@ async def upload_evidence(
         )
     stored_path.write_bytes(content)
 
-    # Generate sequential or unique evidence ID
-    count = db.query(Evidence).filter(Evidence.case_id == id).count()
+    # Generate sequential or unique evidence ID (globally unique)
+    count = db.query(Evidence).count()
     evidence_id = f"EVID-{count + 1:03d}"
 
     intake_time = utc_now()
@@ -80,57 +80,70 @@ async def upload_evidence(
         intake_time=intake_time,
         stored_path=str(stored_path),
     )
-    db.add(evidence_record)
-    db.commit()
 
-    # Append acquisition record to custody chain
-    append_custody_record(
-        db=db,
-        evidence_id=evidence_id,
-        actor="Investigator (System Intake)",
-        action="Evidence Acquisition & SHA-256 Hash Verification",
-        sha256=sha256,
-        time_val=intake_time,
-    )
+    try:
+        db.add(evidence_record)
+        # Append acquisition record to custody chain
+        append_custody_record(
+            db=db,
+            evidence_id=evidence_id,
+            actor="Investigator (System Intake)",
+            action="Evidence Acquisition & SHA-256 Hash Verification",
+            sha256=sha256,
+            time_val=intake_time,
+        )
 
-    # Parse evidence into normalized events
-    parsed_events = execute_parse_evidence(
-        path=str(stored_path),
-        case_id=id,
-        evidence_id=evidence_id,
-        sha256=sha256,
-    )
-
-    # Store parsed events
-    for ev in parsed_events:
-        ts_str = ev.get("timestamp")
-        ts_dt = intake_time
-        if ts_str:
-            try:
-                clean_ts = ts_str.replace("Z", "+00:00")
-                ts_dt = datetime.fromisoformat(clean_ts)
-            except Exception:
-                ts_dt = intake_time
-
-        event_row = EventModel(
-            event_id=ev["event_id"],
+        # Parse evidence into normalized events
+        parsed_events = execute_parse_evidence(
+            path=str(stored_path),
             case_id=id,
             evidence_id=evidence_id,
-            artifact_ref=ev.get("artifact_ref", f"{file.filename}#byte=0"),
             sha256=sha256,
-            timestamp=ts_dt,
-            source=ev.get("source", "log"),
-            device=ev.get("device"),
-            actor=ev.get("actor"),
-            action=ev.get("action", "unknown"),
-            object=ev.get("object"),
-            ip=ev.get("ip"),
-            location=ev.get("location"),
-            raw=ev.get("raw"),
         )
-        db.add(event_row)
 
-    db.commit()
+        # Store parsed events
+        for ev in parsed_events:
+            ts_str = ev.get("timestamp")
+            ts_dt = intake_time
+            if ts_str:
+                try:
+                    clean_ts = ts_str.replace("Z", "+00:00")
+                    ts_dt = datetime.fromisoformat(clean_ts)
+                except Exception:
+                    ts_dt = intake_time
+
+            stored_event_id = (
+                hashlib.sha256(
+                    f"{id}|{evidence_id}|{ev['event_id']}".encode()
+                ).hexdigest()[:16]
+                + f":{ev['event_id']}"
+            )
+
+            event_row = EventModel(
+                event_id=stored_event_id,
+                case_id=id,
+                evidence_id=evidence_id,
+                artifact_ref=ev.get("artifact_ref", f"{file.filename}#byte=0"),
+                sha256=sha256,
+                timestamp=ts_dt,
+                source=ev.get("source", "log"),
+                device=ev.get("device"),
+                actor=ev.get("actor"),
+                action=ev.get("action", "unknown"),
+                object=ev.get("object"),
+                ip=ev.get("ip"),
+                location=ev.get("location"),
+                raw=ev.get("raw"),
+            )
+            db.add(event_row)
+
+        # If we got here without exception, commit the transaction
+        db.commit()
+
+    except Exception:
+        # If any exception occurred, roll back all pending changes to maintain atomicity
+        db.rollback()
+        raise
 
     return {
         "evidence_id": evidence_id,

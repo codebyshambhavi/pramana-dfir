@@ -90,7 +90,7 @@ def append_custody_record(
         entry_hash=entry_hash,
     )
     db.add(entry)
-    db.commit()
+    db.flush()  # Flush to get the ID without committing
     db.refresh(entry)
     return entry
 
