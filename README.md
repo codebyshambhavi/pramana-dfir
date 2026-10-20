@@ -25,11 +25,11 @@ and produces findings that link back to the exact artifact they came from, so ev
 
 | Resource | Link |
 | :--- | :--- |
-| 🌐 **Live Demo** | https://pramana-dfir.vercel.app |
-| ⚙️ **Backend API** | https://pramana-dfir.onrender.com |
-| 📚 **API Documentation** | https://pramana-dfir.onrender.com/docs |
-| ❤️ **API Health** | https://pramana-dfir.onrender.com/health |
-| 💻 **GitHub Repository** | https://github.com/codebyshambhavi/pramana-dfir |
+| **Live Demo** | https://pramana-dfir.vercel.app |
+| **Backend API** | https://pramana-dfir.onrender.com |
+| **API Documentation** | https://pramana-dfir.onrender.com/docs |
+| **API Health** | https://pramana-dfir.onrender.com/health |
+| **GitHub Repository** | https://github.com/codebyshambhavi/pramana-dfir |
 
 <br/>
 
