@@ -36,6 +36,10 @@ export interface CaseEvent {
   ip?: string | null;
   location?: { lat: number; lon: number } | null;
   raw?: Record<string, unknown>;
+  /** Event v1.1 (optional; the backend does not persist these yet). */
+  parser_version?: string;
+  tz_assumption?: string;
+  family?: string;
 }
 
 export interface FindingAlternative {

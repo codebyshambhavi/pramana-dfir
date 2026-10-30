@@ -11,7 +11,7 @@ For each packet with a timestamp:
 - raw = safe normalized packet metadata (layers, lengths, etc.)
 - Extracts: src IP, dst IP, protocol when available from IP layer
 
-If Scapy is not available, returns empty list (graceful degradation).
+If Scapy is not available, parse() raises RuntimeError (no silent empty result).
 """
 from __future__ import annotations
 
@@ -20,7 +20,12 @@ import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
 
-from parsers.timestamps import normalize_timestamp
+from parsers.provenance import provenance_fields
+from parsers.timestamps import TZ_EPOCH_UTC, normalize_timestamp
+
+PARSER_NAME = "pcap"
+PARSER_VERSION = "1.1.0"
+FAMILY = "network_capture"
 
 try:
     from scapy.all import rdpcap, IP, IPv6, TCP, UDP, ICMP, ARP, DNS, DNSQR
@@ -198,7 +203,6 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
 
     Returns:
         List of Event dictionaries conforming to contracts/event.schema.json
-        (empty list if Scapy is not available or file cannot be read)
 
     Raises:
         ValueError: For invalid PCAP files when Scapy is available
@@ -261,7 +265,12 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 "timestamp": timestamp,
                 "source": "pcap",
                 "action": action,
-                "raw": packet_info  # Safe normalized metadata
+                "raw": packet_info,  # Safe normalized metadata
+                # pcap packet times are Unix epoch seconds, i.e. UTC by definition.
+                **provenance_fields(
+                    parser=PARSER_NAME, version=PARSER_VERSION,
+                    family=FAMILY, tz_assumption=TZ_EPOCH_UTC,
+                ),
             }
             if object_value:
                 event["object"] = object_value

@@ -1,0 +1,5 @@
+# One-shot install for a fresh clone / CI:  pip install -r requirements.txt
+# (Docker installs the same three files separately; see backend/Dockerfile.)
+-r backend/requirements.txt
+-r evidence-engine/requirements.txt
+-r intelligence/requirements.txt

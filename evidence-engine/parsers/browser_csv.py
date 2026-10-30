@@ -18,7 +18,13 @@ import csv
 import json
 from typing import Dict, List, Any
 
-from parsers.timestamps import normalize_timestamp
+from parsers.provenance import provenance_fields
+from parsers.timestamps import normalize_timestamp_with_basis
+from parsers.vocabulary import canonical_action
+
+PARSER_NAME = "browser_csv"
+PARSER_VERSION = "1.1.0"
+FAMILY = "browser_history"
 
 
 def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[str, Any]]:
@@ -67,7 +73,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                     raise ValueError(f"Row {row_idx}: missing required field value")
 
                 try:
-                    timestamp = normalize_timestamp(row['timestamp'])
+                    timestamp, tz_basis = normalize_timestamp_with_basis(row['timestamp'])
                 except ValueError as exc:
                     raise ValueError(
                         f"Row {row_idx}: timestamp not in ISO format: {exc}"
@@ -92,9 +98,13 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                     "sha256": sha256,
                     "timestamp": timestamp,
                     "source": "browser",
-                    "action": row['action'],
+                    "action": canonical_action(row['action']),  # original kept in raw
                     "object": obj,
-                    "raw": raw
+                    "raw": raw,
+                    **provenance_fields(
+                        parser=PARSER_NAME, version=PARSER_VERSION,
+                        family=FAMILY, tz_assumption=tz_basis,
+                    ),
                 }
 
                 # Add optional fields if present and not empty

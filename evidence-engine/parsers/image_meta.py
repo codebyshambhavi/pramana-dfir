@@ -9,8 +9,8 @@ The parser extracts:
 - device/camera metadata: Make, Model, Software from EXIF
 - All EXIF data is preserved in the raw field
 
-If no timestamp can be found in EXIF, the parser uses the file's modification
-time as a deterministic fallback (required by the Event contract).
+If no timestamp can be found in EXIF the parser raises ValueError. It never
+substitutes the file modification time, which is not evidence of capture time.
 
 Each image becomes one Event with:
 - source = "image"
@@ -21,10 +21,15 @@ Each image becomes one Event with:
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
 
-from parsers.timestamps import normalize_timestamp
+from parsers.provenance import provenance_fields
+from parsers.timestamps import TZ_ASSUMED_UTC, normalize_timestamp
+from parsers.vocabulary import canonical_action
+
+PARSER_NAME = "image_meta"
+PARSER_VERSION = "1.1.0"
+FAMILY = "image_exif"
 
 try:
     from PIL import Image
@@ -151,7 +156,6 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
 
     Returns:
         List containing one Event dictionary conforming to contracts/event.schema.json
-        (empty list if Pillow is not available or image cannot be processed)
 
     Raises:
         ValueError: For invalid image files or unsupported formats when Pillow is available
@@ -174,10 +178,13 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
             # Extract timestamp
             timestamp = _get_timestamp_from_exif(exif_data)
             if not timestamp:
-                # Fallback to file modification time (deterministic)
-                mtime = os.path.getmtime(path)
-                dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
-                timestamp = normalize_timestamp(dt.isoformat())
+                # File modification time is NOT evidence of capture time and
+                # changes with every checkout/copy, so it is never substituted.
+                raise ValueError(
+                    f"Image '{os.path.basename(path)}' has no usable EXIF timestamp "
+                    "(DateTimeOriginal, DateTimeDigitized or DateTime); refusing to "
+                    "substitute the file modification time"
+                )
 
             # Extract GPS location
             location = _get_gps_info(exif_data)
@@ -209,7 +216,12 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 "timestamp": timestamp,
                 "source": "image",
                 "action": "image_captured",  # Generic action for images
-                "raw": raw
+                "raw": raw,
+                # EXIF DateTime* tags carry no timezone: UTC is an assumption.
+                **provenance_fields(
+                    parser=PARSER_NAME, version=PARSER_VERSION,
+                    family=FAMILY, tz_assumption=TZ_ASSUMED_UTC,
+                ),
             }
 
             # Add location if available

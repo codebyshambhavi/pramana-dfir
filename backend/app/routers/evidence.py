@@ -103,14 +103,10 @@ async def upload_evidence(
 
         # Store parsed events
         for ev in parsed_events:
-            ts_str = ev.get("timestamp")
-            ts_dt = intake_time
-            if ts_str:
-                try:
-                    clean_ts = ts_str.replace("Z", "+00:00")
-                    ts_dt = datetime.fromisoformat(clean_ts)
-                except Exception:
-                    ts_dt = intake_time
+            # Events are schema-validated, so "timestamp" is always present and
+            # RFC 3339. An unparseable value is an error, never replaced by the
+            # intake time (that would silently invent an event time).
+            ts_dt = datetime.fromisoformat(ev["timestamp"].replace("Z", "+00:00"))
 
             stored_event_id = (
                 hashlib.sha256(
@@ -123,13 +119,13 @@ async def upload_evidence(
                 event_id=stored_event_id,
                 case_id=id,
                 evidence_id=evidence_id,
-                artifact_ref=ev.get("artifact_ref", f"{file.filename}#byte=0"),
+                artifact_ref=ev["artifact_ref"],
                 sha256=sha256,
                 timestamp=ts_dt,
-                source=ev.get("source", "log"),
+                source=ev["source"],
                 device=ev.get("device"),
                 actor=ev.get("actor"),
-                action=ev.get("action", "unknown"),
+                action=ev["action"],
                 object=ev.get("object"),
                 ip=ev.get("ip"),
                 location=ev.get("location"),
@@ -140,9 +136,20 @@ async def upload_evidence(
         # If we got here without exception, commit the transaction
         db.commit()
 
-    except Exception:
-        # If any exception occurred, roll back all pending changes to maintain atomicity
+    except ValueError as exc:
+        # The evidence is unsupported or malformed. Nothing is stored: roll back
+        # the database and remove the file written above, then say why.
         db.rollback()
+        stored_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Evidence rejected: {exc}",
+        ) from exc
+    except Exception:
+        # Any other failure: roll back all pending changes (atomicity), drop the
+        # orphaned file, and re-raise unchanged.
+        db.rollback()
+        stored_path.unlink(missing_ok=True)
         raise
 
     return {

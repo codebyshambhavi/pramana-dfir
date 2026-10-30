@@ -13,7 +13,14 @@ behaviour. Override with the ``PRAMANA_INTEL_TIMEZONE`` environment variable
 database (or the ``tzdata`` package) to be present.
 
 The timezone is NOT used to interpret naive event timestamps. Those are always
-treated as UTC (see ``common.parse_timestamp``).
+treated as UTC (see ``common.parse_timestamp``); the case timezone is applied
+only when an instant is *interpreted* as wall-clock time (``timeline.to_case_time``).
+Raw timestamps are never rewritten.
+
+Source clocks
+-------------
+``PRAMANA_SOURCE_CLOCKS`` (JSON) declares per-source clock offset/uncertainty, e.g.
+``{"log": {"offset_seconds": 240, "uncertainty_seconds": 120}}``. See ``timeline``.
 """
 from __future__ import annotations
 
@@ -31,7 +38,15 @@ DEFAULT_CORRELATION_WINDOW = timedelta(minutes=10)
 # Max gap between an archive being created and an upload of it.
 ARCHIVE_UPLOAD_WINDOW = timedelta(minutes=30)
 
+# --- source clocks ----------------------------------------------------------
+SOURCE_CLOCKS_ENV_VAR = "PRAMANA_SOURCE_CLOCKS"
+
 # --- odd hours (wall-clock hours in the configured timezone) ----------------
+# Only login/session-type Events are eligible for the odd-hour rule (matched on
+# the canonical, lower-cased Event.action). Chat, image, DNS, archive and upload
+# Events are never odd-hour candidates. These are the session actions the
+# project already used for this rule before T2.
+ODD_HOUR_ACTIONS = frozenset({"login", "auth", "authenticate", "session_start"})
 # Half-open range [start, end). If start > end the range wraps midnight
 # (e.g. start=22, end=5 means 22:00-04:59).
 ODD_HOUR_START = 0

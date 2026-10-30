@@ -50,12 +50,15 @@ def test_sample_case_events_are_valid_and_contain_three_planted_items():
 
     archive_created = next(
         event for event in events_by_file["system_log.csv"]
-        if event["action"] == "archive_created"
+        if event["raw"]["action"] == "archive_created"
     )
     uploaded = next(
         event for event in events_by_file["browser_history.csv"]
-        if event["action"] == "upload"
+        if event["raw"]["action"] == "upload"
     )
+    # Canonical action vocabulary: the original synonym stays in raw.
+    assert archive_created["action"] == "archive_create"
+    assert uploaded["action"] == "file_upload"
     assert archive_created["object"] == uploaded["raw"]["url"].rsplit("/", 1)[-1]
     assert archive_created["actor"] == uploaded["actor"] == "mira.chen"
     assert archive_created["device"] == uploaded["device"] == "field-laptop-07"
@@ -76,6 +79,8 @@ def test_sample_case_events_are_valid_and_contain_three_planted_items():
     assert photo["raw"]["exif"]["DateTimeOriginal"] == "2026:10:18 02:24:00"
     assert photo["raw"]["exif"]["Model"] == "FieldPhone 7"
     assert location_context["ip"] == "203.0.113.42"
+    # Chat device_gps reaches the canonical Event.location; ip_location stays in raw.
+    assert location_context["location"] == device_gps
     assert exif_location != device_gps
     assert exif_location != ip_location
     assert device_gps != ip_location

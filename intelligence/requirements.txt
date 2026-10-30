@@ -2,3 +2,4 @@ jsonschema
 ollama
 scikit-learn
 pytest
+tzdata

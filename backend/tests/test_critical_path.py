@@ -152,7 +152,7 @@ def test_custody_tamper_detection(client: TestClient, db_session: Session):
     client.post("/cases", json={"name": "Tamper Test", "case_id": case_id})
 
     # Upload evidence file
-    files = {"file": ("artifact.log", io.BytesIO(b"timestamp,action\n2026-10-18T10:00:00Z,audit\n"), "text/plain")}
+    files = {"file": ("artifact.csv", io.BytesIO(b"timestamp,action\n2026-10-18T10:00:00Z,audit\n"), "text/csv")}
     res_upload = client.post(f"/cases/{case_id}/evidence", files=files)
     assert res_upload.status_code == 201
     evidence_id = res_upload.json()["evidence_id"]
@@ -179,7 +179,7 @@ def test_multi_entry_custody_chain(client: TestClient, db_session: Session):
     case_id = "CASE-MULTI-CUSTODY"
     client.post("/cases", json={"name": "Multi Custody Test", "case_id": case_id})
 
-    files = {"file": ("disk.img", io.BytesIO(b"raw-disk-bytes-001"), "application/octet-stream")}
+    files = {"file": ("disk_events.csv", io.BytesIO(b"timestamp,action\n2026-10-18T10:00:00Z,mount\n"), "text/csv")}
     res_upload = client.post(f"/cases/{case_id}/evidence", files=files)
     assert res_upload.status_code == 201
     evidence_id = res_upload.json()["evidence_id"]

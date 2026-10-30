@@ -143,7 +143,7 @@ def test_path_traversal_sanitization(client: TestClient):
     client.post("/cases", json={"name": "Security Test Case", "case_id": case_id})
 
     # Malicious filename attempting to escape upload directory
-    files = {"file": ("../../../../etc/passwd", io.BytesIO(b"root:x:0:0::/root:/bin/bash\n"), "text/plain")}
+    files = {"file": ("../../../../etc/evil.csv", io.BytesIO(b"timestamp,action\n2026-10-18T10:00:00Z,login\n"), "text/csv")}
     res = client.post(f"/cases/{case_id}/evidence", files=files)
     assert res.status_code == 201
     data = res.json()

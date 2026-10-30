@@ -9,9 +9,32 @@ The output is a list of schema-valid Finding objects with type="correlation".
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from . import common
 from .config import DEFAULT_CORRELATION_WINDOW, ARCHIVE_UPLOAD_WINDOW
+
+
+def _object_key(event: common.NormalizedEvent) -> str | None:
+    """Return the value used to decide that two events refer to the same object.
+
+    Normally this is ``event.object`` unchanged. The one exception: a
+    ``file_upload`` whose object is an http(s)/ftp URL names the *uploaded file*
+    by the last path segment of that URL, so ``https://host/upload/a.tar.gz``
+    matches an archive event whose object is ``a.tar.gz``. Every other action,
+    and every non-URL object, is compared exactly as given; ``Event.object``
+    itself is never modified.
+    """
+    obj = event.object
+    if obj is None:
+        return None
+    if event.action == "file_upload":
+        parsed = urlparse(obj)
+        if parsed.scheme in ("http", "https", "ftp") and parsed.netloc:
+            name = unquote(parsed.path.rstrip("/").rsplit("/", 1)[-1])
+            if name:
+                return name
+    return obj
 
 
 def correlate(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -51,7 +74,8 @@ def correlate(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             e2 = normalized_events[j]
 
             # 1. Same-object correlation: both must have a non-None object and they must match.
-            if e1.object is None or e2.object is None or e1.object != e2.object:
+            key1, key2 = _object_key(e1), _object_key(e2)
+            if key1 is None or key2 is None or key1 != key2:
                 continue
 
             # 2. Compute absolute time difference in minutes.
@@ -81,13 +105,14 @@ def correlate(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     rule_id = "same_object_within_10m"
 
                 claim = (
-                    f"Two events refer to the same object ({e1.object!r}) "
+                    f"Two events refer to the same object ({key1!r}) "
                     f"and occurred within {int(window_minutes)} minutes."
                 )
                 reasoning = (
                     f"Event {e1.event_id} ({e1.source}:{e1.action}) and "
                     f"Event {e2.event_id} ({e2.source}:{e2.action}) both reference "
-                    f"object {e1.object!r}. Their timestamps differ by {time_diff:.1f} minutes, "
+                    f"object {key1!r} (event objects: {e1.object!r} and {e2.object!r}). "
+                    f"Their timestamps differ by {time_diff:.1f} minutes, "
                     f"which is within the {int(window_minutes)}-minute correlation window."
                 )
 

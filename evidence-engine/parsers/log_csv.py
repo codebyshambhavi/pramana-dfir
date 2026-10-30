@@ -17,7 +17,13 @@ Each row becomes one Event with:
 import csv
 from typing import Dict, List, Any
 
-from parsers.timestamps import normalize_timestamp
+from parsers.provenance import provenance_fields
+from parsers.timestamps import normalize_timestamp_with_basis
+from parsers.vocabulary import canonical_action
+
+PARSER_NAME = "log_csv"
+PARSER_VERSION = "1.1.0"
+FAMILY = "system_log"
 
 
 def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[str, Any]]:
@@ -75,6 +81,8 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 # Build raw field (preserve original row)
                 raw = dict(row)
 
+                timestamp, tz_basis = normalize_timestamp_with_basis(row['timestamp'])
+
                 # Build the event
                 event = {
                     "event_id": f"EV-{row_idx:06d}",  # Simple sequential ID
@@ -82,11 +90,15 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                     "evidence_id": evidence_id,
                     "artifact_ref": artifact_ref,
                     "sha256": sha256,
-                    "timestamp": normalize_timestamp(row['timestamp']),
+                    "timestamp": timestamp,
                     "source": "log",
-                    "action": row['action'],
+                    "action": canonical_action(row['action']),  # original kept in raw
                     "object": obj,
-                    "raw": raw
+                    "raw": raw,
+                    **provenance_fields(
+                        parser=PARSER_NAME, version=PARSER_VERSION,
+                        family=FAMILY, tz_assumption=tz_basis,
+                    ),
                 }
 
                 # Add optional fields if present and not empty

@@ -2,28 +2,145 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "pramana/event.schema.json",
   "title": "Event",
-  "description": "One normalized thing that happened. Owner: Role 1. Frozen on 22 Oct.",
+  "description": "One normalized thing that happened. Owner: Role 1. v1.0 frozen on 22 Oct; v1.1 (additive) adds the optional fields parser_version, tz_assumption and family. No v1.0 field was removed or renamed, so every v1.0 Event is still a valid v1.1 Event.",
   "type": "object",
-  "required": ["event_id", "case_id", "evidence_id", "artifact_ref", "sha256", "timestamp", "source", "action"],
+  "required": [
+    "event_id",
+    "case_id",
+    "evidence_id",
+    "artifact_ref",
+    "sha256",
+    "timestamp",
+    "source",
+    "action"
+  ],
   "properties": {
-    "event_id": { "type": "string", "examples": ["EV-000123"] },
-    "case_id": { "type": "string", "examples": ["CASE-001"] },
-    "evidence_id": { "type": "string", "examples": ["EVID-003"] },
-    "artifact_ref": { "type": "string", "description": "File and row, packet or tag the event came from", "examples": ["browser_history.csv#row=412"] },
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the source file" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "source": { "enum": ["browser", "chat", "log", "pcap", "image"] },
-    "device": { "type": ["string", "null"] },
-    "actor": { "type": ["string", "null"] },
-    "action": { "type": "string", "examples": ["file_upload"] },
-    "object": { "type": ["string", "null"] },
-    "ip": { "type": ["string", "null"] },
-    "location": {
-      "type": ["object", "null"],
-      "properties": { "lat": { "type": "number" }, "lon": { "type": "number" } },
-      "required": ["lat", "lon"]
+    "event_id": {
+      "type": "string",
+      "examples": [
+        "EV-000123"
+      ]
     },
-    "raw": { "type": "object", "description": "Original fields from the source row" }
+    "case_id": {
+      "type": "string",
+      "examples": [
+        "CASE-001"
+      ]
+    },
+    "evidence_id": {
+      "type": "string",
+      "examples": [
+        "EVID-003"
+      ]
+    },
+    "artifact_ref": {
+      "type": "string",
+      "description": "File and row, packet or tag the event came from",
+      "examples": [
+        "browser_history.csv#row=412"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of the source file"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "enum": [
+        "browser",
+        "chat",
+        "log",
+        "pcap",
+        "image"
+      ]
+    },
+    "device": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "actor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "action": {
+      "type": "string",
+      "examples": [
+        "file_upload"
+      ]
+    },
+    "object": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ip": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number"
+        },
+        "lon": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "lat",
+        "lon"
+      ]
+    },
+    "raw": {
+      "type": "object",
+      "description": "Original fields from the source row"
+    },
+    "parser_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Parser that produced the Event, '<parser>@<version>'.",
+      "examples": [
+        "chat_json@1.1.0"
+      ]
+    },
+    "tz_assumption": {
+      "type": "string",
+      "minLength": 1,
+      "description": "How the timestamp's timezone was determined: 'explicit_offset' (source carried Z or +hh:mm), 'assumed_utc' (source was naive, UTC assumed), 'epoch_utc' (Unix epoch). Further values may be added.",
+      "examples": [
+        "explicit_offset",
+        "assumed_utc",
+        "epoch_utc"
+      ]
+    },
+    "family": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Artifact family the Event was derived from; Events of one family from one evidence file are one witness when judging source independence.",
+      "examples": [
+        "system_log",
+        "browser_history",
+        "chat_export",
+        "network_capture",
+        "image_exif"
+      ]
+    }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$comment": "Event schema v1.1"
 }

@@ -92,8 +92,12 @@ def test_parse_nonexistent_file():
 def test_parse_includes_perceptual_hash(tmp_path):
     from PIL import Image
 
+    from PIL import ExifTags
+
     path = tmp_path / "synthetic.jpg"
-    Image.new("RGB", (16, 16), "white").save(path)
+    exif = Image.Exif()
+    exif[ExifTags.Base.DateTimeOriginal] = "2026:10:18 02:24:00"
+    Image.new("RGB", (16, 16), "white").save(path, exif=exif)
 
     events = parse(str(path), "CASE-001", "EVID-001", "a" * 64)
 

@@ -26,3 +26,10 @@ def events() -> list[dict]:
 @pytest.fixture
 def known_ids(events) -> set[str]:
     return {e["event_id"] for e in events}
+
+
+@pytest.fixture(autouse=True)
+def _isolate_time_configuration(monkeypatch):
+    """Tests must not depend on the developer's own timezone / clock settings."""
+    monkeypatch.delenv("PRAMANA_INTEL_TIMEZONE", raising=False)
+    monkeypatch.delenv("PRAMANA_SOURCE_CLOCKS", raising=False)

@@ -660,6 +660,18 @@ components:
         raw:
           type: object
           description: "Original fields from the source row"
+        parser_version:
+          type: string
+          description: "Event v1.1 (optional). Parser that produced the Event, '<parser>@<version>'."
+          example: "chat_json@1.1.0"
+        tz_assumption:
+          type: string
+          description: "Event v1.1 (optional). How the timestamp timezone was determined: explicit_offset, assumed_utc or epoch_utc."
+          example: "assumed_utc"
+        family:
+          type: string
+          description: "Event v1.1 (optional). Artifact family the Event came from (system_log, browser_history, chat_export, network_capture, image_exif)."
+          example: "system_log"
       required:
         - event_id
         - case_id

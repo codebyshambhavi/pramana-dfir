@@ -8,19 +8,49 @@ Simple synthetic JSON array format:
     "actor": "user (optional)",
     "device": "device used (optional)",
     "object": "object of action (optional)",
-    "ip": "IP address (optional)"
+    "ip": "IP address (optional)",
+    "device_gps": {"lat": 0.0, "lon": 0.0}   (optional, device-reported GPS)
   }
 ]
 
 Each item becomes one Event with:
 - source = "chat"
 - artifact_ref = "{filename}#item={index}" (0-indexed for array position)
+- location = item["device_gps"] as {"lat", "lon"} when present (the device's own
+  GPS fix). "ip_location" is IP-derived geolocation, a different thing, and is
+  left in raw only.
 - raw = original JSON object
 """
 import json
 from typing import Dict, List, Any
 
-from parsers.timestamps import normalize_timestamp
+from parsers.provenance import provenance_fields
+from parsers.timestamps import normalize_timestamp_with_basis
+from parsers.vocabulary import canonical_action
+
+PARSER_NAME = "chat_json"
+PARSER_VERSION = "1.1.0"
+FAMILY = "chat_export"
+
+
+def _device_gps(item: Dict[str, Any], item_idx: int):
+    """Return {"lat", "lon"} from item["device_gps"], None if absent.
+
+    A present-but-malformed value raises instead of being dropped, so a
+    corrupted GPS fix can never silently disappear from the Event.
+    """
+    gps = item.get("device_gps")
+    if gps is None:
+        return None
+    if not isinstance(gps, dict):
+        raise ValueError(f"Item {item_idx}: 'device_gps' must be an object with lat and lon")
+    lat, lon = gps.get("lat"), gps.get("lon")
+    for name, value, bound in (("lat", lat, 90.0), ("lon", lon, 180.0)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"Item {item_idx}: 'device_gps.{name}' must be a number")
+        if not -bound <= float(value) <= bound:
+            raise ValueError(f"Item {item_idx}: 'device_gps.{name}' out of range: {value}")
+    return {"lat": float(lat), "lon": float(lon)}
 
 
 def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[str, Any]]:
@@ -65,6 +95,8 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
             filename = path.split('/')[-1].split('\\')[-1]  # Get filename from path
             artifact_ref = f"{filename}#item={item_idx}"
 
+            timestamp, tz_basis = normalize_timestamp_with_basis(item['timestamp'])
+
             # Build the event (1-indexed event ID for human readability, like other parsers)
             event = {
                 "event_id": f"EV-{item_idx + 1:06d}",  # 1-indexed sequential ID
@@ -72,10 +104,14 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 "evidence_id": evidence_id,
                 "artifact_ref": artifact_ref,
                 "sha256": sha256,
-                "timestamp": normalize_timestamp(item['timestamp']),
+                "timestamp": timestamp,
                 "source": "chat",
-                "action": item['action'],
-                "raw": item  # Preserve original object
+                "action": canonical_action(item['action']),  # original kept in raw
+                "raw": item,  # Preserve original object
+                **provenance_fields(
+                    parser=PARSER_NAME, version=PARSER_VERSION,
+                    family=FAMILY, tz_assumption=tz_basis,
+                ),
             }
 
             # Add optional fields if present and not empty/null
@@ -87,6 +123,9 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                 event["object"] = item['object']
             if 'ip' in item and item['ip'] is not None and item['ip'] != '':
                 event["ip"] = item['ip']
+            location = _device_gps(item, item_idx)
+            if location is not None:
+                event["location"] = location
 
             events.append(event)
 

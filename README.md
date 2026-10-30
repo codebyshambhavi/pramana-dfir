@@ -480,7 +480,20 @@ npx @stoplight/prism-cli mock ../contracts/openapi.yaml
 
 **Backend without Docker.** From `backend/`, run `uvicorn app.main:app --reload`. Because `evidence-engine/` has a hyphen in its name, it is put on `PYTHONPATH` rather than imported by name (for example `export PYTHONPATH="$PWD/evidence-engine:$PWD"` from the repo root before changing directory).
 
-**Tests.** Run `pytest` from `backend/` for the API test suite, and from `evidence-engine/` and `intelligence/` for their own tests.
+**Install.** From a fresh clone: `pip install -r requirements.txt` (Python 3.12+; installs the backend, evidence-engine and intelligence dependencies, including Pillow, imagehash and Scapy).
+
+**Tests.** Each suite runs from its own folder, because they use different import roots:
+
+```bash
+(cd evidence-engine && python3 -m pytest -q)   # parsers, hashing, custody, Event v1.1
+python3 -m pytest intelligence -q              # from the repo root: correlation, anomalies, contradictions
+(cd backend && python3 -m pytest -q)           # API, custody, pipeline, sample_case_001 end to end
+python3 -m pytest tests -q                     # from the repo root: sample_case_001 ground truth
+```
+
+Backend tests use a temporary database and upload directory, so they never write into the repository.
+
+**Time handling.** `PRAMANA_INTEL_TIMEZONE` (IANA name, default `UTC`) is the case timezone: the odd-hours rule is evaluated in local case time and only for login/session events. `PRAMANA_SOURCE_CLOCKS` (JSON, optional) declares a per-source clock offset and uncertainty; the effective time of an event becomes an interval `[t_lo, t_hi]` derived at analysis time. Stored timestamps are never modified. See `intelligence/timeline.py`.
 
 ---
 

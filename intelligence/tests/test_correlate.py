@@ -333,3 +333,49 @@ def test_findings_use_type_correlation() -> None:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+# --- Stage 0 / T1: an uploaded file is matched by the name in its upload URL ---
+def _pair(upload_object: str, *, archive_action="archive_create", upload_action="file_upload", gap_minutes=3):
+    from intelligence.tests.fixtures import make_event as _mk
+    archive = _mk("EV-ARCH", "2026-10-18T19:41:00Z", action=archive_action, object="CASE-001.tar.gz")
+    from datetime import datetime, timedelta, timezone
+    when = datetime(2026, 10, 18, 19, 41, tzinfo=timezone.utc) + timedelta(minutes=gap_minutes)
+    upload = _mk("EV-UP", when.strftime("%Y-%m-%dT%H:%M:%SZ"), action=upload_action, object=upload_object)
+    return [archive, upload]
+
+
+def test_upload_url_matches_archive_filename():
+    findings = correlate(_pair("https://vault.example.test/upload/CASE-001.tar.gz"))
+    assert len(findings) == 1
+    assert findings[0]["type"] == "correlation"
+    assert set(findings[0]["evidence_event_ids"]) == {"EV-ARCH", "EV-UP"}
+    assert "CASE-001.tar.gz" in findings[0]["claim"]
+
+
+def test_upload_url_with_query_and_percent_encoding_still_matches():
+    assert len(correlate(_pair("https://h.test/up/CASE-001.tar.gz?token=abc"))) == 1
+    assert len(correlate(_pair("https://h.test/up/CASE%2D001.tar.gz"))) == 1
+
+
+def test_different_uploaded_filename_does_not_match():
+    assert correlate(_pair("https://vault.example.test/upload/OTHER.tar.gz")) == []
+
+
+def test_url_basename_matching_is_limited_to_file_upload_events():
+    # A *visit* to the same URL must not be treated as the archive's object.
+    assert correlate(_pair("https://vault.example.test/upload/CASE-001.tar.gz", upload_action="visit")) == []
+
+
+def test_plain_filename_upload_still_matches_exactly():
+    assert len(correlate(_pair("CASE-001.tar.gz"))) == 1
+
+
+def test_archive_upload_outside_30_minutes_is_not_correlated():
+    assert correlate(_pair("https://h.test/CASE-001.tar.gz", gap_minutes=31)) == []
+
+
+def test_event_object_is_not_modified_by_correlation():
+    events = _pair("https://vault.example.test/upload/CASE-001.tar.gz")
+    snapshot = [dict(e) for e in events]
+    correlate(events)
+    assert events == snapshot

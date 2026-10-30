@@ -42,10 +42,10 @@ _DATE_TIME_FORMAT_CHECKER = FormatChecker()
 _DATE_TIME_FORMAT_CHECKER.checks("date-time")(_is_rfc3339_datetime)
 
 
-def _load_event_validator() -> Draft202012Validator | None:
-    """Load the repository Event schema when available."""
+def _load_event_validator() -> Draft202012Validator:
+    """Load the repository Event schema. A missing schema is an error, never a skip."""
     if not _SCHEMA_PATH.is_file():
-        return None
+        raise RuntimeError(f"Event schema is missing: {_SCHEMA_PATH}")
     try:
         schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
         return Draft202012Validator(schema, format_checker=_DATE_TIME_FORMAT_CHECKER)
@@ -92,10 +92,8 @@ def _select_parser(path: Path) -> tuple[Callable[..., list[dict]], str]:
     )
 
 
-def _validate_events(events: list[dict], validator: Draft202012Validator | None) -> None:
-    """Validate returned Events against the repository contract when available."""
-    if validator is None:
-        return
+def _validate_events(events: list[dict], validator: Draft202012Validator) -> None:
+    """Validate returned Events against the repository contract."""
     errors: list[str] = []
     for index, event in enumerate(events):
         for error in sorted(validator.iter_errors(event), key=lambda e: list(e.path)):

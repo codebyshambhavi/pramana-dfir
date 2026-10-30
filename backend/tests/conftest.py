@@ -5,6 +5,17 @@ import os
 import tempfile
 from typing import Generator
 import pytest
+
+# Isolate tests from the working tree and from any real database. These MUST be
+# set before ``app`` is imported: the engine URL and upload directory are read
+# at import time. They are overridden unconditionally (never setdefault) so a
+# developer's real DATABASE_URL / UPLOAD_DIR can never be touched by a test run.
+_TEST_ROOT = tempfile.mkdtemp(prefix="pramana-tests-")
+os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_ROOT}/app-startup.db"
+os.environ["UPLOAD_DIR"] = os.path.join(_TEST_ROOT, "uploads")
+# Time configuration must not leak in from the developer's shell either.
+os.environ.pop("PRAMANA_INTEL_TIMEZONE", None)
+os.environ.pop("PRAMANA_SOURCE_CLOCKS", None)
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker

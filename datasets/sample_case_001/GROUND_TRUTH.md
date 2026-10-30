@@ -2,9 +2,11 @@
 
 Synthetic case for actor `mira.chen`. The evidence files are regenerated with `generate_case.py`.
 
+**Case timezone: UTC** (the default). The login below is 02:17Z; in `Asia/Kolkata` that is 07:47 local, which is not an odd hour, so item 1 is only an anomaly when the case timezone is UTC. Only the login is an odd-hour candidate: the chat, photo and DNS events at similar times are not login/session events and are never flagged.
+
 ## 1. Odd-hour login
 - Events: `0d10dd0e8aa1:EV-000001` (`system_log.csv#row=1`, 2026-10-18T02:17:00Z)
-- Context: `9e1a17176fb8:EV-000001` (`chat_export.json#item=0`) records the same actor, device GPS, and IP location.
+- Context: `c99e6c750690:EV-000001` (`chat_export.json#item=0`) records the same actor, device GPS, and IP location.
 - Expected finding type: anomaly
 
 ## 2. Archive created then uploaded

@@ -57,14 +57,42 @@ def test_dispatches_chat_json(tmp_path: Path):
     assert events[0]["actor"] == "alice"
 
 
-def test_dispatches_image(tmp_path: Path):
-    from PIL import Image
+def _jpeg(path: Path, exif_datetime: str | None) -> Path:
+    from PIL import ExifTags, Image
 
-    path = tmp_path / "photo.jpg"
-    Image.new("RGB", (8, 8), "white").save(path, format="JPEG")
+    image = Image.new("RGB", (8, 8), "white")
+    if exif_datetime is None:
+        image.save(path, format="JPEG")
+    else:
+        exif = Image.Exif()
+        exif[ExifTags.Base.DateTimeOriginal] = exif_datetime
+        image.save(path, format="JPEG", exif=exif)
+    return path
+
+
+def test_dispatches_image(tmp_path: Path):
+    path = _jpeg(tmp_path / "photo.jpg", "2026:10:18 02:24:00")
     events = parse_evidence(str(path), "CASE-001")
     assert len(events) == 1
     assert events[0]["source"] == "image"
+    assert events[0]["timestamp"] == "2026-10-18T02:24:00Z"
+    # EXIF DateTime has no zone, so UTC is an assumption and is labelled as one.
+    assert events[0]["tz_assumption"] == "assumed_utc"
+
+
+def test_image_without_exif_timestamp_is_rejected_not_given_file_mtime(tmp_path: Path):
+    path = _jpeg(tmp_path / "no_exif.jpg", None)
+    with pytest.raises(ValueError, match="no usable EXIF timestamp"):
+        parse_evidence(str(path), "CASE-001")
+
+
+def test_missing_event_schema_is_an_error_not_a_skip(monkeypatch, tmp_path: Path):
+    from parsers import _load_event_validator
+    import parsers
+
+    monkeypatch.setattr(parsers, "_SCHEMA_PATH", tmp_path / "absent.schema.json")
+    with pytest.raises(RuntimeError, match="Event schema is missing"):
+        _load_event_validator()
 
 
 def test_csv_with_url_is_browser_even_when_filename_looks_like_log(tmp_path: Path):

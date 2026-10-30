@@ -1,27 +1,40 @@
-# Python
+# --- Secrets (only .env.example is tracked) ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
 venv/
+env/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
 
-# Node
+# --- Node / frontend build output ---
 node_modules/
+.next/
+frontend/dist/
 dist/
+build/
 
-# Secrets and local data
-.env
-backend/uploads/
-data/
-uploads/
+# --- Local databases and runtime data (never commit) ---
 *.db
 *.sqlite
 *.sqlite3
+/backend/data/
+/backend/uploads/
+/data/
+/uploads/
 
-# OS and editors
+# --- Real evidence must never be committed. Synthetic fixtures live in datasets/ ---
+/evidence/
+
+# --- OS / editors ---
 .DS_Store
+Thumbs.db
 .idea/
 .vscode/
-
-# Never commit real evidence (synthetic data lives in datasets/sample_case_001)
-evidence/
