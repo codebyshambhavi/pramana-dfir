@@ -8,7 +8,7 @@ export interface EvidenceItem {
   /** ISO 8601 date-time. */
   intake_time: string;
   /** Evidence lifecycle status (T3). Rows are never deleted; REMOVED is a status. */
-  status?: "ACTIVE" | "VERIFIED" | "QUARANTINED" | "REMOVED";
+  status?: EvidenceStatus;
   /** ISO 8601 date-time of the last successful re-hash, or null. */
   verified_at?: string | null;
   /** The contract does not define an entry's shape yet; its example is an empty array. */
@@ -16,6 +16,52 @@ export interface EvidenceItem {
 }
 
 /** 201 response of POST /cases/{id}/evidence. */
+export type EvidenceStatus = "ACTIVE" | "VERIFIED" | "QUARANTINED" | "REMOVED";
+
+/** One item of GET /cases/{id}/integrity (read-only; does not re-hash). */
+export interface EvidenceIntegrity {
+  evidence_id: string;
+  filename: string;
+  /** Intake SHA-256; never changes. */
+  sha256: string;
+  status: EvidenceStatus;
+  verified_at: string | null;
+  custody_entries: number;
+  custody_chain_valid: boolean;
+  custody_message: string;
+  last_custody_action: string | null;
+}
+
+/** Response of GET /cases/{id}/integrity. */
+export interface CaseIntegrity {
+  case_id: string;
+  checked_at: string;
+  /** True when nothing is QUARANTINED and every custody chain verifies. */
+  intact: boolean;
+  summary: {
+    total: number;
+    by_status: Record<EvidenceStatus, number>;
+    never_verified: number;
+    broken_custody_chains: number;
+  };
+  evidence: EvidenceIntegrity[];
+}
+
+/** Response of POST /evidence/{id}/verify. */
+export interface VerificationResult {
+  evidence_id: string;
+  outcome: "MATCH" | "MISMATCH" | "MISSING" | "CUSTODY_BROKEN";
+  match: boolean;
+  previous_status: EvidenceStatus;
+  status: EvidenceStatus;
+  intake_sha256: string;
+  observed_sha256: string | null;
+  custody_chain_valid: boolean;
+  custody_message: string;
+  verified_at: string | null;
+  custody_entry: unknown;
+}
+
 export interface EvidenceUploadResult {
   evidence_id: string;
   filename: string;

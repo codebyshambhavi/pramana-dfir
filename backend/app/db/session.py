@@ -1,15 +1,30 @@
 """Role 3: Database engine, session management, and custody service."""
 from __future__ import annotations
 
+import hashlib
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.migrate import migrate
-from app.db.models import CustodyEntry, compute_entry_hash, utc_now
+from app.db.models import (
+    EVIDENCE_ACTIVE,
+    EVIDENCE_QUARANTINED,
+    EVIDENCE_REMOVED,
+    EVIDENCE_VERIFIED,
+    CustodyEntry,
+    Evidence,
+    compute_entry_hash,
+    utc_now,
+)
+
+# Recorded as the custody sha256 when the stored file cannot be read at all.
+NO_FILE_SHA256 = "0" * 64
+_CUSTODY_ACTION_MAX = 128
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./pramana.db")
 
@@ -129,3 +144,177 @@ def verify_custody_log(db: Session, evidence_id: str) -> tuple[bool, str]:
         expected_prev = entry.entry_hash
 
     return True, "Custody chain intact and cryptographically verified."
+
+
+# -------------------------------------------------------------------------
+# T4: evidence integrity
+# -------------------------------------------------------------------------
+
+
+class EvidenceStateError(ValueError):
+    """The requested evidence state change is not allowed from the current status."""
+
+
+def hash_stored_file(path: str | None, chunk_size: int = 1024 * 1024) -> str | None:
+    """Stream the SHA-256 of the stored evidence file. Returns None if it is missing or unreadable."""
+    if not path:
+        return None
+    file_path = Path(path)
+    if not file_path.is_file():
+        return None
+    digest = hashlib.sha256()
+    try:
+        with file_path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(chunk_size), b""):
+                digest.update(chunk)
+    except OSError:
+        return None
+    return digest.hexdigest()
+
+
+def _custody_action(text: str) -> str:
+    return text if len(text) <= _CUSTODY_ACTION_MAX else text[: _CUSTODY_ACTION_MAX - 3] + "..."
+
+
+def _get_evidence(db: Session, evidence_id: str) -> Evidence:
+    evidence = db.get(Evidence, evidence_id)
+    if evidence is None:
+        raise LookupError(f"Evidence '{evidence_id}' not found")
+    return evidence
+
+
+def verify_evidence(db: Session, evidence_id: str, actor: str = "Integrity Verifier") -> dict[str, Any]:
+    """Re-hash the stored file, compare it with the intake SHA-256, and record the result.
+
+    Outcomes:
+    - MATCH: file hash equals the intake hash and the custody chain is intact.
+      ACTIVE becomes VERIFIED and `verified_at` is set. QUARANTINED and REMOVED
+      keep their status: a later match does not clear a quarantine.
+    - MISMATCH (file changed), MISSING (file gone or unreadable) or
+      CUSTODY_BROKEN (custody chain fails verification): status becomes QUARANTINED.
+
+    Every call appends one custody entry. Its sha256 is the hash actually
+    observed (zeros if no file), so the chain records what was found. The
+    intake hash on the evidence row is never changed. Flushes, does not commit.
+    """
+    evidence = _get_evidence(db, evidence_id)
+    chain_ok, chain_message = verify_custody_log(db, evidence_id)
+    observed = hash_stored_file(evidence.stored_path)
+    previous = evidence.status or EVIDENCE_ACTIVE
+
+    if observed is None:
+        outcome = "MISSING"
+    elif observed != evidence.sha256:
+        outcome = "MISMATCH"
+    elif not chain_ok:
+        outcome = "CUSTODY_BROKEN"
+    else:
+        outcome = "MATCH"
+
+    now = utc_now()
+    if outcome == "MATCH":
+        new_status = EVIDENCE_VERIFIED if previous in (EVIDENCE_ACTIVE, EVIDENCE_VERIFIED) else previous
+        evidence.verified_at = now
+    else:
+        new_status = EVIDENCE_QUARANTINED
+    evidence.status = new_status
+
+    entry = append_custody_record(
+        db=db,
+        evidence_id=evidence_id,
+        actor=actor,
+        action=_custody_action(f"Integrity verification: {outcome} ({previous} -> {new_status})"),
+        sha256=observed or NO_FILE_SHA256,
+        time_val=now,
+    )
+    return {
+        "evidence_id": evidence_id,
+        "outcome": outcome,
+        "match": outcome == "MATCH",
+        "previous_status": previous,
+        "status": new_status,
+        "intake_sha256": evidence.sha256,
+        "observed_sha256": observed,
+        "custody_chain_valid": chain_ok,
+        "custody_message": chain_message,
+        "verified_at": evidence.verified_at.isoformat() if evidence.verified_at else None,
+        "custody_entry": entry.to_dict(),
+    }
+
+
+def remove_evidence(
+    db: Session,
+    evidence_id: str,
+    actor: str = "Investigator",
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Soft-remove evidence: status becomes REMOVED. The row, stored file and hashes stay.
+
+    Appends one custody entry. Raises EvidenceStateError if already REMOVED.
+    Flushes, does not commit.
+    """
+    evidence = _get_evidence(db, evidence_id)
+    previous = evidence.status or EVIDENCE_ACTIVE
+    if previous == EVIDENCE_REMOVED:
+        raise EvidenceStateError(f"Evidence '{evidence_id}' is already REMOVED")
+
+    evidence.status = EVIDENCE_REMOVED
+    action = f"Evidence removed ({previous} -> {EVIDENCE_REMOVED})"
+    if reason and reason.strip():
+        action += f": {reason.strip()}"
+    entry = append_custody_record(
+        db=db,
+        evidence_id=evidence_id,
+        actor=actor,
+        action=_custody_action(action),
+        sha256=evidence.sha256,
+    )
+    return {
+        "evidence_id": evidence_id,
+        "previous_status": previous,
+        "status": EVIDENCE_REMOVED,
+        "custody_entry": entry.to_dict(),
+    }
+
+
+def case_integrity(db: Session, case_id: str) -> dict[str, Any]:
+    """Read-only integrity summary of a case. Does not re-hash files or write custody."""
+    items = (
+        db.query(Evidence)
+        .filter(Evidence.case_id == case_id)
+        .order_by(Evidence.evidence_id.asc())
+        .all()
+    )
+    by_status = {s: 0 for s in (EVIDENCE_ACTIVE, EVIDENCE_VERIFIED, EVIDENCE_QUARANTINED, EVIDENCE_REMOVED)}
+    rows = []
+    broken_chains = 0
+    for ev in items:
+        status = ev.status or EVIDENCE_ACTIVE
+        by_status[status] = by_status.get(status, 0) + 1
+        chain_ok, chain_message = verify_custody_log(db, ev.evidence_id)
+        if not chain_ok:
+            broken_chains += 1
+        entries = ev.custody_entries
+        rows.append({
+            "evidence_id": ev.evidence_id,
+            "filename": ev.filename,
+            "sha256": ev.sha256,
+            "status": status,
+            "verified_at": ev.verified_at.isoformat() if ev.verified_at else None,
+            "custody_entries": len(entries),
+            "custody_chain_valid": chain_ok,
+            "custody_message": chain_message,
+            "last_custody_action": entries[-1].action if entries else None,
+        })
+    return {
+        "case_id": case_id,
+        "checked_at": utc_now().isoformat(),
+        "intact": by_status[EVIDENCE_QUARANTINED] == 0 and broken_chains == 0,
+        "summary": {
+            "total": len(items),
+            "by_status": by_status,
+            "never_verified": sum(1 for ev in items if ev.verified_at is None),
+            "broken_custody_chains": broken_chains,
+        },
+        "evidence": rows,
+    }
