@@ -11,12 +11,15 @@ export interface EvidenceItem {
   status?: EvidenceStatus;
   /** ISO 8601 date-time of the last successful re-hash, or null. */
   verified_at?: string | null;
+  verify_state?: VerifyState | null;
   /** The contract does not define an entry's shape yet; its example is an empty array. */
   custody: unknown[];
 }
 
 /** 201 response of POST /cases/{id}/evidence. */
-export type EvidenceStatus = "ACTIVE" | "VERIFIED" | "QUARANTINED" | "REMOVED";
+export type EvidenceStatus = "ACTIVE" | "QUARANTINED" | "REMOVED";
+/** Outcome of the most recent re-verification; null until first verified. */
+export type VerifyState = "MATCH" | "MISMATCH" | "MISSING" | "CUSTODY_BROKEN";
 
 /** One item of GET /cases/{id}/integrity (read-only; does not re-hash). */
 export interface EvidenceIntegrity {
@@ -26,6 +29,7 @@ export interface EvidenceIntegrity {
   sha256: string;
   status: EvidenceStatus;
   verified_at: string | null;
+  verify_state: VerifyState | null;
   custody_entries: number;
   custody_chain_valid: boolean;
   custody_message: string;
@@ -41,6 +45,7 @@ export interface CaseIntegrity {
   summary: {
     total: number;
     by_status: Record<EvidenceStatus, number>;
+    by_verify_state: Record<VerifyState, number>;
     never_verified: number;
     broken_custody_chains: number;
   };
@@ -50,8 +55,9 @@ export interface CaseIntegrity {
 /** Response of POST /evidence/{id}/verify. */
 export interface VerificationResult {
   evidence_id: string;
-  outcome: "MATCH" | "MISMATCH" | "MISSING" | "CUSTODY_BROKEN";
+  outcome: VerifyState;
   match: boolean;
+  verify_state: VerifyState;
   previous_status: EvidenceStatus;
   status: EvidenceStatus;
   intake_sha256: string;

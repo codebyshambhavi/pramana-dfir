@@ -15,7 +15,12 @@ from app.db.models import (
     EVIDENCE_ACTIVE,
     EVIDENCE_QUARANTINED,
     EVIDENCE_REMOVED,
-    EVIDENCE_VERIFIED,
+    EVIDENCE_STATUSES,
+    VERIFY_CUSTODY_BROKEN,
+    VERIFY_MATCH,
+    VERIFY_MISMATCH,
+    VERIFY_MISSING,
+    VERIFY_STATES,
     CustodyEntry,
     Evidence,
     compute_entry_hash,
@@ -186,12 +191,14 @@ def _get_evidence(db: Session, evidence_id: str) -> Evidence:
 def verify_evidence(db: Session, evidence_id: str, actor: str = "Integrity Verifier") -> dict[str, Any]:
     """Re-hash the stored file, compare it with the intake SHA-256, and record the result.
 
-    Outcomes:
+    `verify_state` records the outcome; `status` changes only on failure:
     - MATCH: file hash equals the intake hash and the custody chain is intact.
-      ACTIVE becomes VERIFIED and `verified_at` is set. QUARANTINED and REMOVED
-      keep their status: a later match does not clear a quarantine.
+      `status` is unchanged and `verified_at` is set. A later match does not
+      clear a quarantine.
     - MISMATCH (file changed), MISSING (file gone or unreadable) or
-      CUSTODY_BROKEN (custody chain fails verification): status becomes QUARANTINED.
+      CUSTODY_BROKEN (custody chain fails verification): `status` becomes
+      QUARANTINED, including previously REMOVED evidence (H″: a mismatch
+      quarantines evidence).
 
     Every call appends one custody entry. Its sha256 is the hash actually
     observed (zeros if no file), so the chain records what was found. The
@@ -203,21 +210,22 @@ def verify_evidence(db: Session, evidence_id: str, actor: str = "Integrity Verif
     previous = evidence.status or EVIDENCE_ACTIVE
 
     if observed is None:
-        outcome = "MISSING"
+        outcome = VERIFY_MISSING
     elif observed != evidence.sha256:
-        outcome = "MISMATCH"
+        outcome = VERIFY_MISMATCH
     elif not chain_ok:
-        outcome = "CUSTODY_BROKEN"
+        outcome = VERIFY_CUSTODY_BROKEN
     else:
-        outcome = "MATCH"
+        outcome = VERIFY_MATCH
 
     now = utc_now()
-    if outcome == "MATCH":
-        new_status = EVIDENCE_VERIFIED if previous in (EVIDENCE_ACTIVE, EVIDENCE_VERIFIED) else previous
+    if outcome == VERIFY_MATCH:
+        new_status = previous
         evidence.verified_at = now
     else:
         new_status = EVIDENCE_QUARANTINED
     evidence.status = new_status
+    evidence.verify_state = outcome
 
     entry = append_custody_record(
         db=db,
@@ -230,7 +238,8 @@ def verify_evidence(db: Session, evidence_id: str, actor: str = "Integrity Verif
     return {
         "evidence_id": evidence_id,
         "outcome": outcome,
-        "match": outcome == "MATCH",
+        "match": outcome == VERIFY_MATCH,
+        "verify_state": outcome,
         "previous_status": previous,
         "status": new_status,
         "intake_sha256": evidence.sha256,
@@ -285,12 +294,15 @@ def case_integrity(db: Session, case_id: str) -> dict[str, Any]:
         .order_by(Evidence.evidence_id.asc())
         .all()
     )
-    by_status = {s: 0 for s in (EVIDENCE_ACTIVE, EVIDENCE_VERIFIED, EVIDENCE_QUARANTINED, EVIDENCE_REMOVED)}
+    by_status = {s: 0 for s in EVIDENCE_STATUSES}
+    by_verify_state = {s: 0 for s in VERIFY_STATES}
     rows = []
     broken_chains = 0
     for ev in items:
         status = ev.status or EVIDENCE_ACTIVE
         by_status[status] = by_status.get(status, 0) + 1
+        if ev.verify_state:
+            by_verify_state[ev.verify_state] = by_verify_state.get(ev.verify_state, 0) + 1
         chain_ok, chain_message = verify_custody_log(db, ev.evidence_id)
         if not chain_ok:
             broken_chains += 1
@@ -301,6 +313,7 @@ def case_integrity(db: Session, case_id: str) -> dict[str, Any]:
             "sha256": ev.sha256,
             "status": status,
             "verified_at": ev.verified_at.isoformat() if ev.verified_at else None,
+            "verify_state": ev.verify_state,
             "custody_entries": len(entries),
             "custody_chain_valid": chain_ok,
             "custody_message": chain_message,
@@ -313,7 +326,8 @@ def case_integrity(db: Session, case_id: str) -> dict[str, Any]:
         "summary": {
             "total": len(items),
             "by_status": by_status,
-            "never_verified": sum(1 for ev in items if ev.verified_at is None),
+            "by_verify_state": by_verify_state,
+            "never_verified": sum(1 for ev in items if ev.verify_state is None),
             "broken_custody_chains": broken_chains,
         },
         "evidence": rows,

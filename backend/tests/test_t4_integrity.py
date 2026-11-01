@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.db.models import AnalysisRun, CustodyEntry, Evidence
-from app.db.runs import create_analysis_run, finalize_run
+from app.db.runs import create_analysis_run
 from app.db.session import NO_FILE_SHA256, verify_custody_log, verify_evidence
 
 LOG_CSV = b"timestamp,action,user,host\n2026-10-18T02:17:00Z,login,alice,LAPTOP-1\n"
@@ -49,12 +49,13 @@ def test_verify_untouched_file_marks_verified(client, db_session, uploaded):
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["outcome"] == "MATCH" and body["match"] is True
-    assert body["previous_status"] == "ACTIVE" and body["status"] == "VERIFIED"
+    assert body["verify_state"] == "MATCH"
+    assert body["previous_status"] == "ACTIVE" and body["status"] == "ACTIVE"
     assert body["observed_sha256"] == body["intake_sha256"] == sha
     assert body["verified_at"] is not None
 
     ev = _evidence(db_session, evidence_id)
-    assert ev.status == "VERIFIED" and ev.verified_at is not None
+    assert ev.status == "ACTIVE" and ev.verify_state == "MATCH" and ev.verified_at is not None
     entries = _custody(db_session, evidence_id)
     assert len(entries) == 2
     assert entries[-1].sha256 == sha and "MATCH" in entries[-1].action
@@ -74,11 +75,11 @@ def test_tampered_file_is_quarantined_and_intake_hash_kept(client, db_session, u
 
     body = client.post(f"/evidence/{evidence_id}/verify").json()
     assert body["outcome"] == "MISMATCH" and body["match"] is False
-    assert body["status"] == "QUARANTINED"
+    assert body["status"] == "QUARANTINED" and body["verify_state"] == "MISMATCH"
     assert body["intake_sha256"] == sha
 
     ev = _evidence(db_session, evidence_id)
-    assert ev.status == "QUARANTINED"
+    assert ev.status == "QUARANTINED" and ev.verify_state == "MISMATCH"
     assert ev.sha256 == sha  # intake hash immutable
     assert ev.verified_at is None
     last = _custody(db_session, evidence_id)[-1]
@@ -96,7 +97,7 @@ def test_quarantine_is_sticky_after_file_restored(client, db_session, uploaded):
     path.write_bytes(original)
 
     body = client.post(f"/evidence/{evidence_id}/verify").json()
-    assert body["outcome"] == "MATCH"
+    assert body["outcome"] == "MATCH" and body["verify_state"] == "MATCH"
     assert body["status"] == "QUARANTINED"
 
 
@@ -104,7 +105,7 @@ def test_missing_file_is_quarantined(client, db_session, uploaded):
     _, evidence_id, _ = uploaded
     Path(_evidence(db_session, evidence_id).stored_path).unlink()
     body = client.post(f"/evidence/{evidence_id}/verify").json()
-    assert body["outcome"] == "MISSING"
+    assert body["outcome"] == "MISSING" and body["verify_state"] == "MISSING"
     assert body["observed_sha256"] is None
     assert body["status"] == "QUARANTINED"
     assert _custody(db_session, evidence_id)[-1].sha256 == NO_FILE_SHA256
@@ -116,7 +117,7 @@ def test_broken_custody_chain_is_quarantined(client, db_session, uploaded):
     entry.actor = "Someone Else"
     db_session.commit()
     body = client.post(f"/evidence/{evidence_id}/verify").json()
-    assert body["outcome"] == "CUSTODY_BROKEN"
+    assert body["outcome"] == "CUSTODY_BROKEN" and body["verify_state"] == "CUSTODY_BROKEN"
     assert body["custody_chain_valid"] is False
     assert body["status"] == "QUARANTINED"
 
@@ -125,7 +126,7 @@ def test_verify_twice_appends_two_entries(client, db_session, uploaded):
     _, evidence_id, _ = uploaded
     client.post(f"/evidence/{evidence_id}/verify")
     body = client.post(f"/evidence/{evidence_id}/verify").json()
-    assert body["previous_status"] == body["status"] == "VERIFIED"
+    assert body["previous_status"] == body["status"] == "ACTIVE"
     assert len(_custody(db_session, evidence_id)) == 3
     assert verify_custody_log(db_session, evidence_id)[0]
 
@@ -139,6 +140,32 @@ def test_verify_accepts_actor(client, db_session, uploaded):
 def test_verify_evidence_service_unknown_id(db_session):
     with pytest.raises(LookupError):
         verify_evidence(db_session, "EVID-404")
+
+
+def test_new_evidence_has_no_verify_state(client, db_session, uploaded):
+    case_id, evidence_id, _ = uploaded
+    ev = _evidence(db_session, evidence_id)
+    assert ev.status == "ACTIVE" and ev.verify_state is None and ev.verified_at is None
+    listed = client.get(f"/cases/{case_id}/evidence").json()[0]
+    assert listed["verify_state"] is None
+
+
+def test_removed_then_tampered_becomes_quarantined(client, db_session, uploaded):
+    _, evidence_id, sha = uploaded
+    client.post(f"/evidence/{evidence_id}/remove")
+    _tamper_file(db_session, evidence_id)
+    body = client.post(f"/evidence/{evidence_id}/verify").json()
+    assert body["previous_status"] == "REMOVED"
+    assert body["status"] == "QUARANTINED" and body["verify_state"] == "MISMATCH"
+    assert _evidence(db_session, evidence_id).sha256 == sha
+    assert verify_custody_log(db_session, evidence_id)[0]
+
+
+def test_removed_and_matching_stays_removed(client, db_session, uploaded):
+    _, evidence_id, _ = uploaded
+    client.post(f"/evidence/{evidence_id}/remove")
+    body = client.post(f"/evidence/{evidence_id}/verify").json()
+    assert body["status"] == "REMOVED" and body["verify_state"] == "MATCH"
 
 
 # --- remove -------------------------------------------------------------------
@@ -189,9 +216,9 @@ def test_remove_reason_is_truncated_to_fit_custody(client, db_session, uploaded)
 def test_every_state_change_appends_exactly_one_custody_entry(client, db_session, uploaded):
     _, evidence_id, _ = uploaded
     steps = [
-        lambda: client.post(f"/evidence/{evidence_id}/verify"),       # ACTIVE -> VERIFIED
+        lambda: client.post(f"/evidence/{evidence_id}/verify"),       # verify_state -> MATCH
         lambda: _tamper_file(db_session, evidence_id),                  # file only, no state change
-        lambda: client.post(f"/evidence/{evidence_id}/verify"),       # VERIFIED -> QUARANTINED
+        lambda: client.post(f"/evidence/{evidence_id}/verify"),       # ACTIVE -> QUARANTINED
         lambda: client.post(f"/evidence/{evidence_id}/remove"),       # QUARANTINED -> REMOVED
     ]
     expected_growth = [1, 0, 1, 1]
@@ -222,11 +249,12 @@ def test_case_integrity_reports_status_and_is_read_only(client, db_session, uplo
     assert body["case_id"] == case_id
     assert body["intact"] is False
     assert body["summary"]["total"] == 2
-    assert body["summary"]["by_status"] == {"ACTIVE": 0, "VERIFIED": 1, "QUARANTINED": 1, "REMOVED": 0}
+    assert body["summary"]["by_status"] == {"ACTIVE": 1, "QUARANTINED": 1, "REMOVED": 0}
+    assert body["summary"]["by_verify_state"] == {"MATCH": 1, "MISMATCH": 1, "MISSING": 0, "CUSTODY_BROKEN": 0}
     assert body["summary"]["broken_custody_chains"] == 0
-    assert body["summary"]["never_verified"] == 1
+    assert body["summary"]["never_verified"] == 0
     rows = {r["evidence_id"]: r for r in body["evidence"]}
-    assert rows[e1]["status"] == "VERIFIED" and rows[e1]["verified_at"]
+    assert rows[e1]["status"] == "ACTIVE" and rows[e1]["verify_state"] == "MATCH" and rows[e1]["verified_at"]
     assert rows[e2]["status"] == "QUARANTINED" and rows[e2]["custody_entries"] == 2
     assert all(r["custody_chain_valid"] for r in rows.values())
 
@@ -314,10 +342,9 @@ def test_simulate_tamper_unknown_and_missing_file(client, db_session, uploaded, 
 
 def test_quarantine_does_not_change_existing_run(client, db_session, uploaded):
     case_id, evidence_id, sha = uploaded
-    run = create_analysis_run(db_session, case_id)
-    finalize_run(db_session, run)
+    run = create_analysis_run(db_session, case_id, engine_version="test@1", assumptions={"tz": "UTC"})
     db_session.commit()
-    run_id, digest = run.run_id, run.input_digest
+    run_id, manifest = run.run_id, run.manifest
 
     _tamper_file(db_session, evidence_id)
     assert client.post(f"/evidence/{evidence_id}/verify").json()["status"] == "QUARANTINED"
@@ -325,9 +352,8 @@ def test_quarantine_does_not_change_existing_run(client, db_session, uploaded):
 
     db_session.expire_all()
     run = db_session.get(AnalysisRun, run_id)
-    assert run.input_digest == digest
-    assert run.evidence_snapshot == [{"evidence_id": evidence_id, "sha256": sha, "status": "ACTIVE", "included": True}]
+    assert run.manifest == manifest
+    assert run.manifest["evidence"] == [{"evidence_id": evidence_id, "sha256": sha}]
 
-    new_run = create_analysis_run(db_session, case_id)
-    assert new_run.evidence_snapshot[0]["status"] == "REMOVED"
-    assert new_run.evidence_snapshot[0]["included"] is False
+    new_run = create_analysis_run(db_session, case_id, engine_version="test@1", assumptions={"tz": "UTC"})
+    assert new_run.manifest["evidence"] == []  # REMOVED/QUARANTINED evidence is not an input
