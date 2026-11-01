@@ -32,6 +32,8 @@ Stage 0 is being delivered in two halves. This file records exactly where it sta
 ### Decision: Event v1.1 fields stay non-persistent
 `parser_version`, `tz_assumption` and `family` are present on every parsed Event and validated by the schema, but the backend database does not store them. T2 does not need them: the case timezone comes from configuration and source clocks are keyed by `Event.source`, which is stored. Persisting them would need new columns on a table that `create_all` cannot alter, i.e. a migration on the deployed Postgres, which is out of scope. Revisit when a feature genuinely needs `family` (source-independence accounting).
 
+**Superseded by T3:** the three fields are now stored on `events` (nullable; events stored before T3 have them null). Existing databases get the columns from the additive migrator `backend/app/db/migrate.py`, which runs in `init_db()` at startup.
+
 ## Known open items
 - `contradictions.py` (travel speed) and `correlate.py` (time windows) still use raw instants; they do not yet use intervals / source clocks.
 - `sample_case_001` is a UTC case. Under `Asia/Kolkata` its login is 07:47 local and correctly not an odd-hour anomaly.

@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Generator
+from typing import Any, Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.models import Base, CustodyEntry, compute_entry_hash, utc_now
+from app.db.migrate import migrate
+from app.db.models import CustodyEntry, compute_entry_hash, utc_now
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./pramana.db")
 
@@ -21,9 +22,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db(target_engine=None) -> None:
-    """Initialize all tables."""
+    """Create missing tables and add missing columns (additive only; see app.db.migrate)."""
     eng = target_engine or engine
-    Base.metadata.create_all(bind=eng)
+    migrate(eng)
 
 
 def get_db() -> Generator[Session, None, None]:

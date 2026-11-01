@@ -7,6 +7,10 @@ export interface EvidenceItem {
   sha256: string;
   /** ISO 8601 date-time. */
   intake_time: string;
+  /** Evidence lifecycle status (T3). Rows are never deleted; REMOVED is a status. */
+  status?: "ACTIVE" | "VERIFIED" | "QUARANTINED" | "REMOVED";
+  /** ISO 8601 date-time of the last successful re-hash, or null. */
+  verified_at?: string | null;
   /** The contract does not define an entry's shape yet; its example is an empty array. */
   custody: unknown[];
 }
@@ -36,7 +40,7 @@ export interface CaseEvent {
   ip?: string | null;
   location?: { lat: number; lon: number } | null;
   raw?: Record<string, unknown>;
-  /** Event v1.1 (optional; the backend does not persist these yet). */
+  /** Event v1.1 (optional). Persisted by the backend since T3; absent on events stored earlier. */
   parser_version?: string;
   tz_assumption?: string;
   family?: string;

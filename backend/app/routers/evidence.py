@@ -130,6 +130,9 @@ async def upload_evidence(
                 ip=ev.get("ip"),
                 location=ev.get("location"),
                 raw=ev.get("raw"),
+                parser_version=ev.get("parser_version"),
+                tz_assumption=ev.get("tz_assumption"),
+                family=ev.get("family"),
             )
             db.add(event_row)
 

@@ -583,6 +583,17 @@ components:
           type: string
           format: date-time
           example: "2026-10-18T10:00:00Z"
+        status:
+          type: string
+          enum: [ACTIVE, VERIFIED, QUARANTINED, REMOVED]
+          description: "Evidence lifecycle status. Evidence rows are never deleted; REMOVED is a status. QUARANTINED means re-verification found the stored file no longer matches the intake SHA-256."
+          example: "ACTIVE"
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Time of the last successful re-hash of the stored file; null until verified."
+          example: null
         custody:
           type: array
           items:
