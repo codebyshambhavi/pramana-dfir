@@ -357,3 +357,32 @@ def test_quarantine_does_not_change_existing_run(client, db_session, uploaded):
 
     new_run = create_analysis_run(db_session, case_id, engine_version="test@1", assumptions={"tz": "UTC"})
     assert new_run.manifest["evidence"] == []  # REMOVED/QUARANTINED evidence is not an input
+
+
+# --- custody time normalisation (PostgreSQL non-UTC regression, portable part) --
+
+def test_custody_time_is_hashed_and_stored_as_naive_utc(client, db_session, uploaded):
+    from datetime import datetime, timedelta, timezone as tz
+    from app.db.models import compute_entry_hash
+    from app.db.session import append_custody_record, format_custody_time
+
+    _, evidence_id, sha = uploaded
+    ist = tz(timedelta(hours=5, minutes=30))
+    entry = append_custody_record(db_session, evidence_id, "Examiner", "Sealed", sha,
+                                  time_val=datetime(2026, 10, 18, 8, 0, tzinfo=ist))
+    db_session.commit()
+    db_session.expire_all()
+    stored = db_session.get(CustodyEntry, entry.id)
+    assert stored.time == datetime(2026, 10, 18, 2, 30)  # naive UTC, not 08:00
+    assert format_custody_time(datetime(2026, 10, 18, 8, 0, tzinfo=ist)) == "2026-10-18T02:30:00Z"
+    assert stored.entry_hash == compute_entry_hash(stored.prev_hash, evidence_id, "Examiner", "Sealed",
+                                                   "2026-10-18T02:30:00Z", sha)
+    assert verify_custody_log(db_session, evidence_id)[0]
+
+
+def test_existing_utc_hashes_are_unchanged():
+    """Chains written before the fix (UTC-aware input) hash to the same string as naive UTC now."""
+    from datetime import datetime, timezone as tz
+    from app.db.session import format_custody_time
+    aware = datetime(2026, 10, 18, 2, 17, 5, tzinfo=tz.utc)
+    assert format_custody_time(aware) == format_custody_time(aware.replace(tzinfo=None)) == "2026-10-18T02:17:05Z"

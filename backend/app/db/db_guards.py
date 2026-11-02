@@ -28,6 +28,7 @@ What it does NOT enforce:
 
 SQLite foreign keys are off by default; every SQLite connection gets
 PRAGMA foreign_keys=ON here (needed for the deferred run foreign keys).
+Every PostgreSQL connection gets SET TIME ZONE 'UTC' (see _connection_defaults).
 """
 from __future__ import annotations
 
@@ -43,11 +44,25 @@ RUN_CHILD_TABLES = ("claim", "claim_edge", "hypothesis_eval", "source_coverage")
 
 
 @event.listens_for(Engine, "connect")
-def _sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
+def _connection_defaults(dbapi_connection, connection_record) -> None:
+    """Per-connection settings every Pramana connection needs.
+
+    SQLite: enforce foreign keys (off by default).
+    PostgreSQL: session timezone UTC. Timestamps are stored in TIMESTAMP WITHOUT
+    TIME ZONE columns; a timezone-aware value is converted to the *session*
+    timezone before the offset is dropped, so a non-UTC server would store
+    shifted times and every custody hash (computed over the UTC time) would
+    fail re-verification.
+    """
     if isinstance(dbapi_connection, sqlite3.Connection):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
+    elif type(dbapi_connection).__module__.split(".")[0] in ("psycopg2", "psycopg"):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET TIME ZONE 'UTC'")
+        cursor.close()
+        dbapi_connection.commit()  # keep the setting past the pool's reset-on-return rollback
 
 
 def _in_list(values: tuple[str, ...]) -> str:

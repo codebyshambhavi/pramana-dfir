@@ -117,3 +117,64 @@ def test_pg_concurrent_migrations_serialize(pg_engine):
     for t in threads:
         t.join()
     assert not errors, errors
+
+
+@pytest.fixture
+def non_utc_server(pg_engine):
+    """Server default timezone set to Asia/Kolkata (UTC+05:30) for new sessions; reset afterwards."""
+    import psycopg2
+    with pg_engine.connect() as conn:
+        dbname = conn.execute(text("SELECT current_database()")).scalar()
+    with create_engine(PG_URL, isolation_level="AUTOCOMMIT").connect() as conn:
+        conn.execute(text(f'ALTER DATABASE "{dbname}" SET timezone TO \'Asia/Kolkata\''))
+    raw = psycopg2.connect(pg_engine.url.render_as_string(hide_password=False).replace("postgresql+psycopg2", "postgresql"))
+    try:
+        cur = raw.cursor()
+        cur.execute("SHOW timezone")
+        assert cur.fetchone()[0] == "Asia/Kolkata"  # a plain connection really is non-UTC
+    finally:
+        raw.close()
+    yield
+    with create_engine(PG_URL, isolation_level="AUTOCOMMIT").connect() as conn:
+        conn.execute(text(f'ALTER DATABASE "{dbname}" RESET timezone'))
+
+
+def test_pg_sessions_are_utc_even_on_non_utc_server(non_utc_server):
+    engine = create_engine(PG_URL, pool_size=1, max_overflow=0)
+    try:
+        for _ in range(3):  # same pooled connection, reused after reset-on-return rollbacks
+            with engine.connect() as conn:
+                assert conn.execute(text("SHOW timezone")).scalar() == "UTC"
+                conn.rollback()
+    finally:
+        engine.dispose()
+
+
+def test_pg_custody_and_verify_on_non_utc_server(non_utc_server, tmp_path):
+    from app.db.session import append_custody_record, verify_evidence
+    import hashlib
+
+    engine = create_engine(PG_URL)
+    try:
+        migrate(engine)
+        stored = tmp_path / "artifact.bin"
+        stored.write_bytes(b"pramana")
+        sha = hashlib.sha256(b"pramana").hexdigest()
+        db = sessionmaker(bind=engine)()
+        db.execute(text("INSERT INTO evidence (evidence_id, case_id, filename, sha256, size_bytes, intake_time, "
+                        "stored_path, status) VALUES ('EVID-TZ', 'CASE-PG', 'artifact.bin', :s, 7, now(), :p, "
+                        "'ACTIVE')"), {"s": sha, "p": str(stored)})
+        append_custody_record(db, "EVID-TZ", "Intake", "Acquired", sha)  # timezone-aware utc_now() inside
+        db.commit()
+
+        drift = db.execute(text("SELECT abs(extract(epoch FROM (now() AT TIME ZONE 'UTC') - time)) "
+                                "FROM custody_entries WHERE evidence_id = 'EVID-TZ'")).scalar()
+        assert drift < 120, f"custody time stored {drift}s away from real UTC"
+        assert verify_custody_log(db, "EVID-TZ")[0]
+
+        result = verify_evidence(db, "EVID-TZ")
+        db.commit()
+        assert (result["verify_state"], result["status"], result["custody_chain_valid"]) == ("MATCH", "ACTIVE", True)
+        db.close()
+    finally:
+        engine.dispose()

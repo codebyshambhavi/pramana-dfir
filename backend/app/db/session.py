@@ -56,10 +56,17 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+def to_naive_utc(value: datetime) -> datetime:
+    """UTC wall-clock time without tzinfo. Naive input is taken to be UTC already."""
+    if value.tzinfo is not None:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
 def format_custody_time(time_val: Any) -> str:
     """Standardize datetime to ISO UTC string for consistent cryptographic hashing."""
     if isinstance(time_val, datetime):
-        return time_val.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return to_naive_utc(time_val).strftime("%Y-%m-%dT%H:%M:%SZ")
     if isinstance(time_val, str):
         cleaned = time_val.replace("+00:00", "Z")
         if not cleaned.endswith("Z"):
@@ -89,7 +96,9 @@ def append_custody_record(
     )
 
     prev_hash = last_entry.entry_hash if last_entry else ("0" * 64)
-    record_time = time_val or utc_now()
+    # Hash and store the same naive-UTC value, so what is read back from any
+    # database (whatever its session timezone) re-hashes identically.
+    record_time = to_naive_utc(time_val or utc_now())
     time_iso = format_custody_time(record_time)
 
     entry_hash = compute_entry_hash(
