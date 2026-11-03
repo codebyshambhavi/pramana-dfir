@@ -101,9 +101,9 @@ class CandidateRelationship:
         }
 
 
-def _compute_candidate_id(e1_id: str, e2_id: str, candidate_type: str) -> str:
+def _compute_candidate_id(e1_id: str, e2_id: str, candidate_type: str, disambiguator: str = "") -> str:
     """Deterministic, content-addressed candidate identifier."""
-    payload = f"{min(e1_id, e2_id)}|{max(e1_id, e2_id)}|{candidate_type}"
+    payload = f"{min(e1_id, e2_id)}|{max(e1_id, e2_id)}|{candidate_type}|{disambiguator}"
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
     return f"CAND-{digest}"
 
@@ -205,43 +205,41 @@ def generate_candidates(
             device_counts[ent.device] = device_counts.get(ent.device, 0) + 1
 
     # 3. Build hash indices for fast candidate pairing (avoids O(n²))
-    by_file_object: dict[str, list[common.NormalizedEvent]] = {}
-    by_content_hash: dict[str, list[common.NormalizedEvent]] = {}
-    by_actor_device: dict[tuple[str, str], list[common.NormalizedEvent]] = {}
-    by_device: dict[str, list[common.NormalizedEvent]] = {}
-    by_ip: dict[str, list[common.NormalizedEvent]] = {}
+    by_file_object: dict[str, list[tuple[int, common.NormalizedEvent]]] = {}
+    by_content_hash: dict[str, list[tuple[int, common.NormalizedEvent]]] = {}
+    by_actor_device: dict[tuple[str, str], list[tuple[int, common.NormalizedEvent]]] = {}
+    by_device: dict[str, list[tuple[int, common.NormalizedEvent]]] = {}
+    by_ip: dict[str, list[tuple[int, common.NormalizedEvent]]] = {}
 
-    for e in norm_events:
+    for idx, e in enumerate(norm_events):
         ent = event_entities[e.event_id]
         if ent.file_object:
-            by_file_object.setdefault(ent.file_object, []).append(e)
+            by_file_object.setdefault(ent.file_object, []).append((idx, e))
         if ent.content_hash:
-            by_content_hash.setdefault(ent.content_hash, []).append(e)
+            by_content_hash.setdefault(ent.content_hash, []).append((idx, e))
         if ent.actor and ent.device:
-            by_actor_device.setdefault((ent.actor, ent.device), []).append(e)
+            by_actor_device.setdefault((ent.actor, ent.device), []).append((idx, e))
         if ent.device:
-            by_device.setdefault(ent.device, []).append(e)
+            by_device.setdefault(ent.device, []).append((idx, e))
         if ent.ip:
-            by_ip.setdefault(ent.ip, []).append(e)
+            by_ip.setdefault(ent.ip, []).append((idx, e))
 
     # Effective max window across rules
     effective_max_window = max_window or ARCHIVE_UPLOAD_WINDOW
 
-    candidate_pairs: set[tuple[str, str]] = set()
+    candidate_pairs: set[tuple[int, int]] = set()
 
-    def _collect_pairs(bucket: list[common.NormalizedEvent], max_allowed_window: timedelta) -> None:
+    def _collect_pairs(bucket: list[tuple[int, common.NormalizedEvent]], max_allowed_window: timedelta) -> None:
         """Sliding-window pair collection within a sorted bucket."""
         n = len(bucket)
         for i in range(n):
-            e1 = bucket[i]
+            idx1, e1 = bucket[i]
             for j in range(i + 1, n):
-                e2 = bucket[j]
-                if e1.event_id == e2.event_id:
-                    continue
+                idx2, e2 = bucket[j]
                 delta = abs((e2.timestamp - e1.timestamp).total_seconds())
                 if delta > max_allowed_window.total_seconds():
                     break
-                pair = (min(e1.event_id, e2.event_id), max(e1.event_id, e2.event_id))
+                pair = (min(idx1, idx2), max(idx1, idx2))
                 candidate_pairs.add(pair)
 
     # Generate candidate pairs from strong and supporting indices
@@ -258,16 +256,13 @@ def generate_candidates(
     for ip_val, bucket in by_ip.items():
         _collect_pairs(bucket, DEFAULT_CORRELATION_WINDOW)
 
-    # Map events by ID for fast lookup
-    events_by_id = {e.event_id: e for e in norm_events}
-
     all_candidates: list[CandidateRelationship] = []
     promoted_candidates: list[CandidateRelationship] = []
 
-    # Deterministic evaluation order: sort candidate pairs by (id1, id2)
-    for id1, id2 in sorted(candidate_pairs):
-        e1 = events_by_id[id1]
-        e2 = events_by_id[id2]
+    # Deterministic evaluation order: sort candidate pairs by (idx1, idx2)
+    for idx1, idx2 in sorted(candidate_pairs):
+        e1 = norm_events[idx1]
+        e2 = norm_events[idx2]
         # Ensure e_source is the chronologically earlier event
         if e1.timestamp <= e2.timestamp:
             src, tgt = e1, e2
@@ -409,7 +404,7 @@ def generate_candidates(
                 is_promoted = True
 
         candidate_type = "SAME_OBJECT_FLOW" if has_file_match or has_hash_match else "EVENT_CORRELATION"
-        candidate_id = _compute_candidate_id(src.event_id, tgt.event_id, candidate_type)
+        candidate_id = _compute_candidate_id(src.event_id, tgt.event_id, candidate_type, f"{idx1}_{idx2}")
 
         canonical_entities_dict = {
             "source": ent1.to_dict(),

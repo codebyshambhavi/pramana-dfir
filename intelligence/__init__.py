@@ -16,8 +16,16 @@ from typing import Any
 from . import common
 from .anomalies import find_anomalies
 from .authenticity import score_image
+from .claims import generate_claims
 from .contradictions import find_contradictions
-from .correlate import correlate
+from .correlate import correlate, correlate_events, generate_candidates
+from .entities import (
+    extract_canonical_entities,
+    normalize_actor,
+    normalize_device,
+    normalize_file_object,
+    normalize_ip,
+)
 from .hypotheses import add_hypotheses
 
 
