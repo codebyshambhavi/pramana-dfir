@@ -8,15 +8,18 @@ Endpoints:
 """
 from __future__ import annotations
 
+import os
 from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.models import Case, EventModel, FindingModel
+from app.db.runs import create_analysis_run, manifest_evidence
 from app.db.session import get_db
 from app.reports.lineage import get_finding_lineage
 from app.services.pipeline import execute_analyze
+from intelligence.claims import generate_claims
 
 router = APIRouter(tags=["findings"])
 
@@ -43,6 +46,23 @@ def analyze_case(id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
 
     findings_data = execute_analyze(events_payload, case_id=id)
 
+    # T3/T6: Create immutable analysis run if ACTIVE evidence exists
+    manifest = manifest_evidence(db, id)
+    run_id = None
+    claims_count = 0
+    if manifest:
+        assumptions = {"case_timezone": os.getenv("PRAMANA_INTEL_TIMEZONE", "UTC")}
+        claim_specs = generate_claims(events_payload)
+        run = create_analysis_run(
+            db,
+            case_id=id,
+            engine_version="pramana-engine@1.0.0",
+            assumptions=assumptions,
+            claims=claim_specs,
+        )
+        run_id = run.run_id
+        claims_count = len(claim_specs)
+
     created_count = 0
     for f in findings_data:
         existing = db.query(FindingModel).filter(FindingModel.finding_id == f["finding_id"]).first()
@@ -64,7 +84,11 @@ def analyze_case(id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
 
     db.commit()
 
-    return {"findings_created": created_count}
+    return {
+        "findings_created": created_count,
+        "run_id": run_id,
+        "claims_created": claims_count,
+    }
 
 
 @router.get(

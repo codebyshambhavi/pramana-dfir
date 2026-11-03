@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.session import init_db
-from app.routers import cases, evidence, findings, graph, integrity, reports
+from app.routers import cases, claims, evidence, findings, graph, integrity, reports
 
 
 @asynccontextmanager
@@ -33,6 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(cases.router)
+app.include_router(claims.router)
 app.include_router(evidence.router)
 app.include_router(graph.router)
 app.include_router(findings.router)
