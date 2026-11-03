@@ -616,6 +616,172 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /cases/{case_id}/runs:
+    post:
+      summary: Create an immutable analysis run with T5 correlation and T6 claims
+      operationId: createCaseRun
+      tags:
+        - claims
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                engine_version:
+                  type: string
+                  default: "pramana-engine@1.0.0"
+                assumptions:
+                  type: object
+                parent_run_id:
+                  type: string
+      responses:
+        "201":
+          description: Run created successfully
+        "404":
+          description: Case not found
+        "422":
+          description: Validation error or no active evidence
+
+    get:
+      summary: List immutable analysis runs for a case
+      operationId: listCaseRuns
+      tags:
+        - claims
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of analysis runs
+        "404":
+          description: Case not found
+
+  /cases/{case_id}/runs/{run_id}:
+    get:
+      summary: Retrieve an analysis run
+      operationId: getCaseRun
+      tags:
+        - claims
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Run metadata
+        "404":
+          description: Run or case not found
+
+  /cases/{case_id}/runs/{run_id}/claims:
+    get:
+      summary: List claims for a case run
+      operationId: listRunClaims
+      tags:
+        - claims
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Claims belonging to this run
+        "404":
+          description: Run or case not found
+
+  /runs/{run_id}/claims/{claim_id}:
+    get:
+      summary: Retrieve a single claim
+      operationId: getSingleClaim
+      tags:
+        - claims
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: claim_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Claim object
+        "404":
+          description: Claim or run not found
+
+  /runs/{run_id}/claims/{claim_id}/lineage:
+    get:
+      summary: Retrieve complete claim lineage
+      operationId: getClaimLineage
+      tags:
+        - claims
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: claim_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Complete cryptographic and event lineage for the claim
+        "404":
+          description: Claim not found
+
+  /cases/{case_id}/runs/{run_id}/correlations:
+    get:
+      summary: Inspect candidate and promoted event relationships
+      operationId: getRunCorrelations
+      tags:
+        - claims
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Candidate relationships and promoted links
+        "404":
+          description: Run or case not found
+
 components:
   parameters:
     EvidenceIdPath:
