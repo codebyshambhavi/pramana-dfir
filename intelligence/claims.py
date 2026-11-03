@@ -22,10 +22,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
-from .anomalies import find_anomalies
+from .anomalies import find_anomalies, _odd_status
 from .contradictions import find_contradictions
 from .correlate import CandidateRelationship, generate_candidates
 from .entities import normalize_actor, normalize_device
+from .config import get_timezone
+from .timeline import SourceClock, event_interval, load_source_clocks, to_case_time, tz_label
 
 # Import or define ClaimSpec and EdgeSpec compatible with app.db.claims
 try:
@@ -212,9 +214,26 @@ def generate_offhours_session_claims(
     events: Sequence[Mapping[str, Any]],
     anomaly_findings: Sequence[Mapping[str, Any]],
     events_by_id: Mapping[str, Mapping[str, Any]],
+    *,
+    case_timezone: tzinfo | None = None,
+    source_clocks: Mapping[str, SourceClock] | None = None,
 ) -> list[ClaimSpec]:
-    """Convert odd-hour anomaly findings into OFFHOURS_SESSION claims."""
+    """Convert odd-hour anomaly findings into OFFHOURS_SESSION claims.
+
+    The local hour stored in ``params["hour"]`` is derived from the *effective*
+    time interval (T2 source-clock correction) interpreted in the configured
+    case timezone (``config.get_timezone()``), not from the raw UTC timestamp.
+    The midpoint of the effective interval is used as the representative
+    instant, consistent with how ``anomalies.find_anomalies`` evaluates the
+    same events.  When clock uncertainty straddles the off-hours boundary
+    (T2 status "some"), the claim grade is discounted to "C" to reflect the
+    ambiguity.
+    """
     specs: list[ClaimSpec] = []
+
+    case_tz = case_timezone if case_timezone is not None else get_timezone()
+    clocks = source_clocks if source_clocks is not None else load_source_clocks()
+    zone = tz_label(case_tz)
 
     for finding in anomaly_findings:
         if finding.get("type") != "anomaly":
@@ -226,22 +245,29 @@ def generate_offhours_session_claims(
                 continue
 
             fam = derive_witness_family(ev)
-            raw_ts = ev.get("timestamp")
+
+            # Derive the local hour using T2 effective interval + case timezone
             hour = None
-            if isinstance(raw_ts, str):
-                try:
-                    dt = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
-                    hour = dt.hour
-                except Exception:
-                    pass
+            odd_status = "all"
+            from .common import normalize_events as _norm
+            norm_list = _norm([ev])
+            if norm_list:
+                norm_ev = norm_list[0]
+                iv = event_interval(norm_ev, clocks)
+                local_time = to_case_time(iv.midpoint, case_tz)
+                hour = local_time.hour
+                odd_status = _odd_status(iv, case_tz)
 
             params = {
                 "actor": ev.get("actor") or "unknown",
                 "device": ev.get("device") or "unknown",
                 "action": ev.get("action") or "unknown",
                 "hour": hour if hour is not None else -1,
+                "timezone": zone,
                 "event_id": ev_id,
             }
+            if odd_status == "some":
+                params["boundary_straddle"] = True
 
             edges = [
                 EdgeSpec(
@@ -255,7 +281,9 @@ def generate_offhours_session_claims(
             ]
 
             status = "ASSERTED"
-            grade = "B"
+            # Grade B for confident odd-hour activity; Grade C when clock uncertainty
+            # straddles the boundary making classification ambiguous.
+            grade = "C" if odd_status == "some" else "B"
 
             spec = ClaimSpec(
                 type="OFFHOURS_SESSION",
@@ -341,7 +369,15 @@ def generate_actor_device_consistent_claims(
     events: Sequence[Mapping[str, Any]],
     events_by_id: Mapping[str, Mapping[str, Any]],
 ) -> list[ClaimSpec]:
-    """Emit ACTOR_DEVICE_CONSISTENT claims when corroborated across independent sources."""
+    """Emit ACTOR_DEVICE_CONSISTENT claims when corroborated across events.
+
+    Grading is routed through the standard shared grading policy
+    (``determine_claim_grade``):
+    - Grade A: >= 2 independent witness families AND exact identifier.
+    - Grade B: 1 witness family AND exact identifier (insufficient independent
+      corroboration to achieve Grade A).
+    - Grade C: Generic/non-exact identifiers or contested claims.
+    """
     groups: dict[tuple[str, str], list[Mapping[str, Any]]] = {}
 
     for ev in events:
@@ -353,37 +389,53 @@ def generate_actor_device_consistent_claims(
         if norm_act and norm_dev:
             groups.setdefault((norm_act, norm_dev), []).append(ev)
 
+    GENERIC_NAMES = frozenset({"unknown", "none", "anonymous", "null", "undefined", ""})
+
     specs: list[ClaimSpec] = []
     for (act, dev), ev_list in sorted(groups.items()):
+        # Require observation in at least 2 events to assert consistency
+        if len(ev_list) < 2:
+            continue
+
         families = {derive_witness_family(e) for e in ev_list}
-        # Only claim consistency if observed in at least 2 events across at least 2 families
-        if len(ev_list) >= 2 and len(families) >= 2:
-            edges = [
-                EdgeSpec(
-                    ref_kind="event",
-                    ref_id=e["event_id"],
-                    role="SUPPORTS",
-                    weight=1.0,
-                    reason_code="CORROBORATING_ACTOR_DEVICE",
-                    family=derive_witness_family(e),
-                )
-                for e in sorted(ev_list, key=lambda x: str(x.get("event_id")))
-            ]
-            params = {
-                "actor": act,
-                "device": dev,
-                "supporting_families_count": len(families),
-            }
-            spec = ClaimSpec(
-                type="ACTOR_DEVICE_CONSISTENT",
-                params=params,
-                status="CORROBORATED",
-                grade="A",
-                rule_id="rule_actor_device_consistent",
-                rule_version="1.0.0",
-                edges=edges,
+        family_count = len(families)
+
+        edges = [
+            EdgeSpec(
+                ref_kind="event",
+                ref_id=e["event_id"],
+                role="SUPPORTS",
+                weight=1.0,
+                reason_code="CORROBORATING_ACTOR_DEVICE",
+                family=derive_witness_family(e),
             )
-            specs.append(spec)
+            for e in sorted(ev_list, key=lambda x: str(x.get("event_id")))
+        ]
+
+        # Exact identifier check: neither actor nor device is a generic placeholder
+        has_exact = (
+            bool(act) and act.lower() not in GENERIC_NAMES and
+            bool(dev) and dev.lower() not in GENERIC_NAMES
+        )
+
+        status = determine_claim_status(family_count, has_contradiction=False)
+        grade = determine_claim_grade(status, family_count, has_exact)
+
+        params = {
+            "actor": act,
+            "device": dev,
+            "supporting_families_count": family_count,
+        }
+        spec = ClaimSpec(
+            type="ACTOR_DEVICE_CONSISTENT",
+            params=params,
+            status=status,
+            grade=grade,
+            rule_id="rule_actor_device_consistent",
+            rule_version="1.0.0",
+            edges=edges,
+        )
+        specs.append(spec)
 
     return specs
 
@@ -514,6 +566,8 @@ def generate_claims(
     anomaly_findings: Sequence[Mapping[str, Any]] | None = None,
     contradiction_findings: Sequence[Mapping[str, Any]] | None = None,
     expected_gaps: Sequence[Mapping[str, Any]] = (),
+    case_timezone: tzinfo | None = None,
+    source_clocks: Mapping[str, SourceClock] | None = None,
 ) -> list[ClaimSpec]:
     """Orchestrate rule-driven claim generation across all supported claim types.
 
@@ -526,13 +580,21 @@ def generate_claims(
 
     # 1. T5 Correlation links -> SAME_OBJECT_FLOW
     if promoted_links is None:
-        _, promoted_links = generate_candidates(events)
+        _, promoted_links = generate_candidates(events, source_clocks=source_clocks)
     same_object_claims = generate_same_object_flow_claims(promoted_links, events_by_id)
 
     # 2. Anomalies -> OFFHOURS_SESSION
     if anomaly_findings is None:
-        anomaly_findings = find_anomalies(list(events))
-    offhours_claims = generate_offhours_session_claims(events, anomaly_findings, events_by_id)
+        anomaly_findings = find_anomalies(
+            list(events), case_timezone=case_timezone, source_clocks=source_clocks
+        )
+    offhours_claims = generate_offhours_session_claims(
+        events,
+        anomaly_findings,
+        events_by_id,
+        case_timezone=case_timezone,
+        source_clocks=source_clocks,
+    )
 
     # 3. Contradictions -> LOCATION_CONFLICT
     if contradiction_findings is None:

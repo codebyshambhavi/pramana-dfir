@@ -31,7 +31,7 @@ from .entities import (
     normalize_file_object,
     normalize_ip,
 )
-from .timeline import TimeInterval, effective_interval, load_source_clocks
+from .timeline import TimeInterval, SourceClock, effective_interval, event_interval, load_source_clocks
 
 # ---------------------------------------------------------------------------
 # Reason codes (contracted set)
@@ -119,6 +119,20 @@ def _hub_factor(count: int, threshold: int) -> float:
     return 1.0 / (1.0 + math.log2(1.0 + excess))
 
 
+def _interval_separation_seconds(iv1: TimeInterval, iv2: TimeInterval) -> float:
+    """Evaluate temporal separation between two effective intervals.
+
+    Returns:
+        0.0 if the intervals overlap or touch.
+        Positive seconds between the nearer boundaries if strictly separated.
+    """
+    if iv1.overlaps(iv2):
+        return 0.0
+    if iv1.hi < iv2.lo:
+        return (iv2.lo - iv1.hi).total_seconds()
+    return (iv1.lo - iv2.hi).total_seconds()
+
+
 def _check_sequence_compatibility(
     action1: str, action2: str, dt1: datetime, dt2: datetime
 ) -> tuple[str, bool]:
@@ -166,14 +180,28 @@ def generate_candidates(
     events: Sequence[Mapping[str, Any] | common.NormalizedEvent],
     *,
     max_window: timedelta | None = None,
+    source_clocks: Mapping[str, SourceClock] | None = None,
 ) -> tuple[list[CandidateRelationship], list[CandidateRelationship]]:
     """Indexed candidate generation and relationship promotion.
+
+    Args:
+        events: Event dictionaries or NormalizedEvent instances.
+        max_window: Override the maximum correlation window.
+        source_clocks: Per-source clock offset/uncertainty mapping (T2).  When
+            ``None`` the clocks are loaded from the environment variable
+            ``PRAMANA_SOURCE_CLOCKS`` (same as ``timeline.load_source_clocks``).
+            Pass an empty dict ``{}`` to disable clock correction in tests.
 
     Returns:
         (all_candidates, promoted_relationships)
     """
     if len(events) < 2:
         return [], []
+
+    # Resolve source clocks once (T2 effective-interval support)
+    clocks: Mapping[str, SourceClock] = (
+        source_clocks if source_clocks is not None else load_source_clocks()
+    )
 
     # 1. Normalize events and extract canonical entities
     norm_events: list[common.NormalizedEvent] = common.normalize_events(events)
@@ -230,17 +258,31 @@ def generate_candidates(
     candidate_pairs: set[tuple[int, int]] = set()
 
     def _collect_pairs(bucket: list[tuple[int, common.NormalizedEvent]], max_allowed_window: timedelta) -> None:
-        """Sliding-window pair collection within a sorted bucket."""
-        n = len(bucket)
+        """Sliding-window pair collection within an effective-interval sorted bucket.
+
+        Uses effective time intervals (T2 source-clock correction) so that
+        candidate pairing respects source clock offsets and uncertainty.  Two
+        events are included as a candidate pair when their effective intervals
+        overlap OR when the gap between the nearer edges of the two intervals
+        is within ``max_allowed_window``.
+        """
+        sorted_bucket = sorted(
+            bucket,
+            key=lambda item: (event_interval(item[1], clocks).lo, item[1].event_id)
+        )
+        n = len(sorted_bucket)
         for i in range(n):
-            idx1, e1 = bucket[i]
+            idx1, e1 = sorted_bucket[i]
+            iv1 = event_interval(e1, clocks)
             for j in range(i + 1, n):
-                idx2, e2 = bucket[j]
-                delta = abs((e2.timestamp - e1.timestamp).total_seconds())
-                if delta > max_allowed_window.total_seconds():
+                idx2, e2 = sorted_bucket[j]
+                iv2 = event_interval(e2, clocks)
+                sep = _interval_separation_seconds(iv1, iv2)
+                if iv2.lo > iv1.hi and sep > max_allowed_window.total_seconds():
                     break
-                pair = (min(idx1, idx2), max(idx1, idx2))
-                candidate_pairs.add(pair)
+                if sep <= max_allowed_window.total_seconds():
+                    pair = (min(idx1, idx2), max(idx1, idx2))
+                    candidate_pairs.add(pair)
 
     # Generate candidate pairs from strong and supporting indices
     for bucket in by_file_object.values():
@@ -263,11 +305,17 @@ def generate_candidates(
     for idx1, idx2 in sorted(candidate_pairs):
         e1 = norm_events[idx1]
         e2 = norm_events[idx2]
-        # Ensure e_source is the chronologically earlier event
-        if e1.timestamp <= e2.timestamp:
+
+        iv1 = event_interval(e1, clocks)
+        iv2 = event_interval(e2, clocks)
+        # Order by effective interval midpoint so the chronologically earlier event
+        # in true case time is always treated as source.
+        if (iv1.midpoint, iv1.lo, e1.event_id) <= (iv2.midpoint, iv2.lo, e2.event_id):
             src, tgt = e1, e2
+            iv_src, iv_tgt = iv1, iv2
         else:
             src, tgt = e2, e1
+            iv_src, iv_tgt = iv2, iv1
 
         ent1 = event_entities[src.event_id]
         ent2 = event_entities[tgt.event_id]
@@ -276,8 +324,11 @@ def generate_candidates(
         reason_codes: list[str] = []
         contradiction_signals: list[str] = []
 
-        # Time gate evaluation
-        delta_seconds = abs((tgt.timestamp - src.timestamp).total_seconds())
+        # --- T2 Effective-interval time gate evaluation ---------------------
+        # Use source-clock-corrected intervals so that source offsets and
+        # timestamp uncertainty are accounted for in the gate check.
+        sep_seconds = _interval_separation_seconds(iv_src, iv_tgt)
+        delta_seconds = abs((iv_tgt.midpoint - iv_src.midpoint).total_seconds())
 
         is_archive_upload = (
             (src.action == "archive_create" and tgt.action == "file_upload") or
@@ -285,7 +336,7 @@ def generate_candidates(
         )
         gate_window = ARCHIVE_UPLOAD_WINDOW if is_archive_upload else DEFAULT_CORRELATION_WINDOW
 
-        if delta_seconds <= gate_window.total_seconds():
+        if sep_seconds <= gate_window.total_seconds():
             reason_codes.append(REASON_WITHIN_TIME_GATE)
         else:
             # Beyond time gate -> reject immediately
@@ -349,7 +400,7 @@ def generate_candidates(
 
         # Signal 6: Action sequence compatibility
         seq_status, is_seq_boost = _check_sequence_compatibility(
-            src.action, tgt.action, src.timestamp, tgt.timestamp
+            src.action, tgt.action, iv_src.midpoint, iv_tgt.midpoint
         )
         if is_seq_boost:
             matched_signals.append("sequence_compatible")
@@ -397,10 +448,13 @@ def generate_candidates(
         if not has_strong_id and not has_supported_binding:
             reason_codes.append(REASON_INSUFFICIENT_IDENTIFIER)
 
-        if time_gated and no_contradiction and seq_status != "INCOMPATIBLE":
-            if has_strong_id:
-                is_promoted = True
-            elif has_supported_binding and is_seq_boost:
+        if time_gated and no_contradiction and seq_status == "COMPATIBLE":
+            if has_strong_id or (has_supported_binding and is_seq_boost):
+                # H″ rule: identifier signal + sequence compatibility.
+                # A strong identifier or matching content hash must NOT independently
+                # promote a relationship when sequence compatibility is NEUTRAL.
+                # Promotion requires compatible action sequence alongside a strong identifier
+                # or supported actor+device binding.
                 is_promoted = True
 
         candidate_type = "SAME_OBJECT_FLOW" if has_file_match or has_hash_match else "EVENT_CORRELATION"
@@ -458,8 +512,14 @@ def correlate(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if len(events) < 2:
         return []
 
-    _, promoted = generate_candidates(events)
-    if not promoted:
+    all_cands, _ = generate_candidates(events)
+    eligible = [
+        cand for cand in all_cands
+        if REASON_WITHIN_TIME_GATE in cand.reason_codes
+        and ("exact_file_key" in cand.matched_signals or "content_hash" in cand.matched_signals)
+        and not cand.contradiction_signals
+    ]
+    if not eligible:
         return []
 
     events_by_id = {e["event_id"]: e for e in events if "event_id" in e}
@@ -468,7 +528,7 @@ def correlate(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     case_id = events[0].get("case_id", "CASE-UNKNOWN")
 
-    for cand in promoted:
+    for cand in eligible:
         e1 = events_by_id.get(cand.source_event_id)
         e2 = events_by_id.get(cand.target_event_id)
         if not e1 or not e2:

@@ -106,8 +106,8 @@ def test_case_insensitive_normalization():
     assert normalize_actor("  Alice_Cooper  ") == "alice_cooper"
     assert normalize_device("  FIELD-LAPTOP-07  ") == "field-laptop-07"
     assert normalize_file_object("CASE-001.TAR.GZ") == "case-001.tar.gz"
-    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", obj="REPORT.PDF", actor="MIRA.CHEN", device="DEV-01")
-    e2 = _ev("EV-2", "2026-10-18T10:02:00Z", obj="report.pdf", actor="mira.chen", device="dev-01")
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", obj="REPORT.PDF", actor="MIRA.CHEN", device="DEV-01", action="archive_create")
+    e2 = _ev("EV-2", "2026-10-18T10:02:00Z", obj="report.pdf", actor="mira.chen", device="dev-01", action="file_upload")
     _, promoted = correlate_events([e1, e2])
     assert len(promoted) == 1
     assert REASON_EXACT_FILE_KEY in promoted[0].reason_codes
@@ -118,8 +118,8 @@ def test_case_insensitive_normalization():
 # 4. Content-hash matching
 def test_content_hash_matching():
     hash_val = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", obj="file1.bin", raw={"content_hash": hash_val})
-    e2 = _ev("EV-2", "2026-10-18T10:04:00Z", obj="renamed.bin", raw={"sha256": hash_val})
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", obj="file1.bin", action="archive_create", raw={"content_hash": hash_val})
+    e2 = _ev("EV-2", "2026-10-18T10:04:00Z", obj="renamed.bin", action="file_upload", raw={"sha256": hash_val})
     all_cands, promoted = correlate_events([e1, e2])
     assert len(promoted) == 1
     assert "content_hash" in promoted[0].matched_signals
@@ -226,13 +226,13 @@ def test_contradiction_penalties():
 
 # 14. Promotion threshold behavior
 def test_promotion_threshold_behavior():
-    # Strong identifier promotes within window
-    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", obj="target.zip")
-    e2 = _ev("EV-2", "2026-10-18T10:08:00Z", obj="target.zip")
+    # Strong identifier with compatible sequence promotes within window
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", obj="target.zip", action="archive_create")
+    e2 = _ev("EV-2", "2026-10-18T10:08:00Z", obj="target.zip", action="file_upload")
     _, promoted = correlate_events([e1, e2])
     assert len(promoted) == 1
-    # Outside window (12 mins > 10 min window) -> rejected
-    e3 = _ev("EV-3", "2026-10-18T10:12:00Z", obj="target.zip")
+    # Outside window (35 mins > 30 min archive-upload window) -> rejected
+    e3 = _ev("EV-3", "2026-10-18T10:35:00Z", obj="target.zip", action="file_upload")
     all_cands, promoted_outside = correlate_events([e1, e3])
     assert len(promoted_outside) == 0
 
@@ -304,3 +304,137 @@ def test_scalability_benchmark(n_events: int):
     # 5,000 events should complete in well under 3.0 seconds
     assert elapsed < 5.0, f"{n_events} events took {elapsed:.3f}s"
     print(f"\n[BENCHMARK] N={n_events}: elapsed={elapsed:.4f}s, candidates={len(all_cands)}, promoted={len(promoted)}")
+
+
+# ---------------------------------------------------------------------------
+# Targeted Review Fix Regression Tests: T5 Effective Interval & H″ Promotion
+# ---------------------------------------------------------------------------
+
+from intelligence.timeline import SourceClock, TimeInterval
+
+
+def test_h_double_prime_compatible_sequence_promotes():
+    """H″ rule: strong identifier + compatible action sequence -> promoted."""
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", action="archive_create", obj="data.tar.gz")
+    e2 = _ev("EV-2", "2026-10-18T10:05:00Z", action="file_upload", obj="data.tar.gz")
+    _, promoted = correlate_events([e1, e2])
+    assert len(promoted) == 1
+    assert promoted[0].sequence_compatibility == "COMPATIBLE"
+    assert promoted[0].promotion_decision is True
+    assert REASON_SEQUENCE_COMPATIBLE in promoted[0].reason_codes
+
+
+def test_h_double_prime_neutral_sequence_does_not_promote():
+    """H″ rule: strong identifier + NEUTRAL sequence must NOT independently promote."""
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", action="file_access", obj="data.tar.gz")
+    e2 = _ev("EV-2", "2026-10-18T10:05:00Z", action="file_access", obj="data.tar.gz")
+    all_cands, promoted = correlate_events([e1, e2])
+    assert len(all_cands) == 1
+    cand = all_cands[0]
+    assert cand.sequence_compatibility == "NEUTRAL"
+    assert cand.promotion_decision is False
+    assert len(promoted) == 0
+
+
+def test_h_double_prime_content_hash_neutral_sequence_does_not_promote():
+    """H″ rule: matching content hash + NEUTRAL sequence must NOT independently promote."""
+    h = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", action="file_read", obj="a.bin", raw={"sha256": h})
+    e2 = _ev("EV-2", "2026-10-18T10:05:00Z", action="file_read", obj="b.bin", raw={"sha256": h})
+    all_cands, promoted = correlate_events([e1, e2])
+    assert len(all_cands) == 1
+    cand = all_cands[0]
+    assert cand.sequence_compatibility == "NEUTRAL"
+    assert cand.promotion_decision is False
+    assert len(promoted) == 0
+
+
+def test_h_double_prime_incompatible_sequence_does_not_promote():
+    """H″ rule: strong identifier + INCOMPATIBLE sequence must NOT promote."""
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", action="file_upload", obj="data.tar.gz")
+    e2 = _ev("EV-2", "2026-10-18T10:05:00Z", action="archive_create", obj="data.tar.gz")
+    all_cands, promoted = correlate_events([e1, e2])
+    assert len(all_cands) == 1
+    cand = all_cands[0]
+    assert cand.sequence_compatibility == "INCOMPATIBLE"
+    assert cand.promotion_decision is False
+    assert len(promoted) == 0
+
+
+def test_effective_interval_correlation_with_clock_offset():
+    """T5: source clock offsets shift true times into the correlation window.
+
+    e1 (source 'log'): raw 10:00:00, clock runs +5m ahead -> true time 09:55:00.
+    e2 (source 'browser'): raw 10:12:00, clock offset 0 -> true time 10:12:00.
+    Wait: e1 raw 10:00:00 with offset -4m (runs behind) -> true time 10:04:00.
+    e2 raw 10:12:00 with offset 0 -> true time 10:12:00.
+    Raw delta: 12 minutes (outside default 10m window).
+    Effective interval separation: 8 minutes (within 10m window!).
+    """
+    clocks = {
+        "log": SourceClock(offset=timedelta(minutes=-4), uncertainty=timedelta(0)),
+        "browser": SourceClock(offset=timedelta(0), uncertainty=timedelta(0)),
+    }
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", source="log", action="archive_create", obj="report.pdf")
+    e2 = _ev("EV-2", "2026-10-18T10:12:00Z", source="browser", action="file_upload", obj="report.pdf")
+
+    all_cands, promoted = generate_candidates([e1, e2], source_clocks=clocks)
+    assert len(promoted) == 1
+    cand = promoted[0]
+    assert REASON_WITHIN_TIME_GATE in cand.reason_codes
+    assert cand.promotion_decision is True
+
+
+def test_effective_interval_correlation_with_timestamp_uncertainty():
+    """T5: timestamp uncertainty widens effective interval, bringing nearest boundary within gate.
+
+    Raw timestamps: 10:00:00 and 10:12:00 (raw delta 12 minutes > 10 min window).
+    e1 has uncertainty +/- 3 minutes -> [09:57, 10:03].
+    e2 has uncertainty +/- 0 -> [10:12, 10:12].
+    Shortest separation: 10:12 - 10:03 = 9 minutes <= 10 min window.
+    """
+    clocks = {
+        "log": SourceClock(offset=timedelta(0), uncertainty=timedelta(minutes=3)),
+    }
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", source="log", action="archive_create", obj="report.pdf")
+    e2 = _ev("EV-2", "2026-10-18T10:12:00Z", source="browser", action="file_upload", obj="report.pdf")
+
+    all_cands, promoted = generate_candidates([e1, e2], source_clocks=clocks)
+    assert len(promoted) == 1
+    assert REASON_WITHIN_TIME_GATE in promoted[0].reason_codes
+
+
+def test_effective_interval_overlap_produces_zero_separation():
+    """T5: overlapping effective intervals evaluate to separation 0.0s."""
+    clocks = {
+        "log": SourceClock(offset=timedelta(0), uncertainty=timedelta(minutes=5)),
+        "browser": SourceClock(offset=timedelta(0), uncertainty=timedelta(minutes=5)),
+    }
+    # Raw times 4 minutes apart with +/-5 min uncertainty -> intervals clearly overlap
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", source="log", action="archive_create", obj="report.pdf")
+    e2 = _ev("EV-2", "2026-10-18T10:04:00Z", source="browser", action="file_upload", obj="report.pdf")
+
+    all_cands, promoted = generate_candidates([e1, e2], source_clocks=clocks)
+    assert len(promoted) == 1
+    assert REASON_WITHIN_TIME_GATE in promoted[0].reason_codes
+
+
+def test_effective_interval_separation_exceeding_window_rejected():
+    """T5: clock offsets that push true separation beyond the window reject candidates.
+
+    Raw times: 10:00:00 and 10:08:00 (raw delta 8 minutes <= 10 min window).
+    e1 clock runs +15m ahead -> true time 09:45:00.
+    e2 clock runs -15m behind -> true time 10:23:00.
+    True effective separation: 38 minutes > 30 min archive-upload window.
+    """
+    clocks = {
+        "log": SourceClock(offset=timedelta(minutes=15), uncertainty=timedelta(0)),
+        "browser": SourceClock(offset=timedelta(minutes=-15), uncertainty=timedelta(0)),
+    }
+    e1 = _ev("EV-1", "2026-10-18T10:00:00Z", source="log", action="archive_create", obj="report.pdf")
+    e2 = _ev("EV-2", "2026-10-18T10:08:00Z", source="browser", action="file_upload", obj="report.pdf")
+
+    all_cands, promoted = generate_candidates([e1, e2], source_clocks=clocks)
+    assert len(promoted) == 0
+    # Candidate pairing rejects the pair because effective true separation (38m) exceeds max window
+    assert len(all_cands) == 0
