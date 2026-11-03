@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.session import init_db
-from app.routers import cases, evidence, findings, graph, reports
+from app.routers import cases, evidence, findings, graph, integrity, reports
 
 
 @asynccontextmanager
@@ -37,6 +37,7 @@ app.include_router(evidence.router)
 app.include_router(graph.router)
 app.include_router(findings.router)
 app.include_router(reports.router)
+app.include_router(integrity.router)
 
 
 @app.get("/health", summary="Health check")

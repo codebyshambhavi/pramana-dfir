@@ -225,6 +225,10 @@ def test_openapi_spec_validity():
         "/findings/{id}",
         "/findings/{id}/lineage",
         "/cases/{id}/report",
+        "/evidence/{id}/verify",
+        "/evidence/{id}/remove",
+        "/cases/{id}/integrity",
+        "/evidence/{id}/simulate-tamper",
     ]
 
     paths = spec["paths"]

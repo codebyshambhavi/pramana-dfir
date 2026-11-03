@@ -7,11 +7,67 @@ export interface EvidenceItem {
   sha256: string;
   /** ISO 8601 date-time. */
   intake_time: string;
+  /** Evidence lifecycle status (T3). Rows are never deleted; REMOVED is a status. */
+  status?: EvidenceStatus;
+  /** ISO 8601 date-time of the last successful re-hash, or null. */
+  verified_at?: string | null;
+  verify_state?: VerifyState | null;
   /** The contract does not define an entry's shape yet; its example is an empty array. */
   custody: unknown[];
 }
 
 /** 201 response of POST /cases/{id}/evidence. */
+export type EvidenceStatus = "ACTIVE" | "QUARANTINED" | "REMOVED";
+/** Outcome of the most recent re-verification; null until first verified. */
+export type VerifyState = "MATCH" | "MISMATCH" | "MISSING" | "CUSTODY_BROKEN";
+
+/** One item of GET /cases/{id}/integrity (read-only; does not re-hash). */
+export interface EvidenceIntegrity {
+  evidence_id: string;
+  filename: string;
+  /** Intake SHA-256; never changes. */
+  sha256: string;
+  status: EvidenceStatus;
+  verified_at: string | null;
+  verify_state: VerifyState | null;
+  custody_entries: number;
+  custody_chain_valid: boolean;
+  custody_message: string;
+  last_custody_action: string | null;
+}
+
+/** Response of GET /cases/{id}/integrity. */
+export interface CaseIntegrity {
+  case_id: string;
+  checked_at: string;
+  /** True when nothing is QUARANTINED and every custody chain verifies. */
+  intact: boolean;
+  summary: {
+    total: number;
+    by_status: Record<EvidenceStatus, number>;
+    by_verify_state: Record<VerifyState, number>;
+    never_verified: number;
+    broken_custody_chains: number;
+  };
+  evidence: EvidenceIntegrity[];
+}
+
+/** Response of POST /evidence/{id}/verify. */
+export interface VerificationResult {
+  evidence_id: string;
+  outcome: VerifyState;
+  match: boolean;
+  verify_state: VerifyState;
+  previous_status: EvidenceStatus;
+  status: EvidenceStatus;
+  intake_sha256: string;
+  observed_sha256: string | null;
+  custody_chain_valid: boolean;
+  custody_message: string;
+  verified_at: string | null;
+  custody_entry: unknown;
+}
+
 export interface EvidenceUploadResult {
   evidence_id: string;
   filename: string;
@@ -36,7 +92,7 @@ export interface CaseEvent {
   ip?: string | null;
   location?: { lat: number; lon: number } | null;
   raw?: Record<string, unknown>;
-  /** Event v1.1 (optional; the backend does not persist these yet). */
+  /** Event v1.1 (optional). Persisted by the backend since T3; absent on events stored earlier. */
   parser_version?: string;
   tz_assumption?: string;
   family?: string;

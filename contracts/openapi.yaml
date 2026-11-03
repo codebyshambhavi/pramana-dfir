@@ -476,8 +476,320 @@ paths:
               example:
                 detail: "Case 'CASE-001' not found"
 
+  /evidence/{id}/verify:
+    parameters:
+      - $ref: '#/components/parameters/EvidenceIdPath'
+    post:
+      summary: Re-hash the stored file and compare with the intake SHA-256
+      description: >
+        Streams the SHA-256 of the stored evidence file and compares it with the
+        immutable intake hash, and checks the custody chain. The outcome is stored in
+        verify_state. MATCH leaves status unchanged and sets verified_at (a later match
+        does not clear a quarantine). MISMATCH, MISSING or CUSTODY_BROKEN sets status
+        QUARANTINED, including previously REMOVED evidence. Every call appends one
+        custody entry whose sha256 is the hash actually observed.
+      operationId: verifyEvidence
+      tags:
+        - integrity
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResult'
+        "404":
+          description: Evidence not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Evidence 'EVID-001' not found"
+
+  /evidence/{id}/remove:
+    parameters:
+      - $ref: '#/components/parameters/EvidenceIdPath'
+    post:
+      summary: Soft-remove evidence (status REMOVED; nothing is deleted)
+      description: >
+        Sets status REMOVED and appends a custody entry. The evidence row, the stored
+        file, the intake SHA-256 and the custody chain are all kept.
+      operationId: removeEvidence
+      tags:
+        - integrity
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveRequest'
+      responses:
+        "200":
+          description: Evidence marked REMOVED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceStateChange'
+        "404":
+          description: Evidence not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: Evidence is already REMOVED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Evidence 'EVID-001' is already REMOVED"
+
+  /cases/{id}/integrity:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the case
+        schema:
+          type: string
+        example: "CASE-001"
+    get:
+      summary: Integrity summary of a case (read-only)
+      description: >
+        Reports each evidence item's status, last verification time and custody chain
+        validity. Read-only: it does not re-hash files or append custody entries; use
+        POST /evidence/{id}/verify for that.
+      operationId: getCaseIntegrity
+      tags:
+        - integrity
+      responses:
+        "200":
+          description: Case integrity summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseIntegrity'
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /evidence/{id}/simulate-tamper:
+    parameters:
+      - $ref: '#/components/parameters/EvidenceIdPath'
+    post:
+      summary: "DEMO ONLY: modify the stored file (requires DEMO_MODE=1)"
+      description: >
+        Demo-only. Returns 404 unless the server runs with DEMO_MODE=1. Appends bytes
+        to the stored copy and records a DEMO custody entry. Status is unchanged until
+        POST /evidence/{id}/verify detects the mismatch and quarantines the evidence.
+      operationId: simulateTamper
+      tags:
+        - integrity
+      responses:
+        "200":
+          description: Stored file modified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TamperSimulation'
+        "404":
+          description: DEMO_MODE disabled, or evidence not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: Stored evidence file is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
+  parameters:
+    EvidenceIdPath:
+      name: id
+      in: path
+      required: true
+      description: Unique identifier of the evidence item
+      schema:
+        type: string
+      example: "EVID-001"
+
   schemas:
+    EvidenceStatus:
+      type: string
+      enum: [ACTIVE, QUARANTINED, REMOVED]
+
+    VerifyState:
+      type: string
+      nullable: true
+      enum: [MATCH, MISMATCH, MISSING, CUSTODY_BROKEN, null]
+      description: "Outcome of the most recent re-verification; null until the evidence is first verified."
+
+    VerifyRequest:
+      type: object
+      properties:
+        actor:
+          type: string
+          default: "Integrity Verifier"
+
+    RemoveRequest:
+      type: object
+      properties:
+        actor:
+          type: string
+          default: "Investigator"
+        reason:
+          type: string
+          nullable: true
+          example: "Duplicate of EVID-002"
+
+    VerificationResult:
+      type: object
+      properties:
+        evidence_id:
+          type: string
+        outcome:
+          type: string
+          enum: [MATCH, MISMATCH, MISSING, CUSTODY_BROKEN]
+        match:
+          type: boolean
+        verify_state:
+          $ref: '#/components/schemas/VerifyState'
+        previous_status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        intake_sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        observed_sha256:
+          type: string
+          nullable: true
+          description: "Hash of the stored file now; null if the file is missing or unreadable"
+        custody_chain_valid:
+          type: boolean
+        custody_message:
+          type: string
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        custody_entry:
+          $ref: '#/components/schemas/CustodyEntry'
+      required: [evidence_id, outcome, match, verify_state, previous_status, status, intake_sha256,
+                 observed_sha256, custody_chain_valid, custody_message, verified_at, custody_entry]
+
+    EvidenceStateChange:
+      type: object
+      properties:
+        evidence_id:
+          type: string
+        previous_status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        custody_entry:
+          $ref: '#/components/schemas/CustodyEntry'
+      required: [evidence_id, previous_status, status, custody_entry]
+
+    EvidenceIntegrity:
+      type: object
+      properties:
+        evidence_id:
+          type: string
+        filename:
+          type: string
+        sha256:
+          type: string
+          description: "Intake SHA-256 (immutable)"
+        status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        verify_state:
+          $ref: '#/components/schemas/VerifyState'
+        custody_entries:
+          type: integer
+        custody_chain_valid:
+          type: boolean
+        custody_message:
+          type: string
+        last_custody_action:
+          type: string
+          nullable: true
+      required: [evidence_id, filename, sha256, status, verified_at, verify_state, custody_entries,
+                 custody_chain_valid, custody_message, last_custody_action]
+
+    CaseIntegrity:
+      type: object
+      properties:
+        case_id:
+          type: string
+        checked_at:
+          type: string
+          format: date-time
+        intact:
+          type: boolean
+          description: "True when no evidence is QUARANTINED and every custody chain verifies"
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            by_status:
+              type: object
+              additionalProperties:
+                type: integer
+              example: {ACTIVE: 5, QUARANTINED: 1, REMOVED: 0}
+            by_verify_state:
+              type: object
+              additionalProperties:
+                type: integer
+              example: {MATCH: 4, MISMATCH: 1, MISSING: 0, CUSTODY_BROKEN: 0}
+            never_verified:
+              type: integer
+              description: "Evidence whose verify_state is still null"
+            broken_custody_chains:
+              type: integer
+          required: [total, by_status, by_verify_state, never_verified, broken_custody_chains]
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceIntegrity'
+      required: [case_id, checked_at, intact, summary, evidence]
+
+    TamperSimulation:
+      type: object
+      properties:
+        evidence_id:
+          type: string
+        demo:
+          type: boolean
+        intake_sha256:
+          type: string
+        tampered_sha256:
+          type: string
+        status:
+          $ref: '#/components/schemas/EvidenceStatus'
+        custody_entry:
+          $ref: '#/components/schemas/CustodyEntry'
+      required: [evidence_id, demo, intake_sha256, tampered_sha256, status, custody_entry]
+
     CaseCreateRequest:
       type: object
       properties:
@@ -583,6 +895,19 @@ components:
           type: string
           format: date-time
           example: "2026-10-18T10:00:00Z"
+        status:
+          type: string
+          enum: [ACTIVE, QUARANTINED, REMOVED]
+          description: "Evidence lifecycle status (H″). Evidence rows are never deleted; REMOVED is a status. QUARANTINED means re-verification found the stored file no longer matches the intake SHA-256."
+          example: "ACTIVE"
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Time of the last successful re-hash of the stored file; null until verified."
+          example: null
+        verify_state:
+          $ref: '#/components/schemas/VerifyState'
         custody:
           type: array
           items:

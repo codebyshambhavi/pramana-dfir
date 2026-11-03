@@ -21,6 +21,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.db.migrate import migrate
 from app.db.models import Base
 from app.db.session import get_db
 from app.main import app
@@ -39,7 +40,8 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_
 @pytest.fixture(autouse=True)
 def setup_database() -> Generator[None, None, None]:
     """Create clean database tables before each test and drop them after."""
-    Base.metadata.create_all(bind=test_engine)
+    # Same path as production startup: tables, columns, data steps and integrity triggers.
+    migrate(test_engine)
     yield
     Base.metadata.drop_all(bind=test_engine)
 
