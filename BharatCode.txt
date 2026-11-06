@@ -1,0 +1,35 @@
+PROJECT: PRAMANA DFIR
+HACKATHON: BharatCode Build League 2026
+
+GITHUB: https://github.com/codebyshambhavi/pramana-dfir
+LIVE DEMO: https://pramana-dfir.vercel.app
+API DOCS: https://pramana-dfir.onrender.com/docs
+
+DESCRIPTION:
+PRAMANA is an evidence-first, AI-assisted digital forensics and cyber investigation platform. It helps investigators preserve digital evidence, extract and normalize artifacts, correlate events across multiple sources, identify anomalies and contradictions, reconstruct investigation timelines, and generate traceable findings.
+
+CORE PRINCIPLE:
+Forensics first. AI second.
+
+TECH STACK:
+Python, FastAPI, React, TypeScript, PostgreSQL, NetworkX, Docker.
+
+KEY CAPABILITIES:
+- Digital evidence preservation and integrity verification.
+- Artifact extraction and entity normalization.
+- Cross-source event correlation.
+- Claim generation and evidence-backed findings.
+- Investigation timelines and traceable reports.
+- Human-in-the-loop verification.
+
+BHARATCODE INTEGRATION:
+BharatCode API integration is planned for AI-assisted investigation workflows using the Qwen 3.8 27B model. AI-generated outputs will remain evidence-grounded and subject to investigator verification.
+
+API BASE URL:
+https://bharatcode.ai/api/model/v1
+
+MODEL:
+qwen-3.8-27b
+
+SECURITY:
+API credentials must be stored in server-side environment variables. Never commit API keys, tokens, private evidence, or personal data.
