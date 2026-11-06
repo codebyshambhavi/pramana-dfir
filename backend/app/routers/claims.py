@@ -21,7 +21,12 @@ from app.db.claims import claim_lineage
 from app.db.models import AnalysisRun, Case, Claim, EventModel, Evidence
 from app.db.runs import create_analysis_run, manifest_evidence
 from app.db.session import get_db
-from app.services.runs import diff_runs, execute_analysis_run, get_run_details
+from app.services.runs import (
+    diff_runs,
+    execute_analysis_run,
+    get_run_details,
+    verify_run_reproducibility,
+)
 from intelligence.claims import generate_claims
 from intelligence.correlate import correlate_events
 
@@ -122,10 +127,34 @@ def get_case_run(case_id: str, run_id: str, db: Session = Depends(get_db)) -> di
     "/runs/{run_id}",
     summary="Retrieve complete, reproducible immutable run",
 )
-def get_run_endpoint(run_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+def get_run_endpoint(
+    run_id: str,
+    verify: bool = False,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     """Retrieve complete immutable run with inputs, claims, ranked hypotheses, H0, and reconstruction."""
     try:
-        return get_run_details(db, run_id)
+        return get_run_details(db, run_id, verify=verify)
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/runs/{run_id}/verify",
+    summary="Independently verify immutable run reproducibility",
+)
+def verify_run_endpoint(run_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Independently recomputes from historical inputs and confirms whether the result
+    matches the persisted hash, without mutating the original run.
+    """
+    try:
+        run = db.get(AnalysisRun, run_id)
+        if not run:
+            raise LookupError(f"AnalysisRun '{run_id}' not found")
+        return verify_run_reproducibility(db, run)
     except LookupError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

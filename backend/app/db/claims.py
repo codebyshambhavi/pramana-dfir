@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
@@ -39,6 +40,9 @@ from app.db.models import (
 
 class ClaimValidationError(ValueError):
     """A claim or edge violates the H″ schema, the enums or same-run lineage rules."""
+
+
+_HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
 
 def canonical_json(value: Any) -> str:
@@ -134,6 +138,14 @@ def build_claim_rows(
             raise ClaimValidationError("claim params must be a JSON object")
         if not spec.rule_id or not spec.rule_version:
             raise ClaimValidationError("rule_id and rule_version are required")
+
+        has_support = any(edge.role == "SUPPORTS" for edge in spec.edges)
+        if not has_support and spec.status != "ASSUMED":
+            raise ClaimValidationError(
+                f"Claim {spec.type} must be backed by at least one ClaimEdge with role 'SUPPORTS' "
+                f"unless explicitly marked ASSUMED (status was {spec.status!r})"
+            )
+
         input_events: list[str] = []
         for edge in spec.edges:
             _check_enum(edge.ref_kind, EDGE_REF_KINDS, "edge ref_kind")
@@ -153,6 +165,9 @@ def build_claim_rows(
             if edge.role == "SUPPORTS":
                 input_events.append(edge.ref_id)
         input_shas = [manifest_sha[events[e].evidence_id] for e in input_events]
+        for sha in input_shas:
+            if not _HEX64.match(sha or ""):
+                raise ClaimValidationError(f"evidence intake SHA-256 {sha!r} is invalid")
         claim_key = compute_claim_key(spec.type, spec.params)
         claim_id = compute_claim_id(claim_key, input_events, input_shas, spec.rule_id, spec.rule_version,
                                     assumptions_hash)

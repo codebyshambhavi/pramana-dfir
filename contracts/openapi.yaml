@@ -726,9 +726,35 @@ paths:
           required: true
           schema:
             type: string
+        - name: verify
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to independently recompute from current case events and verify ranking hash
       responses:
         "200":
           description: Complete reproducible immutable run with manifest, claims, ranked hypotheses, H0, and reconstruction
+        "404":
+          description: Run not found
+
+  /runs/{run_id}/verify:
+    post:
+      summary: Independently verify immutable run reproducibility
+      operationId: verifyRunReproducibility
+      tags:
+        - claims
+        - runs
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Independent recomputation and cryptographic verification result without mutating the run
         "404":
           description: Run not found
 

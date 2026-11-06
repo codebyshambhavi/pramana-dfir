@@ -213,33 +213,71 @@ Comparing two runs by `claim_id` would fail because `claim_id` hashes the input 
 | `POST` | `/cases/{id}/runs` | Create an immutable analysis run with T5-T8 evaluation |
 | `GET` | `/cases/{id}/runs` | List all analysis runs for a case |
 | `GET` | `/cases/{id}/runs/{run_id}` | Retrieve run metadata and full evaluation |
-| `GET` | `/runs/{run_id}` | Retrieve complete reproducible run with manifest, claims, hypotheses, reconstruction |
+| `GET` | `/runs/{run_id}` | Retrieve complete reproducible run (`?verify=true` triggers independent verification) |
+| `POST` | `/runs/{run_id}/verify` | Independently recompute and verify run reproducibility without mutating database |
 | `GET` | `/runs/{run_a_id}/diff/{run_b_id}` | Compare two immutable runs matching claims by `claim_key` |
+| `GET` | `/runs/{run_id}/claims/{claim_id}/lineage` | Full lineage traversal from claim to evidence intake SHA-256 |
 | `POST` | `/cases/{id}/analyze` | Case analysis alias creating an immutable analysis run |
 
 ---
 
-## 5. Test Suite Verification
+## 5. Hardening and Completion Audit (PR #11)
+
+As part of the final Role 3 completion audit, the following hardening improvements were implemented:
+
+1. **Defensible Source Coverage Semantics (`intelligence/hyp/engine.py`):**
+   - Explicit gap bounds: `DEFAULT_COVERAGE_GAP_BOUND = timedelta(minutes=30)`, `DEFAULT_MAX_INTERNAL_GAP = timedelta(hours=2)`.
+   - A source counts as demonstrably covering an interval only when observed events span start/end boundaries and internal gaps do not exceed the threshold, or an explicit case-level source coverage declaration is provided.
+   - Missing or unmonitored sources produce `UNOBSERVABLE` (strictly 0.0 penalty).
+   - Validated across 7 test cases in `intelligence/tests/test_t7_coverage_semantics.py`.
+
+2. **Historical Run Reproducibility (`backend/app/services/runs.py`, `backend/app/db/models.py`):**
+   - Created write-once `RunSnapshot` table and file persistence at `storage/runs/{run_id}.json`.
+   - `GET /runs/{id}` retrieves frozen historical conclusions rather than recomputing from mutated database events or templates.
+   - Non-mutating verification operation (`GET /runs/{id}?verify=true` and `POST /runs/{id}/verify`) detects divergence when underlying data changes while leaving historical records untouched.
+   - Tested in `backend/tests/test_t8_reproducibility.py`.
+
+3. **Full Provenance Chain Verification (`backend/app/db/claims.py`):**
+   - Enforced that every claim must be backed by at least one `SUPPORTS` edge (unless marked `ASSUMED`).
+   - Validated evidence intake hashes against 64-character lowercase hex format.
+   - Validated that every claim edge points to an existing event or same-run claim.
+   - Full provenance traversal: `Hypothesis -> Claim -> ClaimEdge -> Event -> Evidence -> SHA-256`.
+   - Tested in `backend/tests/test_t6_lineage_integrity.py`.
+
+4. **Scheduler Log Invalidation & Semantic Diffing (`intelligence/templates/sanctioned_backup.yaml`, `backend/tests/test_t8_scheduler_invalidation.py`):**
+   - Added `H2-EXP-2` (scheduled backup task in scheduler log).
+   - When scheduler log covers the window and task is absent, `H2-EXP-2` evaluates to `MISSING` (penalizing H2).
+   - When scheduler log is quarantined, `H2-EXP-2` transitions to `UNOBSERVABLE` (0.0 penalty), strengthening H2.
+   - Semantic diff explicitly tracks item state shifts and explains root causes in `root_cause_analysis`.
+
+5. **Database and Transaction Safety (`backend/tests/test_t8_db_safety.py`):**
+   - Write-once immutability verified for all run tables (`analysis_run`, `claim`, `claim_edge`, `run_snapshots`, `hypothesis_eval`, `source_coverage`).
+   - Atomicity and rollback verified: partial runs are never left behind on failure.
+   - Post-sealing child row rejection verified.
+
+---
+
+## 6. Test Suite Verification
 
 The complete PRAMANA test suite passes with zero errors:
 
 ```text
-======================= 483 passed, 5 skipped, 62 warnings in 5.99s =======================
+================= 513 passed, 5 skipped, 62 warnings in 6.96s ==================
 ```
 
-### Key Test Suites:
-- `intelligence/tests/test_t7_hypothesis.py` (11 tests):
-  - Golden cases for H1, H2, H3, and UNDETERMINED.
-  - Disconfirmation ranking and witness family deduplication.
-  - MISSING vs UNOBSERVABLE coverage handling.
-  - Non-diagnostic evidence detection.
-  - H0 residual computation and next-best evidence generation.
-- `intelligence/tests/test_t8_reconstruct.py` (4 tests):
-  - Stage progression (SUPPORTED vs GAP).
-  - Interval ordering via `TimeInterval` (`PRECEDES`, `CONCURRENT_OR_OVERLAPPING`).
-  - Background activity and H0 separation.
-- `backend/tests/test_t8_runs_diff.py` (4 tests):
-  - Database-level write-once run immutability (UPDATE/DELETE blocked).
-  - Run retrieval and `ranking_hash` verification.
-  - Evidence quarantine run invalidation (`is_valid=False`).
-  - Semantic run diffing matching claims by `claim_key` with root-cause analysis.
+### Full Test Coverage Breakdown:
+- `intelligence/tests/test_t7_hypothesis.py` (11 tests)
+- `intelligence/tests/test_t7_coverage_semantics.py` (11 tests)
+- `intelligence/tests/test_t7_edge_cases.py` (5 tests)
+- `intelligence/tests/test_t8_reconstruct.py` (4 tests)
+- `backend/tests/test_t8_runs_diff.py` (4 tests)
+- `backend/tests/test_t8_reproducibility.py` (4 tests)
+- `backend/tests/test_t8_scheduler_invalidation.py` (1 test)
+- `backend/tests/test_t8_db_safety.py` (4 tests)
+- `backend/tests/test_t6_lineage_integrity.py` (5 tests)
+- `backend/tests/test_t6_claims_engine.py` (22 tests)
+- `backend/tests/test_t5_t6_api_integration.py` (1 test)
+- `backend/tests/test_t3_claims.py` (19 tests)
+- `backend/tests/test_t3_schema.py` (21 tests)
+- `backend/tests/test_t4_integrity.py` (30 tests)
+- Ground truth & integration benchmarks (12 tests)

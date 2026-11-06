@@ -60,6 +60,20 @@ class TemplateItem:
     weight: float = 1.0
     critical: bool = False
 
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "id": self.id,
+            "stage": self.stage,
+            "description": self.description,
+            "claim_type": self.claim_type,
+            "source_kind": self.source_kind,
+            "weight": self.weight,
+            "critical": self.critical,
+        }
+        if self.params:
+            d["params"] = self.params
+        return d
+
 
 @dataclass(frozen=True)
 class TemplateConstraint:
@@ -68,6 +82,18 @@ class TemplateConstraint:
     first: str | None = None  # for "before"
     second: str | None = None  # for "before"
     minutes: float | None = None  # for "within"
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"type": self.type}
+        if self.target:
+            d["target"] = self.target
+        if self.first:
+            d["first"] = self.first
+        if self.second:
+            d["second"] = self.second
+        if self.minutes is not None:
+            d["minutes"] = self.minutes
+        return d
 
 
 @dataclass
@@ -144,6 +170,19 @@ class HypothesisTemplate:
             forbids=forbids,
             constraints=constraints,
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "name": self.name,
+            "description": self.description,
+            "stages": list(self.stages),
+            "requires": [r.to_dict() for r in self.requires],
+            "expects": [e.to_dict() for e in self.expects],
+            "forbids": [f.to_dict() for f in self.forbids],
+            "constraints": [c.to_dict() for c in self.constraints],
+        }
 
 
 @dataclass
@@ -266,29 +305,39 @@ def load_templates(directory: Path | None = None) -> list[HypothesisTemplate]:
 
 # --- Source Coverage Inspection ---
 
+DEFAULT_COVERAGE_GAP_BOUND = timedelta(minutes=30)
+DEFAULT_MAX_INTERNAL_GAP = timedelta(hours=2)
+
+
 def _normalize_source_kind(source: str) -> str:
     s = (source or "").lower()
-    if "log" in s or "sys" in s:
-        return "system_log"
+    if "audit" in s:
+        return "audit"
+    if "sched" in s or "cron" in s or "task" in s:
+        return "scheduler"
+    if "auth" in s or "login" in s:
+        return "auth"
     if "browser" in s or "chrome" in s or "firefox" in s:
         return "browser"
     if "chat" in s or "slack" in s or "teams" in s:
         return "chat"
-    if "pcap" in s or "network" in s or "dns" in s or "proxy" in s:
+    if "pcap" in s or "network" in s or "dns" in s or "proxy" in s or "net" in s:
         return "network"
-    if "auth" in s or "login" in s:
-        return "auth"
-    if "audit" in s:
-        return "audit"
     if "photo" in s or "image" in s or "exif" in s:
         return "image"
+    if "log" in s or "sys" in s:
+        return "system_log"
     return s
 
 
 def compute_source_coverage(
     events: Sequence[Mapping[str, Any]],
 ) -> dict[str, dict[str, Any]]:
-    """Determine which source kinds actively cover the investigation time window."""
+    """Determine which source kinds actively cover the investigation time window.
+
+    Records distinct timestamps for each source kind to allow rigorous gap
+    and continuity analysis.
+    """
     coverage: dict[str, dict[str, Any]] = {}
 
     for e in events:
@@ -296,14 +345,16 @@ def compute_source_coverage(
         norm_kind = _normalize_source_kind(raw_source)
         action = (e.get("action") or "").lower()
         ts_str = e.get("timestamp")
-        dt = None
+        dt: datetime | None = None
         if isinstance(ts_str, str):
             try:
                 dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                if dt.tzinfo:
+                    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
             except ValueError:
                 pass
         elif isinstance(ts_str, datetime):
-            dt = ts_str
+            dt = ts_str.astimezone(timezone.utc).replace(tzinfo=None) if ts_str.tzinfo else ts_str
 
         device = e.get("device")
 
@@ -312,6 +363,8 @@ def compute_source_coverage(
         # If event records authentication/session activity, it also covers "auth"
         if action in ("login", "auth", "token_refresh", "session_start", "authenticate") or "auth" in raw_source:
             kinds_to_record.add("auth")
+        if "sched" in raw_source or action in ("job_start", "scheduled_task", "cron_run"):
+            kinds_to_record.add("scheduler")
 
         for k in kinds_to_record:
             if k not in coverage:
@@ -322,6 +375,7 @@ def compute_source_coverage(
                     "devices": set(),
                     "min_time": dt,
                     "max_time": dt,
+                    "timestamps": [],
                 }
             cov = coverage[k]
             cov["raw_sources"].add(raw_source)
@@ -329,10 +383,15 @@ def compute_source_coverage(
             if device:
                 cov["devices"].add(device)
             if dt is not None:
+                cov["timestamps"].append(dt)
                 if cov["min_time"] is None or dt < cov["min_time"]:
                     cov["min_time"] = dt
                 if cov["max_time"] is None or dt > cov["max_time"]:
                     cov["max_time"] = dt
+
+    # Sort timestamps per source kind
+    for cov in coverage.values():
+        cov["timestamps"].sort()
 
     return coverage
 
@@ -341,23 +400,83 @@ def _source_demonstrably_covered(
     source_kind: str | None,
     coverage: dict[str, dict[str, Any]],
     target_window: tuple[datetime | None, datetime | None] | None = None,
+    explicit_declarations: Sequence[Mapping[str, Any]] | None = None,
+    gap_bound: timedelta = DEFAULT_COVERAGE_GAP_BOUND,
+    max_internal_gap: timedelta = DEFAULT_MAX_INTERNAL_GAP,
 ) -> bool:
-    """True if source_kind is present in the ingested evidence and covers the window."""
+    """Defensible source coverage verification.
+
+    A source counts as demonstrably covering an interval only when:
+    1. An explicit case-level source coverage declaration covers that interval; OR
+    2. Its observed events demonstrably span the relevant interval:
+       - There is at least one event at or before target_start (within gap_bound);
+       - There is at least one event at or after target_end (within gap_bound);
+       - No internal logging gap across the interval exceeds max_internal_gap.
+
+    A source that was never collected, has events only before, has events only
+    after, or has an unmonitored gap exceeding the bound returns False.
+    """
     if not source_kind:
         return True
     norm_target = _normalize_source_kind(source_kind)
+
+    # 1. Check explicit case-level source coverage declarations
+    if explicit_declarations:
+        for decl in explicit_declarations:
+            decl_source = _normalize_source_kind(decl.get("source_kind", ""))
+            if decl_source == norm_target:
+                w_start_str = decl.get("window_start")
+                w_end_str = decl.get("window_end")
+                if w_start_str and w_end_str:
+                    try:
+                        d_start = datetime.fromisoformat(str(w_start_str).replace("Z", "+00:00"))
+                        d_end = datetime.fromisoformat(str(w_end_str).replace("Z", "+00:00"))
+                        if d_start.tzinfo:
+                            d_start = d_start.astimezone(timezone.utc).replace(tzinfo=None)
+                        if d_end.tzinfo:
+                            d_end = d_end.astimezone(timezone.utc).replace(tzinfo=None)
+                        if target_window and target_window[0] and target_window[1]:
+                            t_start, t_end = target_window[0], target_window[1]
+                            if d_start <= t_start + gap_bound and d_end >= t_end - gap_bound:
+                                return True
+                        else:
+                            return True
+                    except ValueError:
+                        pass
+                else:
+                    return True
+
     cov = coverage.get(norm_target)
     if not cov or cov["event_count"] == 0:
+        # Source was never collected
         return False
 
+    # 2. Check observed event coverage against target window
     if target_window and target_window[0] and target_window[1]:
-        start, end = target_window
+        start, end = target_window[0], target_window[1]
         c_min, c_max = cov["min_time"], cov["max_time"]
-        if c_min and c_max:
-            # Buffer by 5 minutes
-            buf = timedelta(minutes=5)
-            if c_min <= start + buf and c_max >= end - buf:
-                return True
+        if c_min is None or c_max is None:
+            return False
+
+        # Condition 1: Must span start (events only after the interval cannot cover it)
+        if c_min > start + gap_bound:
+            return False
+
+        # Condition 2: Must span end (events only before the interval cannot cover it)
+        if c_max < end - gap_bound:
+            return False
+
+        # Condition 3: Internal gap continuity check
+        ts_list = cov.get("timestamps", [])
+        # Find all timestamps in and bounding the window
+        relevant_ts = [t for t in ts_list if (start - gap_bound) <= t <= (end + gap_bound)]
+        if len(relevant_ts) >= 2:
+            for i in range(len(relevant_ts) - 1):
+                if (relevant_ts[i + 1] - relevant_ts[i]) > max_internal_gap:
+                    # Gap exceeds allowed bound!
+                    return False
+        elif len(relevant_ts) == 1 and (end - start) > max_internal_gap:
+            return False
 
     return True
 
@@ -380,7 +499,10 @@ def _claim_to_dict(c: Any) -> dict[str, Any]:
     }
 
 
-def _matches_item(item: TemplateItem, claim: dict[str, Any]) -> bool:
+def _matches_item(
+    item: TemplateItem,
+    claim: dict[str, Any],
+) -> bool:
     if claim.get("type") != item.claim_type:
         return False
     if item.params:
@@ -396,6 +518,8 @@ def _extract_claim_events(
     events_by_id: Mapping[str, Mapping[str, Any]],
 ) -> list[Mapping[str, Any]]:
     evs: list[Mapping[str, Any]] = []
+    if "events" in claim and isinstance(claim["events"], list):
+        evs.extend(claim["events"])
     edges = claim.get("edges") or []
     for edge in edges:
         ref_kind = getattr(edge, "ref_kind", None) or (edge.get("ref_kind") if isinstance(edge, dict) else None)
@@ -457,6 +581,58 @@ def evaluate_hypotheses(
     events_by_id = {e["event_id"]: e for e in events if "event_id" in e}
     coverage = compute_source_coverage(events)
 
+    # Determine case-wide temporal boundaries
+    all_dts: list[datetime] = []
+    for e in events:
+        ts_val = e.get("timestamp")
+        if isinstance(ts_val, str):
+            try:
+                d = datetime.fromisoformat(ts_val.replace("Z", "+00:00"))
+                if d.tzinfo:
+                    d = d.astimezone(timezone.utc).replace(tzinfo=None)
+                all_dts.append(d)
+            except ValueError:
+                pass
+        elif isinstance(ts_val, datetime):
+            all_dts.append(ts_val.astimezone(timezone.utc).replace(tzinfo=None) if ts_val.tzinfo else ts_val)
+
+    case_start = min(all_dts) if all_dts else None
+    case_end = max(all_dts) if all_dts else None
+    case_window = (case_start, case_end) if (case_start and case_end) else None
+
+    explicit_declarations = None
+    if assumptions:
+        explicit_declarations = assumptions.get("source_coverage")
+        if "target_window" in assumptions:
+            tw = assumptions["target_window"]
+            if isinstance(tw, (list, tuple)) and len(tw) == 2:
+                t0, t1 = tw[0], tw[1]
+                if isinstance(t0, str):
+                    t0 = datetime.fromisoformat(t0.replace("Z", "+00:00"))
+                if isinstance(t1, str):
+                    t1 = datetime.fromisoformat(t1.replace("Z", "+00:00"))
+                if t0 and t0.tzinfo:
+                    t0 = t0.astimezone(timezone.utc).replace(tzinfo=None)
+                if t1 and t1.tzinfo:
+                    t1 = t1.astimezone(timezone.utc).replace(tzinfo=None)
+                case_window = (t0, t1)
+
+    def _resolve_item_window(it: HypothesisItem) -> tuple[datetime | None, datetime | None] | None:
+        if it.params and "window" in it.params:
+            w = it.params["window"]
+            if isinstance(w, (list, tuple)) and len(w) == 2:
+                w0, w1 = w[0], w[1]
+                if isinstance(w0, str):
+                    w0 = datetime.fromisoformat(w0.replace("Z", "+00:00"))
+                if isinstance(w1, str):
+                    w1 = datetime.fromisoformat(w1.replace("Z", "+00:00"))
+                if w0 and w0.tzinfo:
+                    w0 = w0.astimezone(timezone.utc).replace(tzinfo=None)
+                if w1 and w1.tzinfo:
+                    w1 = w1.astimezone(timezone.utc).replace(tzinfo=None)
+                return (w0, w1)
+        return case_window
+
     # Track all events explained by any hypothesis
     all_explained_event_ids: set[str] = set()
 
@@ -509,7 +685,13 @@ def evaluate_hypotheses(
                             hyp_explained_events.add(ev["event_id"])
             else:
                 # Absence of required evidence
-                is_covered = _source_demonstrably_covered(item.source_kind, coverage)
+                item_win = _resolve_item_window(item)
+                is_covered = _source_demonstrably_covered(
+                    item.source_kind,
+                    coverage,
+                    target_window=item_win,
+                    explicit_declarations=explicit_declarations,
+                )
                 if is_covered:
                     state = STATE_MISSING
                     penalty = (2.0 if item.critical else 1.0) * item.weight
@@ -560,7 +742,13 @@ def evaluate_hypotheses(
                     for ev in c_evs:
                         hyp_explained_events.add(ev["event_id"])
             else:
-                is_covered = _source_demonstrably_covered(item.source_kind, coverage)
+                item_win = _resolve_item_window(item)
+                is_covered = _source_demonstrably_covered(
+                    item.source_kind,
+                    coverage,
+                    target_window=item_win,
+                    explicit_declarations=explicit_declarations,
+                )
                 if is_covered:
                     state = STATE_MISSING
                     penalty = 0.5 * item.weight
@@ -604,7 +792,13 @@ def evaluate_hypotheses(
                 hard_violations += 1
                 rationale = f"FORBIDDEN claim {item.claim_type} is present! Direct contradiction."
             else:
-                is_covered = _source_demonstrably_covered(item.source_kind, coverage)
+                item_win = _resolve_item_window(item)
+                is_covered = _source_demonstrably_covered(
+                    item.source_kind,
+                    coverage,
+                    target_window=item_win,
+                    explicit_declarations=explicit_declarations,
+                )
                 if is_covered:
                     state = STATE_SATISFIED
                     penalty = 0.0
@@ -742,18 +936,19 @@ def evaluate_hypotheses(
         all_explained_event_ids.update(hyp_explained_events)
 
     # 6. Flag Non-Diagnostic Items
-    # An item is non-diagnostic if evidence of that claim_type is SATISFIED across ALL competing hypotheses
-    for hyp in evaluated_hypotheses:
-        for ev in hyp.evaluations:
-            if ev.state == STATE_SATISFIED:
-                present_in_all = all(
-                    any(other_ev.claim_type == ev.claim_type and other_ev.state == STATE_SATISFIED
-                        for other_ev in other_hyp.evaluations)
-                    for other_hyp in evaluated_hypotheses
-                )
-                if present_in_all:
-                    ev.diagnostic = False
-                    ev.rationale += " [NON-DIAGNOSTIC: Consistent across all competing hypotheses]"
+    # An item is non-diagnostic if evidence of that claim_type is SATISFIED across ALL competing hypotheses (when >= 2 hypotheses exist)
+    if len(evaluated_hypotheses) > 1:
+        for hyp in evaluated_hypotheses:
+            for ev in hyp.evaluations:
+                if ev.state == STATE_SATISFIED:
+                    present_in_all = all(
+                        any(other_ev.claim_type == ev.claim_type and other_ev.state == STATE_SATISFIED
+                            for other_ev in other_hyp.evaluations)
+                        for other_hyp in evaluated_hypotheses
+                    )
+                    if present_in_all:
+                        ev.diagnostic = False
+                        ev.rationale += " [NON-DIAGNOSTIC: Consistent across all competing hypotheses]"
 
     # 7. Disconfirmation Ranking & Margin Evaluation
     # Sort ascending by inconsistency_score (lower penalty is better)

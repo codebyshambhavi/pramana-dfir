@@ -39,8 +39,8 @@ from sqlalchemy.engine import Connection, Engine
 
 from app.db.models import EVIDENCE_STATUSES, VERIFY_STATES
 
-RUN_TABLES = ("analysis_run", "claim", "claim_edge", "hypothesis_eval", "source_coverage")
-RUN_CHILD_TABLES = ("claim", "claim_edge", "hypothesis_eval", "source_coverage")
+RUN_TABLES = ("analysis_run", "claim", "claim_edge", "hypothesis_eval", "source_coverage", "run_snapshots")
+RUN_CHILD_TABLES = ("claim", "claim_edge", "hypothesis_eval", "source_coverage", "run_snapshots")
 
 
 @event.listens_for(Engine, "connect")

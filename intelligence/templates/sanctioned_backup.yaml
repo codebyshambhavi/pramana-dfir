@@ -29,6 +29,14 @@ expects:
     claim_type: ACTOR_DEVICE_CONSISTENT
     source_kind: chat
     weight: 0.5
+  - id: H2-EXP-2
+    stage: authorization
+    description: Scheduled backup execution record in scheduler log
+    claim_type: ACTOR_DEVICE_CONSISTENT
+    source_kind: scheduler
+    params:
+      service: scheduled_backup
+    weight: 1.0
 forbids:
   - id: H2-FORBID-1
     stage: staging
