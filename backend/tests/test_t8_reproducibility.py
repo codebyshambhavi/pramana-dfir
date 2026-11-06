@@ -174,3 +174,142 @@ def test_explicit_verification_detects_divergence_when_data_changes(client: Test
     get_res = client.get(f"/runs/{run_id}")
     assert get_res.status_code == 200
     assert get_res.json()["ranking_hash"] == res.json()["ranking_hash"]
+
+    # Historical replay succeeds from preserved original inputs,
+    # cleanly distinguished from current database state comparison!
+    replay = v_data["historical_replay"]
+    assert replay["verified"] is True
+    assert replay["replay_possible"] is True
+    assert replay["ranking_hash_match"] is True
+    assert replay["ranking_order_match"] is True
+    assert replay["h0_residual_match"] is True
+    assert replay["hypotheses_match"] is True
+    assert replay["reconstruction_match"] is True
+    assert replay["snapshot_authoritative"] is True
+
+    curr = v_data["current_state_comparison"]
+    assert curr["diverged"] is True
+    assert curr["events_identical"] is False
+
+
+def test_snapshot_preserves_event_inputs_and_template_contents(client: TestClient, db_session: Session, repro_setup):
+    """Immutable snapshot preserves original event inputs and template contents, not just template_hash."""
+    from app.db.models import RunSnapshot
+
+    case_id, _, _ = repro_setup
+    res = client.post(
+        f"/cases/{case_id}/runs",
+        json={"engine_version": "pramana-engine@1.0.0", "assumptions": {"case_timezone": "UTC"}},
+    )
+    run_id = res.json()["run_id"]
+
+    snap = db_session.get(RunSnapshot, run_id)
+    assert snap is not None
+    assert "events" in snap.snapshot
+    assert len(snap.snapshot["events"]) >= 3
+    # Check that events have required fields
+    ev0 = snap.snapshot["events"][0]
+    assert "event_id" in ev0
+    assert "timestamp" in ev0
+    assert "action" in ev0
+
+    assert "templates" in snap.snapshot
+    assert len(snap.snapshot["templates"]) == 3
+    t_ids = {t["id"] for t in snap.snapshot["templates"]}
+    assert t_ids == {"H1", "H2", "H3"}
+    # Verify template content contains full stage, requirement, and constraint definitions
+    h1 = next(t for t in snap.snapshot["templates"] if t["id"] == "H1")
+    assert "stages" in h1
+    assert "requires" in h1
+    assert "expects" in h1
+    assert "forbids" in h1
+    assert "constraints" in h1
+
+
+def test_authoritative_database_snapshot_source(client: TestClient, repro_setup):
+    """Database snapshot is authoritative and returned as authoritative source."""
+    case_id, _, _ = repro_setup
+    res = client.post(
+        f"/cases/{case_id}/runs",
+        json={"engine_version": "pramana-engine@1.0.0", "assumptions": {"case_timezone": "UTC"}},
+    )
+    run_id = res.json()["run_id"]
+
+    get_res = client.get(f"/runs/{run_id}")
+    assert get_res.status_code == 200
+    data = get_res.json()
+    assert data["snapshot_source"] == "database"
+    assert data["snapshot_authoritative"] is True
+    assert data["snapshot_status"] == "AUTHORITATIVE_DB"
+    assert "snapshot_warning" not in data
+
+
+def test_filesystem_fallback_marked_non_durable(client: TestClient, db_session: Session, repro_setup):
+    """Local filesystem fallback cannot be presented as durable production storage."""
+    from app.db.models import RunSnapshot
+
+    case_id, _, _ = repro_setup
+    res = client.post(
+        f"/cases/{case_id}/runs",
+        json={"engine_version": "pramana-engine@1.0.0", "assumptions": {"case_timezone": "UTC"}},
+    )
+    run_id = res.json()["run_id"]
+
+    # Delete the DB snapshot row directly in SQL (bypassing ORM trigger for test simulation)
+    from sqlalchemy import text
+    db_session.execute(text("PRAGMA foreign_keys=OFF"))
+    db_session.execute(text("DROP TRIGGER IF EXISTS trg_run_snapshots_no_delete"))
+    db_session.execute(text("DELETE FROM run_snapshots WHERE run_id = :r"), {"r": run_id})
+    db_session.commit()
+    db_session.execute(text("PRAGMA foreign_keys=ON"))
+
+    # When retrieved, filesystem fallback exists on disk
+    get_res = client.get(f"/runs/{run_id}")
+    assert get_res.status_code == 200
+    data = get_res.json()
+    assert data["snapshot_source"] == "local_cache"
+    assert data["snapshot_authoritative"] is False
+    assert data["snapshot_status"] == "EPHEMERAL_LOCAL_FALLBACK"
+    assert "snapshot_warning" in data
+    assert "non-authoritative" in data["snapshot_warning"]
+
+
+def test_snapshot_unavailable_behavior(client: TestClient, db_session: Session, repro_setup):
+    """When both database snapshot and disk cache are missing, returns UNAVAILABLE without fabricating results."""
+    case_id, _, _ = repro_setup
+    res = client.post(
+        f"/cases/{case_id}/runs",
+        json={"engine_version": "pramana-engine@1.0.0", "assumptions": {"case_timezone": "UTC"}},
+    )
+    run_id = res.json()["run_id"]
+
+    # Remove DB snapshot
+    from sqlalchemy import text
+    db_session.execute(text("PRAGMA foreign_keys=OFF"))
+    db_session.execute(text("DROP TRIGGER IF EXISTS trg_run_snapshots_no_delete"))
+    db_session.execute(text("DELETE FROM run_snapshots WHERE run_id = :r"), {"r": run_id})
+    db_session.commit()
+    db_session.execute(text("PRAGMA foreign_keys=ON"))
+
+    # Remove disk cache
+    disk_file = Path(f"storage/runs/{run_id}.json")
+    if disk_file.exists():
+        disk_file.unlink()
+
+    get_res = client.get(f"/runs/{run_id}")
+    assert get_res.status_code == 200
+    data = get_res.json()
+    assert data["snapshot_status"] == "UNAVAILABLE"
+    assert data["snapshot_authoritative"] is False
+    assert data["ranked_hypotheses"] == []
+    assert data["reconstruction"] is None
+    assert data["ranking_hash_verified"] is False
+    assert "snapshot_warning" in data
+
+    # Verify endpoint also indicates replay impossible
+    verify_res = client.post(f"/runs/{run_id}/verify")
+    assert verify_res.status_code == 200
+    v_data = verify_res.json()
+    assert v_data["historical_replay"]["replay_possible"] is False
+    assert v_data["historical_replay"]["status"] == "UNAVAILABLE"
+

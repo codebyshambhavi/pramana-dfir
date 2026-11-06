@@ -231,26 +231,39 @@ As part of the final Role 3 completion audit, the following hardening improvemen
    - Missing or unmonitored sources produce `UNOBSERVABLE` (strictly 0.0 penalty).
    - Validated across 7 test cases in `intelligence/tests/test_t7_coverage_semantics.py`.
 
-2. **Historical Run Reproducibility (`backend/app/services/runs.py`, `backend/app/db/models.py`):**
-   - Created write-once `RunSnapshot` table and file persistence at `storage/runs/{run_id}.json`.
-   - `GET /runs/{id}` retrieves frozen historical conclusions rather than recomputing from mutated database events or templates.
-   - Non-mutating verification operation (`GET /runs/{id}?verify=true` and `POST /runs/{id}/verify`) detects divergence when underlying data changes while leaving historical records untouched.
+2. **Historical Run Reproducibility & Independent Replay (`backend/app/services/runs.py`, `backend/app/db/models.py`):**
+   - Preserved original input events (`events`) and complete template definitions (`templates`) inside the immutable `run_snapshots` table (and local file fallback).
+   - Independent verification (`POST /runs/{id}/verify` and `GET /runs/{id}?verify=true`) explicitly distinguishes:
+     - `historical_replay`: Replays evaluation from preserved original inputs to verify ranking order, ranking hash, H0 residual, hypotheses disconfirmation scores & statuses, and narrative reconstruction stages.
+     - `current_state_comparison`: Compares current live database events and current disk templates against the run, identifying data drift (`events_identical: False`, `diverged: True`).
    - Tested in `backend/tests/test_t8_reproducibility.py`.
 
-3. **Full Provenance Chain Verification (`backend/app/db/claims.py`):**
+3. **Production Persistence & Snapshot Authority (`backend/app/services/runs.py`):**
+   - Database snapshots are strictly authoritative (`snapshot_source: "database"`, `snapshot_authoritative: True`, `snapshot_status: "AUTHORITATIVE_DB"`).
+   - Local filesystem fallback cannot be presented as durable production storage: returns `snapshot_source: "local_cache"`, `snapshot_authoritative: False`, `snapshot_status: "EPHEMERAL_LOCAL_FALLBACK"`, with an explicit `snapshot_warning`.
+   - Unavailable snapshot behavior: when both database snapshot and disk cache are missing, returns `snapshot_status: "UNAVAILABLE"` without synthesizing or fabricating unverified historical conclusions.
+
+4. **PostgreSQL Trigger, Immutability & Transaction Verification (`backend/tests/test_postgres_migration.py`):**
+   - Verified against a live PostgreSQL 14 instance:
+     - Immutability of `run_snapshots` via `trg_run_snapshots_no_change` (rejects UPDATE, DELETE, TRUNCATE).
+     - Child row rejection post-sealing via `trg_run_snapshots_sealed_run`.
+     - Transaction atomicity & rollback: failed run creation leaves zero partial rows in `run_snapshots`, `claim`, or `analysis_run`.
+     - Full end-to-end execution and reproducibility verification on PostgreSQL.
+
+5. **Full Provenance Chain Verification (`backend/app/db/claims.py`):**
    - Enforced that every claim must be backed by at least one `SUPPORTS` edge (unless marked `ASSUMED`).
    - Validated evidence intake hashes against 64-character lowercase hex format.
    - Validated that every claim edge points to an existing event or same-run claim.
    - Full provenance traversal: `Hypothesis -> Claim -> ClaimEdge -> Event -> Evidence -> SHA-256`.
    - Tested in `backend/tests/test_t6_lineage_integrity.py`.
 
-4. **Scheduler Log Invalidation & Semantic Diffing (`intelligence/templates/sanctioned_backup.yaml`, `backend/tests/test_t8_scheduler_invalidation.py`):**
+6. **Scheduler Log Invalidation & Semantic Diffing (`intelligence/templates/sanctioned_backup.yaml`, `backend/tests/test_t8_scheduler_invalidation.py`):**
    - Added `H2-EXP-2` (scheduled backup task in scheduler log).
    - When scheduler log covers the window and task is absent, `H2-EXP-2` evaluates to `MISSING` (penalizing H2).
    - When scheduler log is quarantined, `H2-EXP-2` transitions to `UNOBSERVABLE` (0.0 penalty), strengthening H2.
    - Semantic diff explicitly tracks item state shifts and explains root causes in `root_cause_analysis`.
 
-5. **Database and Transaction Safety (`backend/tests/test_t8_db_safety.py`):**
+7. **Database and Transaction Safety (`backend/tests/test_t8_db_safety.py`):**
    - Write-once immutability verified for all run tables (`analysis_run`, `claim`, `claim_edge`, `run_snapshots`, `hypothesis_eval`, `source_coverage`).
    - Atomicity and rollback verified: partial runs are never left behind on failure.
    - Post-sealing child row rejection verified.
@@ -259,11 +272,18 @@ As part of the final Role 3 completion audit, the following hardening improvemen
 
 ## 6. Test Suite Verification
 
-The complete PRAMANA test suite passes with zero errors:
-
+### Real PostgreSQL Execution:
+When connected to a disposable PostgreSQL >= 14 database (`PRAMANA_TEST_PG_URL`):
 ```text
-================= 513 passed, 5 skipped, 62 warnings in 6.96s ==================
+====================== 526 passed, 62 warnings in 10.16s =======================
 ```
+- **526 passed, 0 skipped, 0 failed**.
+
+### Standard Environment (SQLite with PostgreSQL Tests Skipped):
+```text
+================= 517 passed, 9 skipped, 62 warnings in 8.12s ==================
+```
+- **517 passed, 9 skipped** (the 9 PostgreSQL integration tests in `test_postgres_migration.py`), **0 failed**.
 
 ### Full Test Coverage Breakdown:
 - `intelligence/tests/test_t7_hypothesis.py` (11 tests)
@@ -271,13 +291,15 @@ The complete PRAMANA test suite passes with zero errors:
 - `intelligence/tests/test_t7_edge_cases.py` (5 tests)
 - `intelligence/tests/test_t8_reconstruct.py` (4 tests)
 - `backend/tests/test_t8_runs_diff.py` (4 tests)
-- `backend/tests/test_t8_reproducibility.py` (4 tests)
+- `backend/tests/test_t8_reproducibility.py` (8 tests)
 - `backend/tests/test_t8_scheduler_invalidation.py` (1 test)
 - `backend/tests/test_t8_db_safety.py` (4 tests)
+- `backend/tests/test_postgres_migration.py` (9 tests)
 - `backend/tests/test_t6_lineage_integrity.py` (5 tests)
 - `backend/tests/test_t6_claims_engine.py` (22 tests)
 - `backend/tests/test_t5_t6_api_integration.py` (1 test)
 - `backend/tests/test_t3_claims.py` (19 tests)
 - `backend/tests/test_t3_schema.py` (21 tests)
 - `backend/tests/test_t4_integrity.py` (30 tests)
+- Evidence engine parsers and custody tests (110+ tests)
 - Ground truth & integration benchmarks (12 tests)

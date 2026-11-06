@@ -178,3 +178,142 @@ def test_pg_custody_and_verify_on_non_utc_server(non_utc_server, tmp_path):
         db.close()
     finally:
         engine.dispose()
+
+
+def test_pg_t8_run_snapshot_immutability(pg_engine):
+    """PostgreSQL triggers enforce write-once immutability on run_snapshots."""
+    migrate(pg_engine)
+    db = sessionmaker(bind=pg_engine)()
+    try:
+        run = create_analysis_run(
+            db,
+            "CASE-PG",
+            engine_version="e@1",
+            assumptions={"case_timezone": "UTC"},
+            snapshot_data={"test": "initial_data"},
+            template_hash="tmpl@1.0.0",
+        )
+        db.commit()
+
+        # 1. Reject UPDATE of run_snapshots
+        with pytest.raises(DBAPIError, match="PRAMANA: run_snapshots rows are write-once"):
+            db.execute(text("UPDATE run_snapshots SET template_hash = 'tampered' WHERE run_id = :r"), {"r": run.run_id})
+        db.rollback()
+
+        # 2. Reject DELETE of run_snapshots
+        with pytest.raises(DBAPIError, match="PRAMANA: run_snapshots rows are write-once"):
+            db.execute(text("DELETE FROM run_snapshots WHERE run_id = :r"), {"r": run.run_id})
+        db.rollback()
+
+        # 3. Reject TRUNCATE of run_snapshots
+        with pytest.raises(DBAPIError, match="PRAMANA: run_snapshots rows are write-once"):
+            db.execute(text("TRUNCATE run_snapshots CASCADE"))
+        db.rollback()
+    finally:
+        db.close()
+
+
+def test_pg_t8_run_snapshot_sealed_run(pg_engine):
+    """PostgreSQL trigger rejects inserting child snapshot records once parent run is sealed."""
+    migrate(pg_engine)
+    db = sessionmaker(bind=pg_engine)()
+    try:
+        run = create_analysis_run(
+            db,
+            "CASE-PG",
+            engine_version="e@1",
+            assumptions={"case_timezone": "UTC"},
+        )
+        db.commit()
+
+        # Attempt late insertion of a snapshot for the sealed run
+        with pytest.raises(DBAPIError, match="PRAMANA: run already exists; its records cannot be added later"):
+            db.execute(
+                text(
+                    "INSERT INTO run_snapshots (run_id, case_id, template_hash, snapshot, created_at) "
+                    "VALUES (:r, 'CASE-PG', 'late_hash', '{\"late\": true}', now())"
+                ),
+                {"r": run.run_id},
+            )
+        db.rollback()
+    finally:
+        db.close()
+
+
+def test_pg_t8_transaction_atomicity_and_rollback(pg_engine):
+    """Transaction rollback on failure leaves zero partial rows in PostgreSQL."""
+    from app.db.claims import ClaimSpec, EdgeSpec, ClaimValidationError
+    from app.db.models import AnalysisRun, Claim, RunSnapshot
+
+    migrate(pg_engine)
+    db = sessionmaker(bind=pg_engine)()
+    try:
+        initial_runs = db.query(AnalysisRun).count()
+        initial_claims = db.query(Claim).count()
+        initial_snaps = db.query(RunSnapshot).count()
+
+        spec_valid = ClaimSpec(
+            type="ACTOR_DEVICE_CONSISTENT",
+            params={"actor": "mira", "device": "dev-01"},
+            status="ASSERTED",
+            grade="A",
+            rule_id="RULE-1",
+            rule_version="1.0",
+            edges=[EdgeSpec(ref_kind="event", ref_id="EV-1", role="SUPPORTS")],
+        )
+        spec_invalid = ClaimSpec(
+            type="ACTOR_DEVICE_CONSISTENT",
+            params={"actor": "mira", "device": "dev-01"},
+            status="ASSERTED",
+            grade="A",
+            rule_id="RULE-1",
+            rule_version="1.0",
+            edges=[EdgeSpec(ref_kind="event", ref_id="NON_EXISTENT_EV", role="SUPPORTS")],
+        )
+
+        with pytest.raises(ClaimValidationError):
+            create_analysis_run(
+                db,
+                case_id="CASE-PG",
+                engine_version="e@1",
+                assumptions={"case_timezone": "UTC"},
+                claims=[spec_valid, spec_invalid],
+                snapshot_data={"partial": "fail"},
+            )
+
+        db.rollback()
+        assert db.query(AnalysisRun).count() == initial_runs
+        assert db.query(Claim).count() == initial_claims
+        assert db.query(RunSnapshot).count() == initial_snaps
+    finally:
+        db.close()
+
+
+def test_pg_t8_full_execution_and_reproducibility(pg_engine):
+    """Full T7/T8 execution and independent verification against PostgreSQL."""
+    from app.services.runs import execute_analysis_run, get_run_details, verify_run_reproducibility
+
+    migrate(pg_engine)
+    db = sessionmaker(bind=pg_engine)()
+    try:
+        run_res = execute_analysis_run(
+            db,
+            case_id="CASE-PG",
+            engine_version="pramana-engine@1.0.0",
+            assumptions={"case_timezone": "UTC"},
+        )
+        db.commit()
+
+        run_id = run_res["run_id"]
+        details = get_run_details(db, run_id, verify=True)
+        assert details["snapshot_source"] == "database"
+        assert details["snapshot_authoritative"] is True
+        assert details["snapshot_status"] == "AUTHORITATIVE_DB"
+        assert details["ranking_hash_verified"] is True
+        assert details["verification"]["verified"] is True
+        assert details["verification"]["historical_replay"]["verified"] is True
+        assert details["verification"]["historical_replay"]["ranking_hash_match"] is True
+        assert details["verification"]["historical_replay"]["snapshot_authoritative"] is True
+    finally:
+        db.close()
+
