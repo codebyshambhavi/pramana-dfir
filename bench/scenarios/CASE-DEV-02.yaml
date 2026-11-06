@@ -1,0 +1,32 @@
+id: CASE-DEV-02
+split: dev
+scenario_type: benign_looking
+seed: 902
+timezone: UTC
+event_count: 140
+actor: jules.park
+device: analyst-ws-12
+file: quarterly-index.zip
+incident: routine maintenance archive copied to approved storage
+contradictions:
+  hard:
+    type: actor_device_attribution_conflict
+  soft:
+    type: cross_source_timestamp_disagreement
+clock_offsets_minutes:
+  endpoint: 0
+  browser: -2
+  vpn: 4
+  scheduler: 1
+coverage_gap:
+  source: browser
+  start_minute: 50
+  end_minute: 65
+evidence_sources: [endpoint, browser, vpn, scheduler]
+decoy_count: 10
+duplicate_count: 2
+missing_items:
+  - item: H2-EXP-2
+    expected_absence: MISSING
+hypotheses: [scheduled_backup, malicious_insider, session_misuse]
+correct_hypothesis: H2

@@ -1,0 +1,21 @@
+id: CASE-HOLDOUT-05
+split: held-out
+scenario_type: malicious
+seed: 1005
+timezone: UTC
+event_count: 260
+actor: harper.kim
+device: research-lt-08
+file: study-data.tar.gz
+incident: after-hours research archive upload using an established identity
+contradictions:
+  hard: {type: actor_device_attribution_conflict}
+  soft: {type: cross_source_timestamp_disagreement}
+clock_offsets_minutes: {endpoint: 0, browser: -3, phone: 4, vpn: 9, scheduler: 2}
+coverage_gap: {source: vpn, start_minute: 130, end_minute: 152}
+evidence_sources: [endpoint, browser, phone, vpn, scheduler]
+decoy_count: 22
+duplicate_count: 4
+missing_items: [{item: H2-FORBID-2, expected_absence: MISSING}]
+hypotheses: [scheduled_backup, malicious_insider, session_misuse]
+correct_hypothesis: H1

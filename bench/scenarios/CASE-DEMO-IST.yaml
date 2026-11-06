@@ -1,0 +1,41 @@
+id: CASE-DEMO-IST
+split: dev
+scenario_type: malicious
+seed: 901
+timezone: Asia/Kolkata
+event_count: 120
+actor: mira.chen
+device: field-laptop-07
+file: CASE-001.tar.gz
+incident: after-hours archive creation and upload
+contradictions:
+  hard:
+    type: actor_device_attribution_conflict
+  soft:
+    type: cross_source_timestamp_disagreement
+clock_offsets_minutes:
+  endpoint: 0
+  browser: 2
+  phone: -3
+  vpn: 5
+  scheduler: 30
+coverage_gap:
+  source: endpoint
+  start_minute: 45
+  end_minute: 60
+evidence_sources:
+  - endpoint
+  - browser
+  - phone
+  - vpn
+  - scheduler
+decoy_count: 8
+duplicate_count: 2
+missing_items:
+  - item: H2-EXP-2
+    expected_absence: MISSING
+hypotheses:
+  - scheduled_backup
+  - malicious_insider
+  - session_misuse
+correct_hypothesis: H1

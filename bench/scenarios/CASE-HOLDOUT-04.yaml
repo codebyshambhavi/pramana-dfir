@@ -1,0 +1,21 @@
+id: CASE-HOLDOUT-04
+split: held-out
+scenario_type: ambiguous
+seed: 1004
+timezone: UTC
+event_count: 240
+actor: devon.lee
+device: remote-vdi-19
+file: model-checkpoint.tar
+incident: archive transfer with conflicting clocks and missing endpoint interval
+contradictions:
+  hard: {type: actor_device_attribution_conflict}
+  soft: {type: cross_source_timestamp_disagreement}
+clock_offsets_minutes: {endpoint: 0, browser: 6, phone: -7, vpn: 3, scheduler: 1}
+coverage_gap: {source: endpoint, start_minute: 92, end_minute: 125}
+evidence_sources: [endpoint, browser, phone, vpn, scheduler]
+decoy_count: 20
+duplicate_count: 3
+missing_items: [{item: H3-REQ-1, expected_absence: UNOBSERVABLE}]
+hypotheses: [scheduled_backup, malicious_insider, session_misuse]
+correct_hypothesis: UNDETERMINED

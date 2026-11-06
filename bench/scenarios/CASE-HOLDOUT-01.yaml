@@ -1,0 +1,21 @@
+id: CASE-HOLDOUT-01
+split: held-out
+scenario_type: malicious
+seed: 1001
+timezone: UTC
+event_count: 180
+actor: noah.reed
+device: finance-lt-03
+file: payroll-export.tar.gz
+incident: after-hours archive staged and uploaded through a new VPN session
+contradictions:
+  hard: {type: actor_device_attribution_conflict}
+  soft: {type: cross_source_timestamp_disagreement}
+clock_offsets_minutes: {endpoint: 0, browser: 3, vpn: -4, scheduler: 2}
+coverage_gap: {source: endpoint, start_minute: 60, end_minute: 74}
+evidence_sources: [endpoint, browser, vpn, scheduler]
+decoy_count: 14
+duplicate_count: 2
+missing_items: [{item: H2-FORBID-2, expected_absence: MISSING}]
+hypotheses: [scheduled_backup, malicious_insider, session_misuse]
+correct_hypothesis: H1

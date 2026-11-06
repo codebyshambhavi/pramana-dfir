@@ -1,0 +1,32 @@
+id: CASE-DEV-03
+split: dev
+scenario_type: ambiguous
+seed: 903
+timezone: UTC
+event_count: 160
+actor: samira.ali
+device: build-node-04
+file: release-bundle.tar.gz
+incident: archive activity with incomplete authentication telemetry
+contradictions:
+  hard:
+    type: actor_device_attribution_conflict
+  soft:
+    type: cross_source_timestamp_disagreement
+clock_offsets_minutes:
+  endpoint: 0
+  browser: 7
+  vpn: -5
+  scheduler: 3
+coverage_gap:
+  source: vpn
+  start_minute: 40
+  end_minute: 80
+evidence_sources: [endpoint, browser, vpn, scheduler]
+decoy_count: 12
+duplicate_count: 3
+missing_items:
+  - item: H3-REQ-1
+    expected_absence: UNOBSERVABLE
+hypotheses: [scheduled_backup, malicious_insider, session_misuse]
+correct_hypothesis: UNDETERMINED

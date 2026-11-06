@@ -1,0 +1,198 @@
+[
+  {
+    "action": "heartbeat",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "printer-status",
+    "timestamp": "2026-10-17T16:14:00+05:30"
+  },
+  {
+    "action": "file_read",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "/home/user/notes.txt",
+    "timestamp": "2026-10-17T16:48:00+05:30"
+  },
+  {
+    "action": "search",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "calendar",
+    "timestamp": "2026-10-17T17:08:00+05:30"
+  },
+  {
+    "action": "search",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "internal-wiki",
+    "timestamp": "2026-10-17T18:05:00+05:30"
+  },
+  {
+    "action": "file_read",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "printer-status",
+    "timestamp": "2026-10-17T18:13:00+05:30"
+  },
+  {
+    "action": "process_start",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "/home/user/notes.txt",
+    "timestamp": "2026-10-17T18:26:00+05:30"
+  },
+  {
+    "action": "process_start",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "/home/user/notes.txt",
+    "timestamp": "2026-10-17T19:02:00+05:30"
+  },
+  {
+    "action": "heartbeat",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "calendar",
+    "timestamp": "2026-10-17T19:02:01+05:30"
+  },
+  {
+    "action": "process_start",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "health-check",
+    "timestamp": "2026-10-17T19:11:00+05:30"
+  },
+  {
+    "action": "login",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "printer-status",
+    "timestamp": "2026-10-17T19:14:00+05:30"
+  },
+  {
+    "action": "process_start",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "internal-wiki",
+    "timestamp": "2026-10-17T19:19:00+05:30"
+  },
+  {
+    "action": "search",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "health-check",
+    "timestamp": "2026-10-17T19:23:00+05:30"
+  },
+  {
+    "action": "heartbeat",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "printer-status",
+    "timestamp": "2026-10-17T19:31:00+05:30"
+  },
+  {
+    "action": "search",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "health-check",
+    "timestamp": "2026-10-17T19:52:00+05:30"
+  },
+  {
+    "action": "process_start",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "calendar",
+    "timestamp": "2026-10-17T19:55:00+05:30"
+  },
+  {
+    "action": "search",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "internal-wiki",
+    "timestamp": "2026-10-17T20:51:01+05:30"
+  },
+  {
+    "action": "file_read",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "internal-wiki",
+    "timestamp": "2026-10-17T21:01:00+05:30"
+  },
+  {
+    "action": "login",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "/home/user/notes.txt",
+    "timestamp": "2026-10-17T21:37:00+05:30"
+  },
+  {
+    "action": "heartbeat",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "printer-status",
+    "timestamp": "2026-10-17T22:00:00+05:30"
+  },
+  {
+    "action": "search",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "printer-status",
+    "timestamp": "2026-10-17T22:21:00+05:30"
+  },
+  {
+    "action": "message_sent",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "device_gps": {
+      "lat": 37.7749,
+      "lon": -122.4194
+    },
+    "ip": "198.51.100.42",
+    "object": "Discussed CASE-001.tar.gz",
+    "timestamp": "2026-10-17T22:32:00+05:30"
+  },
+  {
+    "action": "process_start",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "health-check",
+    "timestamp": "2026-10-17T22:40:00+05:30"
+  },
+  {
+    "action": "login",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "health-check",
+    "timestamp": "2026-10-17T23:00:01+05:30"
+  },
+  {
+    "action": "file_read",
+    "actor": "mira.chen",
+    "device": "field-laptop-07",
+    "ip": "198.51.100.42",
+    "object": "health-check",
+    "timestamp": "2026-10-17T23:35:00+05:30"
+  }
+]
