@@ -1,0 +1,21 @@
+id: CASE-HOLDOUT-03
+split: held-out
+scenario_type: benign_looking
+seed: 1003
+timezone: UTC
+event_count: 220
+actor: leo.martin
+device: backup-node-06
+file: archive-catalog.tar.gz
+incident: approved backup process overlaps with unusual browsing activity
+contradictions:
+  hard: {type: actor_device_attribution_conflict}
+  soft: {type: cross_source_timestamp_disagreement}
+clock_offsets_minutes: {endpoint: 0, browser: 4, vpn: -2, scheduler: 5}
+coverage_gap: {source: browser, start_minute: 100, end_minute: 115}
+evidence_sources: [endpoint, browser, vpn, scheduler]
+decoy_count: 18
+duplicate_count: 2
+missing_items: [{item: H1-EXP-2, expected_absence: MISSING}]
+hypotheses: [scheduled_backup, malicious_insider, session_misuse]
+correct_hypothesis: H2

@@ -1,0 +1,2708 @@
+{
+  "scenarios": [
+    {
+      "absence_classification": {
+        "H2-EXP-2": "MISSING"
+      },
+      "background_unassigned_events": [
+        "backup_scheduler.csv#row=1",
+        "backup_scheduler.csv#row=10",
+        "backup_scheduler.csv#row=11",
+        "backup_scheduler.csv#row=12",
+        "backup_scheduler.csv#row=13",
+        "backup_scheduler.csv#row=14",
+        "backup_scheduler.csv#row=15",
+        "backup_scheduler.csv#row=16",
+        "backup_scheduler.csv#row=17",
+        "backup_scheduler.csv#row=18",
+        "backup_scheduler.csv#row=19",
+        "backup_scheduler.csv#row=2",
+        "backup_scheduler.csv#row=20",
+        "backup_scheduler.csv#row=21",
+        "backup_scheduler.csv#row=22",
+        "backup_scheduler.csv#row=23",
+        "backup_scheduler.csv#row=3",
+        "backup_scheduler.csv#row=4",
+        "backup_scheduler.csv#row=5",
+        "backup_scheduler.csv#row=6",
+        "backup_scheduler.csv#row=7",
+        "backup_scheduler.csv#row=8",
+        "backup_scheduler.csv#row=9",
+        "browser_history.csv#row=1",
+        "browser_history.csv#row=10",
+        "browser_history.csv#row=11",
+        "browser_history.csv#row=12",
+        "browser_history.csv#row=13",
+        "browser_history.csv#row=14",
+        "browser_history.csv#row=15",
+        "browser_history.csv#row=16",
+        "browser_history.csv#row=17",
+        "browser_history.csv#row=18",
+        "browser_history.csv#row=19",
+        "browser_history.csv#row=2",
+        "browser_history.csv#row=20",
+        "browser_history.csv#row=21",
+        "browser_history.csv#row=25",
+        "browser_history.csv#row=3",
+        "browser_history.csv#row=4",
+        "browser_history.csv#row=5",
+        "browser_history.csv#row=6",
+        "browser_history.csv#row=7",
+        "browser_history.csv#row=8",
+        "browser_history.csv#row=9",
+        "endpoint_system_log.csv#row=1",
+        "endpoint_system_log.csv#row=10",
+        "endpoint_system_log.csv#row=11",
+        "endpoint_system_log.csv#row=12",
+        "endpoint_system_log.csv#row=13",
+        "endpoint_system_log.csv#row=14",
+        "endpoint_system_log.csv#row=15",
+        "endpoint_system_log.csv#row=16",
+        "endpoint_system_log.csv#row=17",
+        "endpoint_system_log.csv#row=18",
+        "endpoint_system_log.csv#row=19",
+        "endpoint_system_log.csv#row=2",
+        "endpoint_system_log.csv#row=23",
+        "endpoint_system_log.csv#row=24",
+        "endpoint_system_log.csv#row=25",
+        "endpoint_system_log.csv#row=3",
+        "endpoint_system_log.csv#row=4",
+        "endpoint_system_log.csv#row=5",
+        "endpoint_system_log.csv#row=6",
+        "endpoint_system_log.csv#row=7",
+        "endpoint_system_log.csv#row=8",
+        "endpoint_system_log.csv#row=9",
+        "phone_chat.json#item=0",
+        "phone_chat.json#item=1",
+        "phone_chat.json#item=10",
+        "phone_chat.json#item=11",
+        "phone_chat.json#item=12",
+        "phone_chat.json#item=13",
+        "phone_chat.json#item=14",
+        "phone_chat.json#item=15",
+        "phone_chat.json#item=16",
+        "phone_chat.json#item=17",
+        "phone_chat.json#item=18",
+        "phone_chat.json#item=19",
+        "phone_chat.json#item=2",
+        "phone_chat.json#item=21",
+        "phone_chat.json#item=22",
+        "phone_chat.json#item=23",
+        "phone_chat.json#item=3",
+        "phone_chat.json#item=4",
+        "phone_chat.json#item=5",
+        "phone_chat.json#item=6",
+        "phone_chat.json#item=7",
+        "phone_chat.json#item=8",
+        "phone_chat.json#item=9",
+        "vpn_authentication.csv#row=1",
+        "vpn_authentication.csv#row=10",
+        "vpn_authentication.csv#row=11",
+        "vpn_authentication.csv#row=12",
+        "vpn_authentication.csv#row=13",
+        "vpn_authentication.csv#row=14",
+        "vpn_authentication.csv#row=15",
+        "vpn_authentication.csv#row=17",
+        "vpn_authentication.csv#row=18",
+        "vpn_authentication.csv#row=19",
+        "vpn_authentication.csv#row=2",
+        "vpn_authentication.csv#row=20",
+        "vpn_authentication.csv#row=21",
+        "vpn_authentication.csv#row=22",
+        "vpn_authentication.csv#row=23",
+        "vpn_authentication.csv#row=3",
+        "vpn_authentication.csv#row=4",
+        "vpn_authentication.csv#row=5",
+        "vpn_authentication.csv#row=6",
+        "vpn_authentication.csv#row=7",
+        "vpn_authentication.csv#row=8",
+        "vpn_authentication.csv#row=9"
+      ],
+      "contradictions": [
+        {
+          "conflicting_fields": [
+            "actor",
+            "device"
+          ],
+          "event_refs": [
+            "endpoint_system_log.csv#row=22",
+            "endpoint_system_log.csv#row=23"
+          ],
+          "observed_values": {
+            "archive": {
+              "actor": "mira.chen",
+              "device": "field-laptop-07"
+            },
+            "contradictory_event": {
+              "actor": "unknown.65",
+              "device": "unrecognized-5"
+            }
+          },
+          "severity": "hard",
+          "type": "actor_device_attribution_conflict"
+        },
+        {
+          "event_refs": [
+            "browser_history.csv#row=24",
+            "vpn_authentication.csv#row=20"
+          ],
+          "observed_timestamp_delta_seconds": -240,
+          "severity": "soft",
+          "type": "cross_source_timestamp_disagreement"
+        }
+      ],
+      "correct_hypothesis": "H1",
+      "coverage_gap": {
+        "classification": "UNOBSERVABLE",
+        "end_minute": 60,
+        "source": "endpoint",
+        "start_minute": 45
+      },
+      "decoy_events": [],
+      "duplicate_rows": [
+        {
+          "duplicate": "endpoint_system_log.csv#row=21",
+          "original": "endpoint_system_log.csv#row=20"
+        },
+        {
+          "duplicate": "browser_history.csv#row=24",
+          "original": "browser_history.csv#row=23"
+        }
+      ],
+      "event_count": 120,
+      "evidence_files": [
+        {
+          "event_count": 25,
+          "filename": "endpoint_system_log.csv",
+          "path": "CASE-DEMO-IST/evidence/endpoint_system_log.csv",
+          "source": "endpoint"
+        },
+        {
+          "event_count": 25,
+          "filename": "browser_history.csv",
+          "path": "CASE-DEMO-IST/evidence/browser_history.csv",
+          "source": "browser"
+        },
+        {
+          "event_count": 24,
+          "filename": "phone_chat.json",
+          "path": "CASE-DEMO-IST/evidence/phone_chat.json",
+          "source": "phone"
+        },
+        {
+          "event_count": 23,
+          "filename": "vpn_authentication.csv",
+          "path": "CASE-DEMO-IST/evidence/vpn_authentication.csv",
+          "source": "vpn"
+        },
+        {
+          "event_count": 23,
+          "filename": "backup_scheduler.csv",
+          "path": "CASE-DEMO-IST/evidence/backup_scheduler.csv",
+          "source": "scheduler"
+        }
+      ],
+      "evidence_sources": [
+        "endpoint",
+        "browser",
+        "phone",
+        "vpn",
+        "scheduler"
+      ],
+      "expected_missing_items": [
+        {
+          "expected_absence": "MISSING",
+          "item": "H2-EXP-2"
+        }
+      ],
+      "hypotheses": [
+        "scheduled_backup",
+        "malicious_insider",
+        "session_misuse"
+      ],
+      "scenario_id": "CASE-DEMO-IST",
+      "scenario_type": "malicious",
+      "seed": 901,
+      "split": "dev",
+      "stage_labels": {
+        "browser_history.csv#row=22": "exfiltration",
+        "browser_history.csv#row=23": "exfiltration",
+        "browser_history.csv#row=24": "exfiltration",
+        "endpoint_system_log.csv#row=20": "access",
+        "endpoint_system_log.csv#row=21": "access",
+        "endpoint_system_log.csv#row=22": "staging",
+        "phone_chat.json#item=20": "planning",
+        "vpn_authentication.csv#row=16": "access"
+      },
+      "tamper_descendants": [
+        {
+          "from": "endpoint_system_log.csv#row=22",
+          "to": "browser_history.csv#row=24"
+        }
+      ],
+      "tamper_test": {
+        "evidence_source": "browser"
+      },
+      "true_links": [
+        {
+          "from": "vpn_authentication.csv#row=16",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=21"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=21",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=22"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=22",
+          "link_type": "incident_sequence",
+          "to": "browser_history.csv#row=24"
+        },
+        {
+          "from": "phone_chat.json#item=20",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=22"
+        }
+      ]
+    },
+    {
+      "absence_classification": {
+        "H2-EXP-2": "MISSING"
+      },
+      "background_unassigned_events": [
+        "backup_scheduler.csv#row=1",
+        "backup_scheduler.csv#row=10",
+        "backup_scheduler.csv#row=11",
+        "backup_scheduler.csv#row=12",
+        "backup_scheduler.csv#row=13",
+        "backup_scheduler.csv#row=14",
+        "backup_scheduler.csv#row=15",
+        "backup_scheduler.csv#row=16",
+        "backup_scheduler.csv#row=17",
+        "backup_scheduler.csv#row=18",
+        "backup_scheduler.csv#row=19",
+        "backup_scheduler.csv#row=2",
+        "backup_scheduler.csv#row=20",
+        "backup_scheduler.csv#row=21",
+        "backup_scheduler.csv#row=22",
+        "backup_scheduler.csv#row=23",
+        "backup_scheduler.csv#row=24",
+        "backup_scheduler.csv#row=25",
+        "backup_scheduler.csv#row=26",
+        "backup_scheduler.csv#row=27",
+        "backup_scheduler.csv#row=28",
+        "backup_scheduler.csv#row=29",
+        "backup_scheduler.csv#row=3",
+        "backup_scheduler.csv#row=30",
+        "backup_scheduler.csv#row=32",
+        "backup_scheduler.csv#row=33",
+        "backup_scheduler.csv#row=34",
+        "backup_scheduler.csv#row=4",
+        "backup_scheduler.csv#row=5",
+        "backup_scheduler.csv#row=6",
+        "backup_scheduler.csv#row=7",
+        "backup_scheduler.csv#row=8",
+        "backup_scheduler.csv#row=9",
+        "browser_history.csv#row=1",
+        "browser_history.csv#row=10",
+        "browser_history.csv#row=11",
+        "browser_history.csv#row=12",
+        "browser_history.csv#row=13",
+        "browser_history.csv#row=14",
+        "browser_history.csv#row=15",
+        "browser_history.csv#row=16",
+        "browser_history.csv#row=17",
+        "browser_history.csv#row=18",
+        "browser_history.csv#row=19",
+        "browser_history.csv#row=2",
+        "browser_history.csv#row=20",
+        "browser_history.csv#row=21",
+        "browser_history.csv#row=22",
+        "browser_history.csv#row=23",
+        "browser_history.csv#row=24",
+        "browser_history.csv#row=25",
+        "browser_history.csv#row=26",
+        "browser_history.csv#row=27",
+        "browser_history.csv#row=29",
+        "browser_history.csv#row=3",
+        "browser_history.csv#row=32",
+        "browser_history.csv#row=33",
+        "browser_history.csv#row=34",
+        "browser_history.csv#row=35",
+        "browser_history.csv#row=36",
+        "browser_history.csv#row=4",
+        "browser_history.csv#row=5",
+        "browser_history.csv#row=6",
+        "browser_history.csv#row=7",
+        "browser_history.csv#row=8",
+        "browser_history.csv#row=9",
+        "endpoint_system_log.csv#row=1",
+        "endpoint_system_log.csv#row=10",
+        "endpoint_system_log.csv#row=11",
+        "endpoint_system_log.csv#row=12",
+        "endpoint_system_log.csv#row=13",
+        "endpoint_system_log.csv#row=14",
+        "endpoint_system_log.csv#row=15",
+        "endpoint_system_log.csv#row=16",
+        "endpoint_system_log.csv#row=17",
+        "endpoint_system_log.csv#row=18",
+        "endpoint_system_log.csv#row=19",
+        "endpoint_system_log.csv#row=2",
+        "endpoint_system_log.csv#row=20",
+        "endpoint_system_log.csv#row=21",
+        "endpoint_system_log.csv#row=22",
+        "endpoint_system_log.csv#row=23",
+        "endpoint_system_log.csv#row=24",
+        "endpoint_system_log.csv#row=25",
+        "endpoint_system_log.csv#row=26",
+        "endpoint_system_log.csv#row=27",
+        "endpoint_system_log.csv#row=3",
+        "endpoint_system_log.csv#row=31",
+        "endpoint_system_log.csv#row=32",
+        "endpoint_system_log.csv#row=33",
+        "endpoint_system_log.csv#row=34",
+        "endpoint_system_log.csv#row=35",
+        "endpoint_system_log.csv#row=36",
+        "endpoint_system_log.csv#row=4",
+        "endpoint_system_log.csv#row=5",
+        "endpoint_system_log.csv#row=6",
+        "endpoint_system_log.csv#row=7",
+        "endpoint_system_log.csv#row=8",
+        "endpoint_system_log.csv#row=9",
+        "vpn_authentication.csv#row=1",
+        "vpn_authentication.csv#row=10",
+        "vpn_authentication.csv#row=11",
+        "vpn_authentication.csv#row=12",
+        "vpn_authentication.csv#row=13",
+        "vpn_authentication.csv#row=14",
+        "vpn_authentication.csv#row=15",
+        "vpn_authentication.csv#row=16",
+        "vpn_authentication.csv#row=17",
+        "vpn_authentication.csv#row=18",
+        "vpn_authentication.csv#row=19",
+        "vpn_authentication.csv#row=2",
+        "vpn_authentication.csv#row=20",
+        "vpn_authentication.csv#row=21",
+        "vpn_authentication.csv#row=22",
+        "vpn_authentication.csv#row=23",
+        "vpn_authentication.csv#row=24",
+        "vpn_authentication.csv#row=25",
+        "vpn_authentication.csv#row=26",
+        "vpn_authentication.csv#row=27",
+        "vpn_authentication.csv#row=28",
+        "vpn_authentication.csv#row=3",
+        "vpn_authentication.csv#row=30",
+        "vpn_authentication.csv#row=31",
+        "vpn_authentication.csv#row=32",
+        "vpn_authentication.csv#row=33",
+        "vpn_authentication.csv#row=34",
+        "vpn_authentication.csv#row=4",
+        "vpn_authentication.csv#row=5",
+        "vpn_authentication.csv#row=6",
+        "vpn_authentication.csv#row=7",
+        "vpn_authentication.csv#row=8",
+        "vpn_authentication.csv#row=9"
+      ],
+      "contradictions": [
+        {
+          "conflicting_fields": [
+            "actor",
+            "device"
+          ],
+          "event_refs": [
+            "endpoint_system_log.csv#row=30",
+            "endpoint_system_log.csv#row=31"
+          ],
+          "observed_values": {
+            "archive": {
+              "actor": "jules.park",
+              "device": "analyst-ws-12"
+            },
+            "contradictory_event": {
+              "actor": "unknown.44",
+              "device": "unrecognized-7"
+            }
+          },
+          "severity": "hard",
+          "type": "actor_device_attribution_conflict"
+        },
+        {
+          "event_refs": [
+            "browser_history.csv#row=31",
+            "vpn_authentication.csv#row=33"
+          ],
+          "observed_timestamp_delta_seconds": -60,
+          "severity": "soft",
+          "type": "cross_source_timestamp_disagreement"
+        }
+      ],
+      "correct_hypothesis": "H2",
+      "coverage_gap": {
+        "classification": "UNOBSERVABLE",
+        "end_minute": 65,
+        "source": "browser",
+        "start_minute": 50
+      },
+      "decoy_events": [],
+      "duplicate_rows": [
+        {
+          "duplicate": "endpoint_system_log.csv#row=29",
+          "original": "endpoint_system_log.csv#row=28"
+        },
+        {
+          "duplicate": "browser_history.csv#row=31",
+          "original": "browser_history.csv#row=30"
+        }
+      ],
+      "event_count": 140,
+      "evidence_files": [
+        {
+          "event_count": 36,
+          "filename": "endpoint_system_log.csv",
+          "path": "CASE-DEV-02/evidence/endpoint_system_log.csv",
+          "source": "endpoint"
+        },
+        {
+          "event_count": 36,
+          "filename": "browser_history.csv",
+          "path": "CASE-DEV-02/evidence/browser_history.csv",
+          "source": "browser"
+        },
+        {
+          "event_count": 34,
+          "filename": "vpn_authentication.csv",
+          "path": "CASE-DEV-02/evidence/vpn_authentication.csv",
+          "source": "vpn"
+        },
+        {
+          "event_count": 34,
+          "filename": "backup_scheduler.csv",
+          "path": "CASE-DEV-02/evidence/backup_scheduler.csv",
+          "source": "scheduler"
+        }
+      ],
+      "evidence_sources": [
+        "endpoint",
+        "browser",
+        "vpn",
+        "scheduler"
+      ],
+      "expected_missing_items": [
+        {
+          "expected_absence": "MISSING",
+          "item": "H2-EXP-2"
+        }
+      ],
+      "hypotheses": [
+        "scheduled_backup",
+        "malicious_insider",
+        "session_misuse"
+      ],
+      "scenario_id": "CASE-DEV-02",
+      "scenario_type": "benign_looking",
+      "seed": 902,
+      "split": "dev",
+      "stage_labels": {
+        "backup_scheduler.csv#row=31": "verification",
+        "browser_history.csv#row=28": "exfiltration",
+        "browser_history.csv#row=30": "exfiltration",
+        "browser_history.csv#row=31": "exfiltration",
+        "endpoint_system_log.csv#row=28": "access",
+        "endpoint_system_log.csv#row=29": "access",
+        "endpoint_system_log.csv#row=30": "staging",
+        "vpn_authentication.csv#row=29": "access"
+      },
+      "tamper_descendants": [
+        {
+          "from": "endpoint_system_log.csv#row=30",
+          "to": "browser_history.csv#row=31"
+        }
+      ],
+      "tamper_test": {
+        "evidence_source": "browser"
+      },
+      "true_links": [
+        {
+          "from": "vpn_authentication.csv#row=29",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=29"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=29",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=30"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=30",
+          "link_type": "incident_sequence",
+          "to": "browser_history.csv#row=31"
+        }
+      ]
+    },
+    {
+      "absence_classification": {
+        "H3-REQ-1": "UNOBSERVABLE"
+      },
+      "background_unassigned_events": [
+        "backup_scheduler.csv#row=1",
+        "backup_scheduler.csv#row=10",
+        "backup_scheduler.csv#row=11",
+        "backup_scheduler.csv#row=12",
+        "backup_scheduler.csv#row=13",
+        "backup_scheduler.csv#row=14",
+        "backup_scheduler.csv#row=15",
+        "backup_scheduler.csv#row=16",
+        "backup_scheduler.csv#row=17",
+        "backup_scheduler.csv#row=18",
+        "backup_scheduler.csv#row=19",
+        "backup_scheduler.csv#row=2",
+        "backup_scheduler.csv#row=20",
+        "backup_scheduler.csv#row=21",
+        "backup_scheduler.csv#row=22",
+        "backup_scheduler.csv#row=23",
+        "backup_scheduler.csv#row=24",
+        "backup_scheduler.csv#row=25",
+        "backup_scheduler.csv#row=26",
+        "backup_scheduler.csv#row=27",
+        "backup_scheduler.csv#row=28",
+        "backup_scheduler.csv#row=29",
+        "backup_scheduler.csv#row=3",
+        "backup_scheduler.csv#row=30",
+        "backup_scheduler.csv#row=31",
+        "backup_scheduler.csv#row=32",
+        "backup_scheduler.csv#row=33",
+        "backup_scheduler.csv#row=34",
+        "backup_scheduler.csv#row=35",
+        "backup_scheduler.csv#row=36",
+        "backup_scheduler.csv#row=37",
+        "backup_scheduler.csv#row=38",
+        "backup_scheduler.csv#row=39",
+        "backup_scheduler.csv#row=4",
+        "backup_scheduler.csv#row=5",
+        "backup_scheduler.csv#row=6",
+        "backup_scheduler.csv#row=7",
+        "backup_scheduler.csv#row=8",
+        "backup_scheduler.csv#row=9",
+        "browser_history.csv#row=1",
+        "browser_history.csv#row=10",
+        "browser_history.csv#row=11",
+        "browser_history.csv#row=12",
+        "browser_history.csv#row=13",
+        "browser_history.csv#row=14",
+        "browser_history.csv#row=15",
+        "browser_history.csv#row=16",
+        "browser_history.csv#row=17",
+        "browser_history.csv#row=18",
+        "browser_history.csv#row=19",
+        "browser_history.csv#row=2",
+        "browser_history.csv#row=20",
+        "browser_history.csv#row=21",
+        "browser_history.csv#row=22",
+        "browser_history.csv#row=23",
+        "browser_history.csv#row=24",
+        "browser_history.csv#row=25",
+        "browser_history.csv#row=26",
+        "browser_history.csv#row=27",
+        "browser_history.csv#row=28",
+        "browser_history.csv#row=29",
+        "browser_history.csv#row=3",
+        "browser_history.csv#row=30",
+        "browser_history.csv#row=31",
+        "browser_history.csv#row=32",
+        "browser_history.csv#row=33",
+        "browser_history.csv#row=37",
+        "browser_history.csv#row=38",
+        "browser_history.csv#row=39",
+        "browser_history.csv#row=4",
+        "browser_history.csv#row=40",
+        "browser_history.csv#row=5",
+        "browser_history.csv#row=6",
+        "browser_history.csv#row=7",
+        "browser_history.csv#row=8",
+        "browser_history.csv#row=9",
+        "endpoint_system_log.csv#row=1",
+        "endpoint_system_log.csv#row=10",
+        "endpoint_system_log.csv#row=11",
+        "endpoint_system_log.csv#row=12",
+        "endpoint_system_log.csv#row=13",
+        "endpoint_system_log.csv#row=14",
+        "endpoint_system_log.csv#row=15",
+        "endpoint_system_log.csv#row=16",
+        "endpoint_system_log.csv#row=17",
+        "endpoint_system_log.csv#row=18",
+        "endpoint_system_log.csv#row=19",
+        "endpoint_system_log.csv#row=2",
+        "endpoint_system_log.csv#row=20",
+        "endpoint_system_log.csv#row=21",
+        "endpoint_system_log.csv#row=22",
+        "endpoint_system_log.csv#row=23",
+        "endpoint_system_log.csv#row=24",
+        "endpoint_system_log.csv#row=25",
+        "endpoint_system_log.csv#row=26",
+        "endpoint_system_log.csv#row=27",
+        "endpoint_system_log.csv#row=28",
+        "endpoint_system_log.csv#row=29",
+        "endpoint_system_log.csv#row=3",
+        "endpoint_system_log.csv#row=30",
+        "endpoint_system_log.csv#row=33",
+        "endpoint_system_log.csv#row=34",
+        "endpoint_system_log.csv#row=35",
+        "endpoint_system_log.csv#row=36",
+        "endpoint_system_log.csv#row=38",
+        "endpoint_system_log.csv#row=39",
+        "endpoint_system_log.csv#row=4",
+        "endpoint_system_log.csv#row=40",
+        "endpoint_system_log.csv#row=41",
+        "endpoint_system_log.csv#row=5",
+        "endpoint_system_log.csv#row=6",
+        "endpoint_system_log.csv#row=7",
+        "endpoint_system_log.csv#row=8",
+        "endpoint_system_log.csv#row=9",
+        "vpn_authentication.csv#row=1",
+        "vpn_authentication.csv#row=10",
+        "vpn_authentication.csv#row=11",
+        "vpn_authentication.csv#row=12",
+        "vpn_authentication.csv#row=13",
+        "vpn_authentication.csv#row=14",
+        "vpn_authentication.csv#row=15",
+        "vpn_authentication.csv#row=16",
+        "vpn_authentication.csv#row=17",
+        "vpn_authentication.csv#row=18",
+        "vpn_authentication.csv#row=19",
+        "vpn_authentication.csv#row=2",
+        "vpn_authentication.csv#row=20",
+        "vpn_authentication.csv#row=21",
+        "vpn_authentication.csv#row=22",
+        "vpn_authentication.csv#row=23",
+        "vpn_authentication.csv#row=24",
+        "vpn_authentication.csv#row=26",
+        "vpn_authentication.csv#row=27",
+        "vpn_authentication.csv#row=28",
+        "vpn_authentication.csv#row=29",
+        "vpn_authentication.csv#row=3",
+        "vpn_authentication.csv#row=30",
+        "vpn_authentication.csv#row=31",
+        "vpn_authentication.csv#row=32",
+        "vpn_authentication.csv#row=33",
+        "vpn_authentication.csv#row=34",
+        "vpn_authentication.csv#row=35",
+        "vpn_authentication.csv#row=36",
+        "vpn_authentication.csv#row=37",
+        "vpn_authentication.csv#row=38",
+        "vpn_authentication.csv#row=39",
+        "vpn_authentication.csv#row=4",
+        "vpn_authentication.csv#row=40",
+        "vpn_authentication.csv#row=5",
+        "vpn_authentication.csv#row=6",
+        "vpn_authentication.csv#row=7",
+        "vpn_authentication.csv#row=8",
+        "vpn_authentication.csv#row=9"
+      ],
+      "contradictions": [
+        {
+          "conflicting_fields": [
+            "actor",
+            "device"
+          ],
+          "event_refs": [
+            "endpoint_system_log.csv#row=37",
+            "endpoint_system_log.csv#row=39"
+          ],
+          "observed_values": {
+            "archive": {
+              "actor": "samira.ali",
+              "device": "build-node-04"
+            },
+            "contradictory_event": {
+              "actor": "unknown.15",
+              "device": "unrecognized-2"
+            }
+          },
+          "severity": "hard",
+          "type": "actor_device_attribution_conflict"
+        },
+        {
+          "event_refs": [
+            "browser_history.csv#row=36",
+            "vpn_authentication.csv#row=35"
+          ],
+          "observed_timestamp_delta_seconds": -1140,
+          "severity": "soft",
+          "type": "cross_source_timestamp_disagreement"
+        }
+      ],
+      "correct_hypothesis": "UNDETERMINED",
+      "coverage_gap": {
+        "classification": "UNOBSERVABLE",
+        "end_minute": 80,
+        "source": "vpn",
+        "start_minute": 40
+      },
+      "decoy_events": [
+        "browser_history.csv#row=33",
+        "vpn_authentication.csv#row=32",
+        "vpn_authentication.csv#row=33"
+      ],
+      "duplicate_rows": [
+        {
+          "duplicate": "endpoint_system_log.csv#row=32",
+          "original": "endpoint_system_log.csv#row=31"
+        },
+        {
+          "duplicate": "browser_history.csv#row=36",
+          "original": "browser_history.csv#row=35"
+        },
+        {
+          "duplicate": "vpn_authentication.csv#row=33",
+          "original": "vpn_authentication.csv#row=32"
+        }
+      ],
+      "event_count": 160,
+      "evidence_files": [
+        {
+          "event_count": 41,
+          "filename": "endpoint_system_log.csv",
+          "path": "CASE-DEV-03/evidence/endpoint_system_log.csv",
+          "source": "endpoint"
+        },
+        {
+          "event_count": 40,
+          "filename": "browser_history.csv",
+          "path": "CASE-DEV-03/evidence/browser_history.csv",
+          "source": "browser"
+        },
+        {
+          "event_count": 40,
+          "filename": "vpn_authentication.csv",
+          "path": "CASE-DEV-03/evidence/vpn_authentication.csv",
+          "source": "vpn"
+        },
+        {
+          "event_count": 39,
+          "filename": "backup_scheduler.csv",
+          "path": "CASE-DEV-03/evidence/backup_scheduler.csv",
+          "source": "scheduler"
+        }
+      ],
+      "evidence_sources": [
+        "endpoint",
+        "browser",
+        "vpn",
+        "scheduler"
+      ],
+      "expected_missing_items": [
+        {
+          "expected_absence": "UNOBSERVABLE",
+          "item": "H3-REQ-1"
+        }
+      ],
+      "hypotheses": [
+        "scheduled_backup",
+        "malicious_insider",
+        "session_misuse"
+      ],
+      "scenario_id": "CASE-DEV-03",
+      "scenario_type": "ambiguous",
+      "seed": 903,
+      "split": "dev",
+      "stage_labels": {
+        "browser_history.csv#row=34": "exfiltration",
+        "browser_history.csv#row=35": "exfiltration",
+        "browser_history.csv#row=36": "exfiltration",
+        "endpoint_system_log.csv#row=31": "access",
+        "endpoint_system_log.csv#row=32": "access",
+        "endpoint_system_log.csv#row=37": "staging",
+        "vpn_authentication.csv#row=25": "access"
+      },
+      "tamper_descendants": [
+        {
+          "from": "endpoint_system_log.csv#row=37",
+          "to": "browser_history.csv#row=36"
+        }
+      ],
+      "tamper_test": {
+        "evidence_source": "browser"
+      },
+      "true_links": [
+        {
+          "from": "vpn_authentication.csv#row=25",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=32"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=32",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=37"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=37",
+          "link_type": "incident_sequence",
+          "to": "browser_history.csv#row=36"
+        }
+      ]
+    },
+    {
+      "absence_classification": {
+        "H2-FORBID-2": "MISSING"
+      },
+      "background_unassigned_events": [
+        "backup_scheduler.csv#row=1",
+        "backup_scheduler.csv#row=10",
+        "backup_scheduler.csv#row=11",
+        "backup_scheduler.csv#row=12",
+        "backup_scheduler.csv#row=13",
+        "backup_scheduler.csv#row=14",
+        "backup_scheduler.csv#row=15",
+        "backup_scheduler.csv#row=16",
+        "backup_scheduler.csv#row=17",
+        "backup_scheduler.csv#row=18",
+        "backup_scheduler.csv#row=19",
+        "backup_scheduler.csv#row=2",
+        "backup_scheduler.csv#row=20",
+        "backup_scheduler.csv#row=21",
+        "backup_scheduler.csv#row=22",
+        "backup_scheduler.csv#row=23",
+        "backup_scheduler.csv#row=24",
+        "backup_scheduler.csv#row=25",
+        "backup_scheduler.csv#row=26",
+        "backup_scheduler.csv#row=27",
+        "backup_scheduler.csv#row=28",
+        "backup_scheduler.csv#row=29",
+        "backup_scheduler.csv#row=3",
+        "backup_scheduler.csv#row=30",
+        "backup_scheduler.csv#row=31",
+        "backup_scheduler.csv#row=32",
+        "backup_scheduler.csv#row=33",
+        "backup_scheduler.csv#row=34",
+        "backup_scheduler.csv#row=35",
+        "backup_scheduler.csv#row=36",
+        "backup_scheduler.csv#row=37",
+        "backup_scheduler.csv#row=38",
+        "backup_scheduler.csv#row=39",
+        "backup_scheduler.csv#row=4",
+        "backup_scheduler.csv#row=40",
+        "backup_scheduler.csv#row=41",
+        "backup_scheduler.csv#row=42",
+        "backup_scheduler.csv#row=43",
+        "backup_scheduler.csv#row=44",
+        "backup_scheduler.csv#row=5",
+        "backup_scheduler.csv#row=6",
+        "backup_scheduler.csv#row=7",
+        "backup_scheduler.csv#row=8",
+        "backup_scheduler.csv#row=9",
+        "browser_history.csv#row=1",
+        "browser_history.csv#row=10",
+        "browser_history.csv#row=11",
+        "browser_history.csv#row=12",
+        "browser_history.csv#row=13",
+        "browser_history.csv#row=14",
+        "browser_history.csv#row=15",
+        "browser_history.csv#row=16",
+        "browser_history.csv#row=17",
+        "browser_history.csv#row=18",
+        "browser_history.csv#row=19",
+        "browser_history.csv#row=2",
+        "browser_history.csv#row=20",
+        "browser_history.csv#row=21",
+        "browser_history.csv#row=22",
+        "browser_history.csv#row=23",
+        "browser_history.csv#row=24",
+        "browser_history.csv#row=25",
+        "browser_history.csv#row=26",
+        "browser_history.csv#row=27",
+        "browser_history.csv#row=28",
+        "browser_history.csv#row=29",
+        "browser_history.csv#row=3",
+        "browser_history.csv#row=30",
+        "browser_history.csv#row=31",
+        "browser_history.csv#row=32",
+        "browser_history.csv#row=33",
+        "browser_history.csv#row=34",
+        "browser_history.csv#row=35",
+        "browser_history.csv#row=36",
+        "browser_history.csv#row=37",
+        "browser_history.csv#row=39",
+        "browser_history.csv#row=4",
+        "browser_history.csv#row=42",
+        "browser_history.csv#row=43",
+        "browser_history.csv#row=44",
+        "browser_history.csv#row=45",
+        "browser_history.csv#row=46",
+        "browser_history.csv#row=5",
+        "browser_history.csv#row=6",
+        "browser_history.csv#row=7",
+        "browser_history.csv#row=8",
+        "browser_history.csv#row=9",
+        "endpoint_system_log.csv#row=1",
+        "endpoint_system_log.csv#row=10",
+        "endpoint_system_log.csv#row=11",
+        "endpoint_system_log.csv#row=12",
+        "endpoint_system_log.csv#row=13",
+        "endpoint_system_log.csv#row=14",
+        "endpoint_system_log.csv#row=15",
+        "endpoint_system_log.csv#row=16",
+        "endpoint_system_log.csv#row=17",
+        "endpoint_system_log.csv#row=18",
+        "endpoint_system_log.csv#row=19",
+        "endpoint_system_log.csv#row=2",
+        "endpoint_system_log.csv#row=20",
+        "endpoint_system_log.csv#row=21",
+        "endpoint_system_log.csv#row=22",
+        "endpoint_system_log.csv#row=23",
+        "endpoint_system_log.csv#row=24",
+        "endpoint_system_log.csv#row=25",
+        "endpoint_system_log.csv#row=26",
+        "endpoint_system_log.csv#row=27",
+        "endpoint_system_log.csv#row=28",
+        "endpoint_system_log.csv#row=29",
+        "endpoint_system_log.csv#row=3",
+        "endpoint_system_log.csv#row=30",
+        "endpoint_system_log.csv#row=31",
+        "endpoint_system_log.csv#row=32",
+        "endpoint_system_log.csv#row=35",
+        "endpoint_system_log.csv#row=36",
+        "endpoint_system_log.csv#row=38",
+        "endpoint_system_log.csv#row=39",
+        "endpoint_system_log.csv#row=4",
+        "endpoint_system_log.csv#row=40",
+        "endpoint_system_log.csv#row=41",
+        "endpoint_system_log.csv#row=42",
+        "endpoint_system_log.csv#row=43",
+        "endpoint_system_log.csv#row=44",
+        "endpoint_system_log.csv#row=45",
+        "endpoint_system_log.csv#row=46",
+        "endpoint_system_log.csv#row=5",
+        "endpoint_system_log.csv#row=6",
+        "endpoint_system_log.csv#row=7",
+        "endpoint_system_log.csv#row=8",
+        "endpoint_system_log.csv#row=9",
+        "vpn_authentication.csv#row=1",
+        "vpn_authentication.csv#row=10",
+        "vpn_authentication.csv#row=11",
+        "vpn_authentication.csv#row=12",
+        "vpn_authentication.csv#row=13",
+        "vpn_authentication.csv#row=14",
+        "vpn_authentication.csv#row=15",
+        "vpn_authentication.csv#row=16",
+        "vpn_authentication.csv#row=17",
+        "vpn_authentication.csv#row=18",
+        "vpn_authentication.csv#row=19",
+        "vpn_authentication.csv#row=2",
+        "vpn_authentication.csv#row=20",
+        "vpn_authentication.csv#row=21",
+        "vpn_authentication.csv#row=22",
+        "vpn_authentication.csv#row=23",
+        "vpn_authentication.csv#row=24",
+        "vpn_authentication.csv#row=25",
+        "vpn_authentication.csv#row=26",
+        "vpn_authentication.csv#row=27",
+        "vpn_authentication.csv#row=28",
+        "vpn_authentication.csv#row=29",
+        "vpn_authentication.csv#row=3",
+        "vpn_authentication.csv#row=30",
+        "vpn_authentication.csv#row=31",
+        "vpn_authentication.csv#row=33",
+        "vpn_authentication.csv#row=34",
+        "vpn_authentication.csv#row=35",
+        "vpn_authentication.csv#row=36",
+        "vpn_authentication.csv#row=37",
+        "vpn_authentication.csv#row=38",
+        "vpn_authentication.csv#row=39",
+        "vpn_authentication.csv#row=4",
+        "vpn_authentication.csv#row=40",
+        "vpn_authentication.csv#row=41",
+        "vpn_authentication.csv#row=42",
+        "vpn_authentication.csv#row=43",
+        "vpn_authentication.csv#row=44",
+        "vpn_authentication.csv#row=5",
+        "vpn_authentication.csv#row=6",
+        "vpn_authentication.csv#row=7",
+        "vpn_authentication.csv#row=8",
+        "vpn_authentication.csv#row=9"
+      ],
+      "contradictions": [
+        {
+          "conflicting_fields": [
+            "actor",
+            "device"
+          ],
+          "event_refs": [
+            "endpoint_system_log.csv#row=37",
+            "endpoint_system_log.csv#row=38"
+          ],
+          "observed_values": {
+            "archive": {
+              "actor": "noah.reed",
+              "device": "finance-lt-03"
+            },
+            "contradictory_event": {
+              "actor": "unknown.17",
+              "device": "unrecognized-4"
+            }
+          },
+          "severity": "hard",
+          "type": "actor_device_attribution_conflict"
+        },
+        {
+          "event_refs": [
+            "browser_history.csv#row=41",
+            "vpn_authentication.csv#row=39"
+          ],
+          "observed_timestamp_delta_seconds": -840,
+          "severity": "soft",
+          "type": "cross_source_timestamp_disagreement"
+        }
+      ],
+      "correct_hypothesis": "H1",
+      "coverage_gap": {
+        "classification": "UNOBSERVABLE",
+        "end_minute": 74,
+        "source": "endpoint",
+        "start_minute": 60
+      },
+      "decoy_events": [
+        "browser_history.csv#row=37",
+        "vpn_authentication.csv#row=38"
+      ],
+      "duplicate_rows": [
+        {
+          "duplicate": "endpoint_system_log.csv#row=34",
+          "original": "endpoint_system_log.csv#row=33"
+        },
+        {
+          "duplicate": "browser_history.csv#row=41",
+          "original": "browser_history.csv#row=40"
+        }
+      ],
+      "event_count": 180,
+      "evidence_files": [
+        {
+          "event_count": 46,
+          "filename": "endpoint_system_log.csv",
+          "path": "CASE-HOLDOUT-01/evidence/endpoint_system_log.csv",
+          "source": "endpoint"
+        },
+        {
+          "event_count": 46,
+          "filename": "browser_history.csv",
+          "path": "CASE-HOLDOUT-01/evidence/browser_history.csv",
+          "source": "browser"
+        },
+        {
+          "event_count": 44,
+          "filename": "vpn_authentication.csv",
+          "path": "CASE-HOLDOUT-01/evidence/vpn_authentication.csv",
+          "source": "vpn"
+        },
+        {
+          "event_count": 44,
+          "filename": "backup_scheduler.csv",
+          "path": "CASE-HOLDOUT-01/evidence/backup_scheduler.csv",
+          "source": "scheduler"
+        }
+      ],
+      "evidence_sources": [
+        "endpoint",
+        "browser",
+        "vpn",
+        "scheduler"
+      ],
+      "expected_missing_items": [
+        {
+          "expected_absence": "MISSING",
+          "item": "H2-FORBID-2"
+        }
+      ],
+      "hypotheses": [
+        "scheduled_backup",
+        "malicious_insider",
+        "session_misuse"
+      ],
+      "scenario_id": "CASE-HOLDOUT-01",
+      "scenario_type": "malicious",
+      "seed": 1001,
+      "split": "held-out",
+      "stage_labels": {
+        "browser_history.csv#row=38": "exfiltration",
+        "browser_history.csv#row=40": "exfiltration",
+        "browser_history.csv#row=41": "exfiltration",
+        "endpoint_system_log.csv#row=33": "access",
+        "endpoint_system_log.csv#row=34": "access",
+        "endpoint_system_log.csv#row=37": "staging",
+        "vpn_authentication.csv#row=32": "access"
+      },
+      "tamper_descendants": [
+        {
+          "from": "endpoint_system_log.csv#row=37",
+          "to": "browser_history.csv#row=41"
+        }
+      ],
+      "tamper_test": {
+        "evidence_source": "browser"
+      },
+      "true_links": [
+        {
+          "from": "vpn_authentication.csv#row=32",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=34"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=34",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=37"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=37",
+          "link_type": "incident_sequence",
+          "to": "browser_history.csv#row=41"
+        }
+      ]
+    },
+    {
+      "absence_classification": {
+        "H1-EXP-2": "UNOBSERVABLE"
+      },
+      "background_unassigned_events": [
+        "backup_scheduler.csv#row=1",
+        "backup_scheduler.csv#row=10",
+        "backup_scheduler.csv#row=11",
+        "backup_scheduler.csv#row=12",
+        "backup_scheduler.csv#row=13",
+        "backup_scheduler.csv#row=14",
+        "backup_scheduler.csv#row=15",
+        "backup_scheduler.csv#row=16",
+        "backup_scheduler.csv#row=17",
+        "backup_scheduler.csv#row=18",
+        "backup_scheduler.csv#row=19",
+        "backup_scheduler.csv#row=2",
+        "backup_scheduler.csv#row=20",
+        "backup_scheduler.csv#row=21",
+        "backup_scheduler.csv#row=22",
+        "backup_scheduler.csv#row=23",
+        "backup_scheduler.csv#row=24",
+        "backup_scheduler.csv#row=25",
+        "backup_scheduler.csv#row=26",
+        "backup_scheduler.csv#row=27",
+        "backup_scheduler.csv#row=28",
+        "backup_scheduler.csv#row=29",
+        "backup_scheduler.csv#row=3",
+        "backup_scheduler.csv#row=30",
+        "backup_scheduler.csv#row=31",
+        "backup_scheduler.csv#row=32",
+        "backup_scheduler.csv#row=33",
+        "backup_scheduler.csv#row=34",
+        "backup_scheduler.csv#row=35",
+        "backup_scheduler.csv#row=36",
+        "backup_scheduler.csv#row=37",
+        "backup_scheduler.csv#row=38",
+        "backup_scheduler.csv#row=39",
+        "backup_scheduler.csv#row=4",
+        "backup_scheduler.csv#row=5",
+        "backup_scheduler.csv#row=6",
+        "backup_scheduler.csv#row=7",
+        "backup_scheduler.csv#row=8",
+        "backup_scheduler.csv#row=9",
+        "browser_history.csv#row=1",
+        "browser_history.csv#row=10",
+        "browser_history.csv#row=11",
+        "browser_history.csv#row=12",
+        "browser_history.csv#row=13",
+        "browser_history.csv#row=14",
+        "browser_history.csv#row=15",
+        "browser_history.csv#row=16",
+        "browser_history.csv#row=17",
+        "browser_history.csv#row=18",
+        "browser_history.csv#row=19",
+        "browser_history.csv#row=2",
+        "browser_history.csv#row=20",
+        "browser_history.csv#row=21",
+        "browser_history.csv#row=22",
+        "browser_history.csv#row=23",
+        "browser_history.csv#row=24",
+        "browser_history.csv#row=25",
+        "browser_history.csv#row=26",
+        "browser_history.csv#row=27",
+        "browser_history.csv#row=28",
+        "browser_history.csv#row=29",
+        "browser_history.csv#row=3",
+        "browser_history.csv#row=30",
+        "browser_history.csv#row=31",
+        "browser_history.csv#row=32",
+        "browser_history.csv#row=33",
+        "browser_history.csv#row=34",
+        "browser_history.csv#row=35",
+        "browser_history.csv#row=37",
+        "browser_history.csv#row=4",
+        "browser_history.csv#row=40",
+        "browser_history.csv#row=41",
+        "browser_history.csv#row=5",
+        "browser_history.csv#row=6",
+        "browser_history.csv#row=7",
+        "browser_history.csv#row=8",
+        "browser_history.csv#row=9",
+        "endpoint_system_log.csv#row=1",
+        "endpoint_system_log.csv#row=10",
+        "endpoint_system_log.csv#row=11",
+        "endpoint_system_log.csv#row=12",
+        "endpoint_system_log.csv#row=13",
+        "endpoint_system_log.csv#row=14",
+        "endpoint_system_log.csv#row=15",
+        "endpoint_system_log.csv#row=16",
+        "endpoint_system_log.csv#row=17",
+        "endpoint_system_log.csv#row=18",
+        "endpoint_system_log.csv#row=19",
+        "endpoint_system_log.csv#row=2",
+        "endpoint_system_log.csv#row=20",
+        "endpoint_system_log.csv#row=21",
+        "endpoint_system_log.csv#row=22",
+        "endpoint_system_log.csv#row=23",
+        "endpoint_system_log.csv#row=24",
+        "endpoint_system_log.csv#row=25",
+        "endpoint_system_log.csv#row=26",
+        "endpoint_system_log.csv#row=27",
+        "endpoint_system_log.csv#row=28",
+        "endpoint_system_log.csv#row=29",
+        "endpoint_system_log.csv#row=3",
+        "endpoint_system_log.csv#row=30",
+        "endpoint_system_log.csv#row=31",
+        "endpoint_system_log.csv#row=32",
+        "endpoint_system_log.csv#row=35",
+        "endpoint_system_log.csv#row=36",
+        "endpoint_system_log.csv#row=37",
+        "endpoint_system_log.csv#row=39",
+        "endpoint_system_log.csv#row=4",
+        "endpoint_system_log.csv#row=40",
+        "endpoint_system_log.csv#row=41",
+        "endpoint_system_log.csv#row=5",
+        "endpoint_system_log.csv#row=6",
+        "endpoint_system_log.csv#row=7",
+        "endpoint_system_log.csv#row=8",
+        "endpoint_system_log.csv#row=9",
+        "phone_chat.json#item=0",
+        "phone_chat.json#item=1",
+        "phone_chat.json#item=10",
+        "phone_chat.json#item=11",
+        "phone_chat.json#item=12",
+        "phone_chat.json#item=13",
+        "phone_chat.json#item=14",
+        "phone_chat.json#item=15",
+        "phone_chat.json#item=16",
+        "phone_chat.json#item=17",
+        "phone_chat.json#item=18",
+        "phone_chat.json#item=19",
+        "phone_chat.json#item=2",
+        "phone_chat.json#item=20",
+        "phone_chat.json#item=21",
+        "phone_chat.json#item=22",
+        "phone_chat.json#item=23",
+        "phone_chat.json#item=24",
+        "phone_chat.json#item=25",
+        "phone_chat.json#item=26",
+        "phone_chat.json#item=27",
+        "phone_chat.json#item=28",
+        "phone_chat.json#item=3",
+        "phone_chat.json#item=30",
+        "phone_chat.json#item=31",
+        "phone_chat.json#item=32",
+        "phone_chat.json#item=33",
+        "phone_chat.json#item=34",
+        "phone_chat.json#item=35",
+        "phone_chat.json#item=36",
+        "phone_chat.json#item=37",
+        "phone_chat.json#item=38",
+        "phone_chat.json#item=39",
+        "phone_chat.json#item=4",
+        "phone_chat.json#item=5",
+        "phone_chat.json#item=6",
+        "phone_chat.json#item=7",
+        "phone_chat.json#item=8",
+        "phone_chat.json#item=9",
+        "vpn_authentication.csv#row=1",
+        "vpn_authentication.csv#row=10",
+        "vpn_authentication.csv#row=11",
+        "vpn_authentication.csv#row=12",
+        "vpn_authentication.csv#row=13",
+        "vpn_authentication.csv#row=14",
+        "vpn_authentication.csv#row=15",
+        "vpn_authentication.csv#row=16",
+        "vpn_authentication.csv#row=17",
+        "vpn_authentication.csv#row=18",
+        "vpn_authentication.csv#row=19",
+        "vpn_authentication.csv#row=2",
+        "vpn_authentication.csv#row=20",
+        "vpn_authentication.csv#row=21",
+        "vpn_authentication.csv#row=22",
+        "vpn_authentication.csv#row=23",
+        "vpn_authentication.csv#row=24",
+        "vpn_authentication.csv#row=25",
+        "vpn_authentication.csv#row=26",
+        "vpn_authentication.csv#row=27",
+        "vpn_authentication.csv#row=28",
+        "vpn_authentication.csv#row=29",
+        "vpn_authentication.csv#row=3",
+        "vpn_authentication.csv#row=31",
+        "vpn_authentication.csv#row=32",
+        "vpn_authentication.csv#row=33",
+        "vpn_authentication.csv#row=34",
+        "vpn_authentication.csv#row=35",
+        "vpn_authentication.csv#row=36",
+        "vpn_authentication.csv#row=37",
+        "vpn_authentication.csv#row=38",
+        "vpn_authentication.csv#row=39",
+        "vpn_authentication.csv#row=4",
+        "vpn_authentication.csv#row=5",
+        "vpn_authentication.csv#row=6",
+        "vpn_authentication.csv#row=7",
+        "vpn_authentication.csv#row=8",
+        "vpn_authentication.csv#row=9"
+      ],
+      "contradictions": [
+        {
+          "conflicting_fields": [
+            "actor",
+            "device"
+          ],
+          "event_refs": [
+            "endpoint_system_log.csv#row=38",
+            "endpoint_system_log.csv#row=39"
+          ],
+          "observed_values": {
+            "archive": {
+              "actor": "priya.nair",
+              "device": "ops-ws-22"
+            },
+            "contradictory_event": {
+              "actor": "unknown.76",
+              "device": "unrecognized-7"
+            }
+          },
+          "severity": "hard",
+          "type": "actor_device_attribution_conflict"
+        },
+        {
+          "event_refs": [
+            "browser_history.csv#row=39",
+            "vpn_authentication.csv#row=35"
+          ],
+          "observed_timestamp_delta_seconds": 420,
+          "severity": "soft",
+          "type": "cross_source_timestamp_disagreement"
+        }
+      ],
+      "correct_hypothesis": "H1",
+      "coverage_gap": {
+        "classification": "UNOBSERVABLE",
+        "end_minute": 72,
+        "source": "vpn",
+        "start_minute": 55
+      },
+      "decoy_events": [
+        "browser_history.csv#row=37",
+        "phone_chat.json#item=33",
+        "phone_chat.json#item=34",
+        "phone_chat.json#item=37",
+        "vpn_authentication.csv#row=34"
+      ],
+      "duplicate_rows": [
+        {
+          "duplicate": "endpoint_system_log.csv#row=34",
+          "original": "endpoint_system_log.csv#row=33"
+        },
+        {
+          "duplicate": "browser_history.csv#row=39",
+          "original": "browser_history.csv#row=38"
+        },
+        {
+          "duplicate": "phone_chat.json#item=34",
+          "original": "phone_chat.json#item=33"
+        }
+      ],
+      "event_count": 200,
+      "evidence_files": [
+        {
+          "event_count": 41,
+          "filename": "endpoint_system_log.csv",
+          "path": "CASE-HOLDOUT-02/evidence/endpoint_system_log.csv",
+          "source": "endpoint"
+        },
+        {
+          "event_count": 41,
+          "filename": "browser_history.csv",
+          "path": "CASE-HOLDOUT-02/evidence/browser_history.csv",
+          "source": "browser"
+        },
+        {
+          "event_count": 40,
+          "filename": "phone_chat.json",
+          "path": "CASE-HOLDOUT-02/evidence/phone_chat.json",
+          "source": "phone"
+        },
+        {
+          "event_count": 39,
+          "filename": "vpn_authentication.csv",
+          "path": "CASE-HOLDOUT-02/evidence/vpn_authentication.csv",
+          "source": "vpn"
+        },
+        {
+          "event_count": 39,
+          "filename": "backup_scheduler.csv",
+          "path": "CASE-HOLDOUT-02/evidence/backup_scheduler.csv",
+          "source": "scheduler"
+        }
+      ],
+      "evidence_sources": [
+        "endpoint",
+        "browser",
+        "phone",
+        "vpn",
+        "scheduler"
+      ],
+      "expected_missing_items": [
+        {
+          "expected_absence": "UNOBSERVABLE",
+          "item": "H1-EXP-2"
+        }
+      ],
+      "hypotheses": [
+        "scheduled_backup",
+        "malicious_insider",
+        "session_misuse"
+      ],
+      "scenario_id": "CASE-HOLDOUT-02",
+      "scenario_type": "malicious",
+      "seed": 1002,
+      "split": "held-out",
+      "stage_labels": {
+        "browser_history.csv#row=36": "exfiltration",
+        "browser_history.csv#row=38": "exfiltration",
+        "browser_history.csv#row=39": "exfiltration",
+        "endpoint_system_log.csv#row=33": "access",
+        "endpoint_system_log.csv#row=34": "access",
+        "endpoint_system_log.csv#row=38": "staging",
+        "phone_chat.json#item=29": "planning",
+        "vpn_authentication.csv#row=30": "access"
+      },
+      "tamper_descendants": [
+        {
+          "from": "endpoint_system_log.csv#row=38",
+          "to": "browser_history.csv#row=39"
+        }
+      ],
+      "tamper_test": {
+        "evidence_source": "browser"
+      },
+      "true_links": [
+        {
+          "from": "vpn_authentication.csv#row=30",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=34"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=34",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=38"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=38",
+          "link_type": "incident_sequence",
+          "to": "browser_history.csv#row=39"
+        },
+        {
+          "from": "phone_chat.json#item=29",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=38"
+        }
+      ]
+    },
+    {
+      "absence_classification": {
+        "H1-EXP-2": "MISSING"
+      },
+      "background_unassigned_events": [
+        "backup_scheduler.csv#row=1",
+        "backup_scheduler.csv#row=10",
+        "backup_scheduler.csv#row=11",
+        "backup_scheduler.csv#row=12",
+        "backup_scheduler.csv#row=13",
+        "backup_scheduler.csv#row=14",
+        "backup_scheduler.csv#row=15",
+        "backup_scheduler.csv#row=16",
+        "backup_scheduler.csv#row=17",
+        "backup_scheduler.csv#row=18",
+        "backup_scheduler.csv#row=19",
+        "backup_scheduler.csv#row=2",
+        "backup_scheduler.csv#row=20",
+        "backup_scheduler.csv#row=21",
+        "backup_scheduler.csv#row=22",
+        "backup_scheduler.csv#row=23",
+        "backup_scheduler.csv#row=24",
+        "backup_scheduler.csv#row=25",
+        "backup_scheduler.csv#row=26",
+        "backup_scheduler.csv#row=27",
+        "backup_scheduler.csv#row=28",
+        "backup_scheduler.csv#row=29",
+        "backup_scheduler.csv#row=3",
+        "backup_scheduler.csv#row=30",
+        "backup_scheduler.csv#row=31",
+        "backup_scheduler.csv#row=32",
+        "backup_scheduler.csv#row=33",
+        "backup_scheduler.csv#row=34",
+        "backup_scheduler.csv#row=35",
+        "backup_scheduler.csv#row=36",
+        "backup_scheduler.csv#row=37",
+        "backup_scheduler.csv#row=38",
+        "backup_scheduler.csv#row=39",
+        "backup_scheduler.csv#row=4",
+        "backup_scheduler.csv#row=40",
+        "backup_scheduler.csv#row=41",
+        "backup_scheduler.csv#row=42",
+        "backup_scheduler.csv#row=44",
+        "backup_scheduler.csv#row=45",
+        "backup_scheduler.csv#row=46",
+        "backup_scheduler.csv#row=47",
+        "backup_scheduler.csv#row=48",
+        "backup_scheduler.csv#row=49",
+        "backup_scheduler.csv#row=5",
+        "backup_scheduler.csv#row=50",
+        "backup_scheduler.csv#row=51",
+        "backup_scheduler.csv#row=52",
+        "backup_scheduler.csv#row=53",
+        "backup_scheduler.csv#row=54",
+        "backup_scheduler.csv#row=6",
+        "backup_scheduler.csv#row=7",
+        "backup_scheduler.csv#row=8",
+        "backup_scheduler.csv#row=9",
+        "browser_history.csv#row=1",
+        "browser_history.csv#row=10",
+        "browser_history.csv#row=11",
+        "browser_history.csv#row=12",
+        "browser_history.csv#row=13",
+        "browser_history.csv#row=14",
+        "browser_history.csv#row=15",
+        "browser_history.csv#row=16",
+        "browser_history.csv#row=17",
+        "browser_history.csv#row=18",
+        "browser_history.csv#row=19",
+        "browser_history.csv#row=2",
+        "browser_history.csv#row=20",
+        "browser_history.csv#row=21",
+        "browser_history.csv#row=22",
+        "browser_history.csv#row=23",
+        "browser_history.csv#row=24",
+        "browser_history.csv#row=25",
+        "browser_history.csv#row=26",
+        "browser_history.csv#row=27",
+        "browser_history.csv#row=28",
+        "browser_history.csv#row=29",
+        "browser_history.csv#row=3",
+        "browser_history.csv#row=30",
+        "browser_history.csv#row=31",
+        "browser_history.csv#row=32",
+        "browser_history.csv#row=33",
+        "browser_history.csv#row=34",
+        "browser_history.csv#row=35",
+        "browser_history.csv#row=36",
+        "browser_history.csv#row=37",
+        "browser_history.csv#row=38",
+        "browser_history.csv#row=39",
+        "browser_history.csv#row=4",
+        "browser_history.csv#row=40",
+        "browser_history.csv#row=41",
+        "browser_history.csv#row=42",
+        "browser_history.csv#row=43",
+        "browser_history.csv#row=45",
+        "browser_history.csv#row=48",
+        "browser_history.csv#row=49",
+        "browser_history.csv#row=5",
+        "browser_history.csv#row=50",
+        "browser_history.csv#row=51",
+        "browser_history.csv#row=52",
+        "browser_history.csv#row=53",
+        "browser_history.csv#row=54",
+        "browser_history.csv#row=55",
+        "browser_history.csv#row=56",
+        "browser_history.csv#row=6",
+        "browser_history.csv#row=7",
+        "browser_history.csv#row=8",
+        "browser_history.csv#row=9",
+        "endpoint_system_log.csv#row=1",
+        "endpoint_system_log.csv#row=10",
+        "endpoint_system_log.csv#row=11",
+        "endpoint_system_log.csv#row=12",
+        "endpoint_system_log.csv#row=13",
+        "endpoint_system_log.csv#row=14",
+        "endpoint_system_log.csv#row=15",
+        "endpoint_system_log.csv#row=16",
+        "endpoint_system_log.csv#row=17",
+        "endpoint_system_log.csv#row=18",
+        "endpoint_system_log.csv#row=19",
+        "endpoint_system_log.csv#row=2",
+        "endpoint_system_log.csv#row=20",
+        "endpoint_system_log.csv#row=21",
+        "endpoint_system_log.csv#row=22",
+        "endpoint_system_log.csv#row=23",
+        "endpoint_system_log.csv#row=24",
+        "endpoint_system_log.csv#row=25",
+        "endpoint_system_log.csv#row=26",
+        "endpoint_system_log.csv#row=27",
+        "endpoint_system_log.csv#row=28",
+        "endpoint_system_log.csv#row=29",
+        "endpoint_system_log.csv#row=3",
+        "endpoint_system_log.csv#row=30",
+        "endpoint_system_log.csv#row=31",
+        "endpoint_system_log.csv#row=32",
+        "endpoint_system_log.csv#row=33",
+        "endpoint_system_log.csv#row=34",
+        "endpoint_system_log.csv#row=35",
+        "endpoint_system_log.csv#row=36",
+        "endpoint_system_log.csv#row=37",
+        "endpoint_system_log.csv#row=38",
+        "endpoint_system_log.csv#row=39",
+        "endpoint_system_log.csv#row=4",
+        "endpoint_system_log.csv#row=40",
+        "endpoint_system_log.csv#row=41",
+        "endpoint_system_log.csv#row=42",
+        "endpoint_system_log.csv#row=43",
+        "endpoint_system_log.csv#row=44",
+        "endpoint_system_log.csv#row=45",
+        "endpoint_system_log.csv#row=49",
+        "endpoint_system_log.csv#row=5",
+        "endpoint_system_log.csv#row=50",
+        "endpoint_system_log.csv#row=51",
+        "endpoint_system_log.csv#row=52",
+        "endpoint_system_log.csv#row=53",
+        "endpoint_system_log.csv#row=54",
+        "endpoint_system_log.csv#row=55",
+        "endpoint_system_log.csv#row=56",
+        "endpoint_system_log.csv#row=6",
+        "endpoint_system_log.csv#row=7",
+        "endpoint_system_log.csv#row=8",
+        "endpoint_system_log.csv#row=9",
+        "vpn_authentication.csv#row=1",
+        "vpn_authentication.csv#row=10",
+        "vpn_authentication.csv#row=11",
+        "vpn_authentication.csv#row=12",
+        "vpn_authentication.csv#row=13",
+        "vpn_authentication.csv#row=14",
+        "vpn_authentication.csv#row=15",
+        "vpn_authentication.csv#row=16",
+        "vpn_authentication.csv#row=17",
+        "vpn_authentication.csv#row=18",
+        "vpn_authentication.csv#row=19",
+        "vpn_authentication.csv#row=2",
+        "vpn_authentication.csv#row=20",
+        "vpn_authentication.csv#row=21",
+        "vpn_authentication.csv#row=22",
+        "vpn_authentication.csv#row=23",
+        "vpn_authentication.csv#row=24",
+        "vpn_authentication.csv#row=25",
+        "vpn_authentication.csv#row=26",
+        "vpn_authentication.csv#row=27",
+        "vpn_authentication.csv#row=28",
+        "vpn_authentication.csv#row=29",
+        "vpn_authentication.csv#row=3",
+        "vpn_authentication.csv#row=30",
+        "vpn_authentication.csv#row=31",
+        "vpn_authentication.csv#row=32",
+        "vpn_authentication.csv#row=33",
+        "vpn_authentication.csv#row=34",
+        "vpn_authentication.csv#row=35",
+        "vpn_authentication.csv#row=36",
+        "vpn_authentication.csv#row=37",
+        "vpn_authentication.csv#row=38",
+        "vpn_authentication.csv#row=39",
+        "vpn_authentication.csv#row=4",
+        "vpn_authentication.csv#row=40",
+        "vpn_authentication.csv#row=41",
+        "vpn_authentication.csv#row=42",
+        "vpn_authentication.csv#row=44",
+        "vpn_authentication.csv#row=45",
+        "vpn_authentication.csv#row=46",
+        "vpn_authentication.csv#row=47",
+        "vpn_authentication.csv#row=48",
+        "vpn_authentication.csv#row=49",
+        "vpn_authentication.csv#row=5",
+        "vpn_authentication.csv#row=50",
+        "vpn_authentication.csv#row=51",
+        "vpn_authentication.csv#row=52",
+        "vpn_authentication.csv#row=53",
+        "vpn_authentication.csv#row=54",
+        "vpn_authentication.csv#row=6",
+        "vpn_authentication.csv#row=7",
+        "vpn_authentication.csv#row=8",
+        "vpn_authentication.csv#row=9"
+      ],
+      "contradictions": [
+        {
+          "conflicting_fields": [
+            "actor",
+            "device"
+          ],
+          "event_refs": [
+            "endpoint_system_log.csv#row=48",
+            "endpoint_system_log.csv#row=50"
+          ],
+          "observed_values": {
+            "archive": {
+              "actor": "leo.martin",
+              "device": "backup-node-06"
+            },
+            "contradictory_event": {
+              "actor": "unknown.73",
+              "device": "unrecognized-9"
+            }
+          },
+          "severity": "hard",
+          "type": "actor_device_attribution_conflict"
+        },
+        {
+          "event_refs": [
+            "browser_history.csv#row=47",
+            "vpn_authentication.csv#row=45"
+          ],
+          "observed_timestamp_delta_seconds": -780,
+          "severity": "soft",
+          "type": "cross_source_timestamp_disagreement"
+        }
+      ],
+      "correct_hypothesis": "H2",
+      "coverage_gap": {
+        "classification": "UNOBSERVABLE",
+        "end_minute": 115,
+        "source": "browser",
+        "start_minute": 100
+      },
+      "decoy_events": [
+        "backup_scheduler.csv#row=44",
+        "browser_history.csv#row=45",
+        "browser_history.csv#row=48",
+        "endpoint_system_log.csv#row=49",
+        "vpn_authentication.csv#row=49",
+        "vpn_authentication.csv#row=50"
+      ],
+      "duplicate_rows": [
+        {
+          "duplicate": "endpoint_system_log.csv#row=47",
+          "original": "endpoint_system_log.csv#row=46"
+        },
+        {
+          "duplicate": "browser_history.csv#row=47",
+          "original": "browser_history.csv#row=46"
+        }
+      ],
+      "event_count": 220,
+      "evidence_files": [
+        {
+          "event_count": 56,
+          "filename": "endpoint_system_log.csv",
+          "path": "CASE-HOLDOUT-03/evidence/endpoint_system_log.csv",
+          "source": "endpoint"
+        },
+        {
+          "event_count": 56,
+          "filename": "browser_history.csv",
+          "path": "CASE-HOLDOUT-03/evidence/browser_history.csv",
+          "source": "browser"
+        },
+        {
+          "event_count": 54,
+          "filename": "vpn_authentication.csv",
+          "path": "CASE-HOLDOUT-03/evidence/vpn_authentication.csv",
+          "source": "vpn"
+        },
+        {
+          "event_count": 54,
+          "filename": "backup_scheduler.csv",
+          "path": "CASE-HOLDOUT-03/evidence/backup_scheduler.csv",
+          "source": "scheduler"
+        }
+      ],
+      "evidence_sources": [
+        "endpoint",
+        "browser",
+        "vpn",
+        "scheduler"
+      ],
+      "expected_missing_items": [
+        {
+          "expected_absence": "MISSING",
+          "item": "H1-EXP-2"
+        }
+      ],
+      "hypotheses": [
+        "scheduled_backup",
+        "malicious_insider",
+        "session_misuse"
+      ],
+      "scenario_id": "CASE-HOLDOUT-03",
+      "scenario_type": "benign_looking",
+      "seed": 1003,
+      "split": "held-out",
+      "stage_labels": {
+        "backup_scheduler.csv#row=43": "verification",
+        "browser_history.csv#row=44": "exfiltration",
+        "browser_history.csv#row=46": "exfiltration",
+        "browser_history.csv#row=47": "exfiltration",
+        "endpoint_system_log.csv#row=46": "access",
+        "endpoint_system_log.csv#row=47": "access",
+        "endpoint_system_log.csv#row=48": "staging",
+        "vpn_authentication.csv#row=43": "access"
+      },
+      "tamper_descendants": [
+        {
+          "from": "endpoint_system_log.csv#row=48",
+          "to": "browser_history.csv#row=47"
+        }
+      ],
+      "tamper_test": {
+        "evidence_source": "browser"
+      },
+      "true_links": [
+        {
+          "from": "vpn_authentication.csv#row=43",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=47"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=47",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=48"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=48",
+          "link_type": "incident_sequence",
+          "to": "browser_history.csv#row=47"
+        }
+      ]
+    },
+    {
+      "absence_classification": {
+        "H3-REQ-1": "UNOBSERVABLE"
+      },
+      "background_unassigned_events": [
+        "backup_scheduler.csv#row=1",
+        "backup_scheduler.csv#row=10",
+        "backup_scheduler.csv#row=11",
+        "backup_scheduler.csv#row=12",
+        "backup_scheduler.csv#row=13",
+        "backup_scheduler.csv#row=14",
+        "backup_scheduler.csv#row=15",
+        "backup_scheduler.csv#row=16",
+        "backup_scheduler.csv#row=17",
+        "backup_scheduler.csv#row=18",
+        "backup_scheduler.csv#row=19",
+        "backup_scheduler.csv#row=2",
+        "backup_scheduler.csv#row=20",
+        "backup_scheduler.csv#row=21",
+        "backup_scheduler.csv#row=22",
+        "backup_scheduler.csv#row=23",
+        "backup_scheduler.csv#row=24",
+        "backup_scheduler.csv#row=25",
+        "backup_scheduler.csv#row=26",
+        "backup_scheduler.csv#row=27",
+        "backup_scheduler.csv#row=28",
+        "backup_scheduler.csv#row=29",
+        "backup_scheduler.csv#row=3",
+        "backup_scheduler.csv#row=30",
+        "backup_scheduler.csv#row=31",
+        "backup_scheduler.csv#row=32",
+        "backup_scheduler.csv#row=33",
+        "backup_scheduler.csv#row=34",
+        "backup_scheduler.csv#row=35",
+        "backup_scheduler.csv#row=36",
+        "backup_scheduler.csv#row=37",
+        "backup_scheduler.csv#row=38",
+        "backup_scheduler.csv#row=39",
+        "backup_scheduler.csv#row=4",
+        "backup_scheduler.csv#row=40",
+        "backup_scheduler.csv#row=41",
+        "backup_scheduler.csv#row=42",
+        "backup_scheduler.csv#row=43",
+        "backup_scheduler.csv#row=44",
+        "backup_scheduler.csv#row=45",
+        "backup_scheduler.csv#row=46",
+        "backup_scheduler.csv#row=47",
+        "backup_scheduler.csv#row=5",
+        "backup_scheduler.csv#row=6",
+        "backup_scheduler.csv#row=7",
+        "backup_scheduler.csv#row=8",
+        "backup_scheduler.csv#row=9",
+        "browser_history.csv#row=1",
+        "browser_history.csv#row=10",
+        "browser_history.csv#row=11",
+        "browser_history.csv#row=12",
+        "browser_history.csv#row=13",
+        "browser_history.csv#row=14",
+        "browser_history.csv#row=15",
+        "browser_history.csv#row=16",
+        "browser_history.csv#row=17",
+        "browser_history.csv#row=18",
+        "browser_history.csv#row=19",
+        "browser_history.csv#row=2",
+        "browser_history.csv#row=20",
+        "browser_history.csv#row=21",
+        "browser_history.csv#row=22",
+        "browser_history.csv#row=23",
+        "browser_history.csv#row=24",
+        "browser_history.csv#row=25",
+        "browser_history.csv#row=26",
+        "browser_history.csv#row=27",
+        "browser_history.csv#row=28",
+        "browser_history.csv#row=29",
+        "browser_history.csv#row=3",
+        "browser_history.csv#row=30",
+        "browser_history.csv#row=31",
+        "browser_history.csv#row=32",
+        "browser_history.csv#row=33",
+        "browser_history.csv#row=34",
+        "browser_history.csv#row=35",
+        "browser_history.csv#row=36",
+        "browser_history.csv#row=37",
+        "browser_history.csv#row=38",
+        "browser_history.csv#row=39",
+        "browser_history.csv#row=4",
+        "browser_history.csv#row=40",
+        "browser_history.csv#row=41",
+        "browser_history.csv#row=42",
+        "browser_history.csv#row=44",
+        "browser_history.csv#row=47",
+        "browser_history.csv#row=48",
+        "browser_history.csv#row=49",
+        "browser_history.csv#row=5",
+        "browser_history.csv#row=6",
+        "browser_history.csv#row=7",
+        "browser_history.csv#row=8",
+        "browser_history.csv#row=9",
+        "endpoint_system_log.csv#row=1",
+        "endpoint_system_log.csv#row=10",
+        "endpoint_system_log.csv#row=11",
+        "endpoint_system_log.csv#row=12",
+        "endpoint_system_log.csv#row=13",
+        "endpoint_system_log.csv#row=14",
+        "endpoint_system_log.csv#row=15",
+        "endpoint_system_log.csv#row=16",
+        "endpoint_system_log.csv#row=17",
+        "endpoint_system_log.csv#row=18",
+        "endpoint_system_log.csv#row=19",
+        "endpoint_system_log.csv#row=2",
+        "endpoint_system_log.csv#row=20",
+        "endpoint_system_log.csv#row=21",
+        "endpoint_system_log.csv#row=22",
+        "endpoint_system_log.csv#row=23",
+        "endpoint_system_log.csv#row=24",
+        "endpoint_system_log.csv#row=25",
+        "endpoint_system_log.csv#row=26",
+        "endpoint_system_log.csv#row=27",
+        "endpoint_system_log.csv#row=28",
+        "endpoint_system_log.csv#row=29",
+        "endpoint_system_log.csv#row=3",
+        "endpoint_system_log.csv#row=30",
+        "endpoint_system_log.csv#row=31",
+        "endpoint_system_log.csv#row=32",
+        "endpoint_system_log.csv#row=35",
+        "endpoint_system_log.csv#row=36",
+        "endpoint_system_log.csv#row=37",
+        "endpoint_system_log.csv#row=39",
+        "endpoint_system_log.csv#row=4",
+        "endpoint_system_log.csv#row=40",
+        "endpoint_system_log.csv#row=41",
+        "endpoint_system_log.csv#row=42",
+        "endpoint_system_log.csv#row=43",
+        "endpoint_system_log.csv#row=44",
+        "endpoint_system_log.csv#row=45",
+        "endpoint_system_log.csv#row=46",
+        "endpoint_system_log.csv#row=47",
+        "endpoint_system_log.csv#row=48",
+        "endpoint_system_log.csv#row=49",
+        "endpoint_system_log.csv#row=5",
+        "endpoint_system_log.csv#row=6",
+        "endpoint_system_log.csv#row=7",
+        "endpoint_system_log.csv#row=8",
+        "endpoint_system_log.csv#row=9",
+        "phone_chat.json#item=0",
+        "phone_chat.json#item=1",
+        "phone_chat.json#item=10",
+        "phone_chat.json#item=11",
+        "phone_chat.json#item=12",
+        "phone_chat.json#item=13",
+        "phone_chat.json#item=14",
+        "phone_chat.json#item=15",
+        "phone_chat.json#item=16",
+        "phone_chat.json#item=17",
+        "phone_chat.json#item=18",
+        "phone_chat.json#item=19",
+        "phone_chat.json#item=2",
+        "phone_chat.json#item=20",
+        "phone_chat.json#item=21",
+        "phone_chat.json#item=22",
+        "phone_chat.json#item=23",
+        "phone_chat.json#item=24",
+        "phone_chat.json#item=25",
+        "phone_chat.json#item=26",
+        "phone_chat.json#item=27",
+        "phone_chat.json#item=28",
+        "phone_chat.json#item=29",
+        "phone_chat.json#item=3",
+        "phone_chat.json#item=30",
+        "phone_chat.json#item=31",
+        "phone_chat.json#item=32",
+        "phone_chat.json#item=33",
+        "phone_chat.json#item=34",
+        "phone_chat.json#item=35",
+        "phone_chat.json#item=36",
+        "phone_chat.json#item=37",
+        "phone_chat.json#item=39",
+        "phone_chat.json#item=4",
+        "phone_chat.json#item=40",
+        "phone_chat.json#item=41",
+        "phone_chat.json#item=42",
+        "phone_chat.json#item=43",
+        "phone_chat.json#item=44",
+        "phone_chat.json#item=45",
+        "phone_chat.json#item=46",
+        "phone_chat.json#item=47",
+        "phone_chat.json#item=5",
+        "phone_chat.json#item=6",
+        "phone_chat.json#item=7",
+        "phone_chat.json#item=8",
+        "phone_chat.json#item=9",
+        "vpn_authentication.csv#row=1",
+        "vpn_authentication.csv#row=10",
+        "vpn_authentication.csv#row=11",
+        "vpn_authentication.csv#row=12",
+        "vpn_authentication.csv#row=13",
+        "vpn_authentication.csv#row=14",
+        "vpn_authentication.csv#row=15",
+        "vpn_authentication.csv#row=16",
+        "vpn_authentication.csv#row=17",
+        "vpn_authentication.csv#row=18",
+        "vpn_authentication.csv#row=19",
+        "vpn_authentication.csv#row=2",
+        "vpn_authentication.csv#row=20",
+        "vpn_authentication.csv#row=21",
+        "vpn_authentication.csv#row=22",
+        "vpn_authentication.csv#row=23",
+        "vpn_authentication.csv#row=24",
+        "vpn_authentication.csv#row=25",
+        "vpn_authentication.csv#row=26",
+        "vpn_authentication.csv#row=27",
+        "vpn_authentication.csv#row=28",
+        "vpn_authentication.csv#row=29",
+        "vpn_authentication.csv#row=3",
+        "vpn_authentication.csv#row=30",
+        "vpn_authentication.csv#row=31",
+        "vpn_authentication.csv#row=32",
+        "vpn_authentication.csv#row=34",
+        "vpn_authentication.csv#row=35",
+        "vpn_authentication.csv#row=36",
+        "vpn_authentication.csv#row=37",
+        "vpn_authentication.csv#row=38",
+        "vpn_authentication.csv#row=39",
+        "vpn_authentication.csv#row=4",
+        "vpn_authentication.csv#row=40",
+        "vpn_authentication.csv#row=41",
+        "vpn_authentication.csv#row=42",
+        "vpn_authentication.csv#row=43",
+        "vpn_authentication.csv#row=44",
+        "vpn_authentication.csv#row=45",
+        "vpn_authentication.csv#row=46",
+        "vpn_authentication.csv#row=47",
+        "vpn_authentication.csv#row=5",
+        "vpn_authentication.csv#row=6",
+        "vpn_authentication.csv#row=7",
+        "vpn_authentication.csv#row=8",
+        "vpn_authentication.csv#row=9"
+      ],
+      "contradictions": [
+        {
+          "conflicting_fields": [
+            "actor",
+            "device"
+          ],
+          "event_refs": [
+            "endpoint_system_log.csv#row=38",
+            "endpoint_system_log.csv#row=39"
+          ],
+          "observed_values": {
+            "archive": {
+              "actor": "devon.lee",
+              "device": "remote-vdi-19"
+            },
+            "contradictory_event": {
+              "actor": "unknown.63",
+              "device": "unrecognized-2"
+            }
+          },
+          "severity": "hard",
+          "type": "actor_device_attribution_conflict"
+        },
+        {
+          "event_refs": [
+            "browser_history.csv#row=46",
+            "vpn_authentication.csv#row=39"
+          ],
+          "observed_timestamp_delta_seconds": -600,
+          "severity": "soft",
+          "type": "cross_source_timestamp_disagreement"
+        }
+      ],
+      "correct_hypothesis": "UNDETERMINED",
+      "coverage_gap": {
+        "classification": "UNOBSERVABLE",
+        "end_minute": 125,
+        "source": "endpoint",
+        "start_minute": 92
+      },
+      "decoy_events": [
+        "backup_scheduler.csv#row=38",
+        "browser_history.csv#row=38",
+        "browser_history.csv#row=40",
+        "endpoint_system_log.csv#row=44",
+        "phone_chat.json#item=40",
+        "phone_chat.json#item=41",
+        "phone_chat.json#item=43",
+        "phone_chat.json#item=44",
+        "vpn_authentication.csv#row=38",
+        "vpn_authentication.csv#row=40"
+      ],
+      "duplicate_rows": [
+        {
+          "duplicate": "endpoint_system_log.csv#row=34",
+          "original": "endpoint_system_log.csv#row=33"
+        },
+        {
+          "duplicate": "browser_history.csv#row=46",
+          "original": "browser_history.csv#row=45"
+        },
+        {
+          "duplicate": "phone_chat.json#item=44",
+          "original": "phone_chat.json#item=43"
+        }
+      ],
+      "event_count": 240,
+      "evidence_files": [
+        {
+          "event_count": 49,
+          "filename": "endpoint_system_log.csv",
+          "path": "CASE-HOLDOUT-04/evidence/endpoint_system_log.csv",
+          "source": "endpoint"
+        },
+        {
+          "event_count": 49,
+          "filename": "browser_history.csv",
+          "path": "CASE-HOLDOUT-04/evidence/browser_history.csv",
+          "source": "browser"
+        },
+        {
+          "event_count": 48,
+          "filename": "phone_chat.json",
+          "path": "CASE-HOLDOUT-04/evidence/phone_chat.json",
+          "source": "phone"
+        },
+        {
+          "event_count": 47,
+          "filename": "vpn_authentication.csv",
+          "path": "CASE-HOLDOUT-04/evidence/vpn_authentication.csv",
+          "source": "vpn"
+        },
+        {
+          "event_count": 47,
+          "filename": "backup_scheduler.csv",
+          "path": "CASE-HOLDOUT-04/evidence/backup_scheduler.csv",
+          "source": "scheduler"
+        }
+      ],
+      "evidence_sources": [
+        "endpoint",
+        "browser",
+        "phone",
+        "vpn",
+        "scheduler"
+      ],
+      "expected_missing_items": [
+        {
+          "expected_absence": "UNOBSERVABLE",
+          "item": "H3-REQ-1"
+        }
+      ],
+      "hypotheses": [
+        "scheduled_backup",
+        "malicious_insider",
+        "session_misuse"
+      ],
+      "scenario_id": "CASE-HOLDOUT-04",
+      "scenario_type": "ambiguous",
+      "seed": 1004,
+      "split": "held-out",
+      "stage_labels": {
+        "browser_history.csv#row=43": "exfiltration",
+        "browser_history.csv#row=45": "exfiltration",
+        "browser_history.csv#row=46": "exfiltration",
+        "endpoint_system_log.csv#row=33": "access",
+        "endpoint_system_log.csv#row=34": "access",
+        "endpoint_system_log.csv#row=38": "staging",
+        "phone_chat.json#item=38": "planning",
+        "vpn_authentication.csv#row=33": "access"
+      },
+      "tamper_descendants": [
+        {
+          "from": "endpoint_system_log.csv#row=38",
+          "to": "browser_history.csv#row=46"
+        }
+      ],
+      "tamper_test": {
+        "evidence_source": "browser"
+      },
+      "true_links": [
+        {
+          "from": "vpn_authentication.csv#row=33",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=34"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=34",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=38"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=38",
+          "link_type": "incident_sequence",
+          "to": "browser_history.csv#row=46"
+        },
+        {
+          "from": "phone_chat.json#item=38",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=38"
+        }
+      ]
+    },
+    {
+      "absence_classification": {
+        "H2-FORBID-2": "MISSING"
+      },
+      "background_unassigned_events": [
+        "backup_scheduler.csv#row=1",
+        "backup_scheduler.csv#row=10",
+        "backup_scheduler.csv#row=11",
+        "backup_scheduler.csv#row=12",
+        "backup_scheduler.csv#row=13",
+        "backup_scheduler.csv#row=14",
+        "backup_scheduler.csv#row=15",
+        "backup_scheduler.csv#row=16",
+        "backup_scheduler.csv#row=17",
+        "backup_scheduler.csv#row=18",
+        "backup_scheduler.csv#row=19",
+        "backup_scheduler.csv#row=2",
+        "backup_scheduler.csv#row=20",
+        "backup_scheduler.csv#row=21",
+        "backup_scheduler.csv#row=22",
+        "backup_scheduler.csv#row=23",
+        "backup_scheduler.csv#row=24",
+        "backup_scheduler.csv#row=25",
+        "backup_scheduler.csv#row=26",
+        "backup_scheduler.csv#row=27",
+        "backup_scheduler.csv#row=28",
+        "backup_scheduler.csv#row=29",
+        "backup_scheduler.csv#row=3",
+        "backup_scheduler.csv#row=30",
+        "backup_scheduler.csv#row=31",
+        "backup_scheduler.csv#row=32",
+        "backup_scheduler.csv#row=33",
+        "backup_scheduler.csv#row=34",
+        "backup_scheduler.csv#row=35",
+        "backup_scheduler.csv#row=36",
+        "backup_scheduler.csv#row=37",
+        "backup_scheduler.csv#row=38",
+        "backup_scheduler.csv#row=39",
+        "backup_scheduler.csv#row=4",
+        "backup_scheduler.csv#row=40",
+        "backup_scheduler.csv#row=41",
+        "backup_scheduler.csv#row=42",
+        "backup_scheduler.csv#row=43",
+        "backup_scheduler.csv#row=44",
+        "backup_scheduler.csv#row=45",
+        "backup_scheduler.csv#row=46",
+        "backup_scheduler.csv#row=47",
+        "backup_scheduler.csv#row=48",
+        "backup_scheduler.csv#row=49",
+        "backup_scheduler.csv#row=5",
+        "backup_scheduler.csv#row=50",
+        "backup_scheduler.csv#row=51",
+        "backup_scheduler.csv#row=6",
+        "backup_scheduler.csv#row=7",
+        "backup_scheduler.csv#row=8",
+        "backup_scheduler.csv#row=9",
+        "browser_history.csv#row=1",
+        "browser_history.csv#row=10",
+        "browser_history.csv#row=11",
+        "browser_history.csv#row=12",
+        "browser_history.csv#row=13",
+        "browser_history.csv#row=14",
+        "browser_history.csv#row=15",
+        "browser_history.csv#row=16",
+        "browser_history.csv#row=17",
+        "browser_history.csv#row=18",
+        "browser_history.csv#row=19",
+        "browser_history.csv#row=2",
+        "browser_history.csv#row=20",
+        "browser_history.csv#row=21",
+        "browser_history.csv#row=22",
+        "browser_history.csv#row=23",
+        "browser_history.csv#row=24",
+        "browser_history.csv#row=25",
+        "browser_history.csv#row=26",
+        "browser_history.csv#row=27",
+        "browser_history.csv#row=28",
+        "browser_history.csv#row=29",
+        "browser_history.csv#row=3",
+        "browser_history.csv#row=30",
+        "browser_history.csv#row=31",
+        "browser_history.csv#row=32",
+        "browser_history.csv#row=33",
+        "browser_history.csv#row=34",
+        "browser_history.csv#row=35",
+        "browser_history.csv#row=36",
+        "browser_history.csv#row=37",
+        "browser_history.csv#row=38",
+        "browser_history.csv#row=39",
+        "browser_history.csv#row=4",
+        "browser_history.csv#row=40",
+        "browser_history.csv#row=41",
+        "browser_history.csv#row=42",
+        "browser_history.csv#row=43",
+        "browser_history.csv#row=44",
+        "browser_history.csv#row=46",
+        "browser_history.csv#row=47",
+        "browser_history.csv#row=5",
+        "browser_history.csv#row=50",
+        "browser_history.csv#row=51",
+        "browser_history.csv#row=52",
+        "browser_history.csv#row=6",
+        "browser_history.csv#row=7",
+        "browser_history.csv#row=8",
+        "browser_history.csv#row=9",
+        "endpoint_system_log.csv#row=1",
+        "endpoint_system_log.csv#row=10",
+        "endpoint_system_log.csv#row=11",
+        "endpoint_system_log.csv#row=12",
+        "endpoint_system_log.csv#row=13",
+        "endpoint_system_log.csv#row=14",
+        "endpoint_system_log.csv#row=15",
+        "endpoint_system_log.csv#row=16",
+        "endpoint_system_log.csv#row=17",
+        "endpoint_system_log.csv#row=18",
+        "endpoint_system_log.csv#row=19",
+        "endpoint_system_log.csv#row=2",
+        "endpoint_system_log.csv#row=20",
+        "endpoint_system_log.csv#row=21",
+        "endpoint_system_log.csv#row=22",
+        "endpoint_system_log.csv#row=23",
+        "endpoint_system_log.csv#row=24",
+        "endpoint_system_log.csv#row=25",
+        "endpoint_system_log.csv#row=26",
+        "endpoint_system_log.csv#row=27",
+        "endpoint_system_log.csv#row=28",
+        "endpoint_system_log.csv#row=29",
+        "endpoint_system_log.csv#row=3",
+        "endpoint_system_log.csv#row=30",
+        "endpoint_system_log.csv#row=31",
+        "endpoint_system_log.csv#row=32",
+        "endpoint_system_log.csv#row=33",
+        "endpoint_system_log.csv#row=34",
+        "endpoint_system_log.csv#row=35",
+        "endpoint_system_log.csv#row=36",
+        "endpoint_system_log.csv#row=37",
+        "endpoint_system_log.csv#row=4",
+        "endpoint_system_log.csv#row=40",
+        "endpoint_system_log.csv#row=41",
+        "endpoint_system_log.csv#row=42",
+        "endpoint_system_log.csv#row=43",
+        "endpoint_system_log.csv#row=45",
+        "endpoint_system_log.csv#row=46",
+        "endpoint_system_log.csv#row=47",
+        "endpoint_system_log.csv#row=48",
+        "endpoint_system_log.csv#row=49",
+        "endpoint_system_log.csv#row=5",
+        "endpoint_system_log.csv#row=50",
+        "endpoint_system_log.csv#row=51",
+        "endpoint_system_log.csv#row=52",
+        "endpoint_system_log.csv#row=53",
+        "endpoint_system_log.csv#row=6",
+        "endpoint_system_log.csv#row=7",
+        "endpoint_system_log.csv#row=8",
+        "endpoint_system_log.csv#row=9",
+        "phone_chat.json#item=0",
+        "phone_chat.json#item=1",
+        "phone_chat.json#item=10",
+        "phone_chat.json#item=11",
+        "phone_chat.json#item=12",
+        "phone_chat.json#item=13",
+        "phone_chat.json#item=14",
+        "phone_chat.json#item=15",
+        "phone_chat.json#item=16",
+        "phone_chat.json#item=17",
+        "phone_chat.json#item=18",
+        "phone_chat.json#item=19",
+        "phone_chat.json#item=2",
+        "phone_chat.json#item=20",
+        "phone_chat.json#item=21",
+        "phone_chat.json#item=22",
+        "phone_chat.json#item=23",
+        "phone_chat.json#item=24",
+        "phone_chat.json#item=25",
+        "phone_chat.json#item=26",
+        "phone_chat.json#item=27",
+        "phone_chat.json#item=28",
+        "phone_chat.json#item=29",
+        "phone_chat.json#item=3",
+        "phone_chat.json#item=30",
+        "phone_chat.json#item=31",
+        "phone_chat.json#item=32",
+        "phone_chat.json#item=33",
+        "phone_chat.json#item=34",
+        "phone_chat.json#item=35",
+        "phone_chat.json#item=37",
+        "phone_chat.json#item=38",
+        "phone_chat.json#item=39",
+        "phone_chat.json#item=4",
+        "phone_chat.json#item=40",
+        "phone_chat.json#item=41",
+        "phone_chat.json#item=42",
+        "phone_chat.json#item=43",
+        "phone_chat.json#item=44",
+        "phone_chat.json#item=45",
+        "phone_chat.json#item=46",
+        "phone_chat.json#item=47",
+        "phone_chat.json#item=48",
+        "phone_chat.json#item=49",
+        "phone_chat.json#item=5",
+        "phone_chat.json#item=50",
+        "phone_chat.json#item=51",
+        "phone_chat.json#item=6",
+        "phone_chat.json#item=7",
+        "phone_chat.json#item=8",
+        "phone_chat.json#item=9",
+        "vpn_authentication.csv#row=1",
+        "vpn_authentication.csv#row=10",
+        "vpn_authentication.csv#row=11",
+        "vpn_authentication.csv#row=12",
+        "vpn_authentication.csv#row=13",
+        "vpn_authentication.csv#row=14",
+        "vpn_authentication.csv#row=15",
+        "vpn_authentication.csv#row=16",
+        "vpn_authentication.csv#row=17",
+        "vpn_authentication.csv#row=18",
+        "vpn_authentication.csv#row=19",
+        "vpn_authentication.csv#row=2",
+        "vpn_authentication.csv#row=20",
+        "vpn_authentication.csv#row=21",
+        "vpn_authentication.csv#row=22",
+        "vpn_authentication.csv#row=23",
+        "vpn_authentication.csv#row=24",
+        "vpn_authentication.csv#row=25",
+        "vpn_authentication.csv#row=26",
+        "vpn_authentication.csv#row=27",
+        "vpn_authentication.csv#row=28",
+        "vpn_authentication.csv#row=29",
+        "vpn_authentication.csv#row=3",
+        "vpn_authentication.csv#row=30",
+        "vpn_authentication.csv#row=31",
+        "vpn_authentication.csv#row=32",
+        "vpn_authentication.csv#row=33",
+        "vpn_authentication.csv#row=34",
+        "vpn_authentication.csv#row=35",
+        "vpn_authentication.csv#row=36",
+        "vpn_authentication.csv#row=37",
+        "vpn_authentication.csv#row=38",
+        "vpn_authentication.csv#row=4",
+        "vpn_authentication.csv#row=40",
+        "vpn_authentication.csv#row=41",
+        "vpn_authentication.csv#row=42",
+        "vpn_authentication.csv#row=43",
+        "vpn_authentication.csv#row=44",
+        "vpn_authentication.csv#row=45",
+        "vpn_authentication.csv#row=46",
+        "vpn_authentication.csv#row=47",
+        "vpn_authentication.csv#row=48",
+        "vpn_authentication.csv#row=49",
+        "vpn_authentication.csv#row=5",
+        "vpn_authentication.csv#row=50",
+        "vpn_authentication.csv#row=51",
+        "vpn_authentication.csv#row=52",
+        "vpn_authentication.csv#row=6",
+        "vpn_authentication.csv#row=7",
+        "vpn_authentication.csv#row=8",
+        "vpn_authentication.csv#row=9"
+      ],
+      "contradictions": [
+        {
+          "conflicting_fields": [
+            "actor",
+            "device"
+          ],
+          "event_refs": [
+            "endpoint_system_log.csv#row=44",
+            "endpoint_system_log.csv#row=45"
+          ],
+          "observed_values": {
+            "archive": {
+              "actor": "harper.kim",
+              "device": "research-lt-08"
+            },
+            "contradictory_event": {
+              "actor": "unknown.71",
+              "device": "unrecognized-7"
+            }
+          },
+          "severity": "hard",
+          "type": "actor_device_attribution_conflict"
+        },
+        {
+          "event_refs": [
+            "browser_history.csv#row=49",
+            "vpn_authentication.csv#row=45"
+          ],
+          "observed_timestamp_delta_seconds": 300,
+          "severity": "soft",
+          "type": "cross_source_timestamp_disagreement"
+        }
+      ],
+      "correct_hypothesis": "H1",
+      "coverage_gap": {
+        "classification": "UNOBSERVABLE",
+        "end_minute": 152,
+        "source": "vpn",
+        "start_minute": 130
+      },
+      "decoy_events": [
+        "backup_scheduler.csv#row=43",
+        "browser_history.csv#row=41",
+        "browser_history.csv#row=42",
+        "endpoint_system_log.csv#row=46",
+        "phone_chat.json#item=38",
+        "phone_chat.json#item=39",
+        "phone_chat.json#item=40",
+        "phone_chat.json#item=41",
+        "vpn_authentication.csv#row=44",
+        "vpn_authentication.csv#row=47",
+        "vpn_authentication.csv#row=48"
+      ],
+      "duplicate_rows": [
+        {
+          "duplicate": "endpoint_system_log.csv#row=39",
+          "original": "endpoint_system_log.csv#row=38"
+        },
+        {
+          "duplicate": "browser_history.csv#row=49",
+          "original": "browser_history.csv#row=48"
+        },
+        {
+          "duplicate": "phone_chat.json#item=39",
+          "original": "phone_chat.json#item=38"
+        },
+        {
+          "duplicate": "vpn_authentication.csv#row=48",
+          "original": "vpn_authentication.csv#row=47"
+        }
+      ],
+      "event_count": 260,
+      "evidence_files": [
+        {
+          "event_count": 53,
+          "filename": "endpoint_system_log.csv",
+          "path": "CASE-HOLDOUT-05/evidence/endpoint_system_log.csv",
+          "source": "endpoint"
+        },
+        {
+          "event_count": 52,
+          "filename": "browser_history.csv",
+          "path": "CASE-HOLDOUT-05/evidence/browser_history.csv",
+          "source": "browser"
+        },
+        {
+          "event_count": 52,
+          "filename": "phone_chat.json",
+          "path": "CASE-HOLDOUT-05/evidence/phone_chat.json",
+          "source": "phone"
+        },
+        {
+          "event_count": 52,
+          "filename": "vpn_authentication.csv",
+          "path": "CASE-HOLDOUT-05/evidence/vpn_authentication.csv",
+          "source": "vpn"
+        },
+        {
+          "event_count": 51,
+          "filename": "backup_scheduler.csv",
+          "path": "CASE-HOLDOUT-05/evidence/backup_scheduler.csv",
+          "source": "scheduler"
+        }
+      ],
+      "evidence_sources": [
+        "endpoint",
+        "browser",
+        "phone",
+        "vpn",
+        "scheduler"
+      ],
+      "expected_missing_items": [
+        {
+          "expected_absence": "MISSING",
+          "item": "H2-FORBID-2"
+        }
+      ],
+      "hypotheses": [
+        "scheduled_backup",
+        "malicious_insider",
+        "session_misuse"
+      ],
+      "scenario_id": "CASE-HOLDOUT-05",
+      "scenario_type": "malicious",
+      "seed": 1005,
+      "split": "held-out",
+      "stage_labels": {
+        "browser_history.csv#row=45": "exfiltration",
+        "browser_history.csv#row=48": "exfiltration",
+        "browser_history.csv#row=49": "exfiltration",
+        "endpoint_system_log.csv#row=38": "access",
+        "endpoint_system_log.csv#row=39": "access",
+        "endpoint_system_log.csv#row=44": "staging",
+        "phone_chat.json#item=36": "planning",
+        "vpn_authentication.csv#row=39": "access"
+      },
+      "tamper_descendants": [
+        {
+          "from": "endpoint_system_log.csv#row=44",
+          "to": "browser_history.csv#row=49"
+        }
+      ],
+      "tamper_test": {
+        "evidence_source": "browser"
+      },
+      "true_links": [
+        {
+          "from": "vpn_authentication.csv#row=39",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=39"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=39",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=44"
+        },
+        {
+          "from": "endpoint_system_log.csv#row=44",
+          "link_type": "incident_sequence",
+          "to": "browser_history.csv#row=49"
+        },
+        {
+          "from": "phone_chat.json#item=36",
+          "link_type": "incident_sequence",
+          "to": "endpoint_system_log.csv#row=44"
+        }
+      ]
+    }
+  ],
+  "schema_version": 1
+}

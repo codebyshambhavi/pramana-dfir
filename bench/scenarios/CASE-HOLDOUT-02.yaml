@@ -1,0 +1,21 @@
+id: CASE-HOLDOUT-02
+split: held-out
+scenario_type: malicious
+seed: 1002
+timezone: UTC
+event_count: 200
+actor: priya.nair
+device: ops-ws-22
+file: customer-ledger.7z
+incident: sensitive archive staged and uploaded by the account holder
+contradictions:
+  hard: {type: actor_device_attribution_conflict}
+  soft: {type: cross_source_timestamp_disagreement}
+clock_offsets_minutes: {endpoint: 0, browser: -6, vpn: 8, scheduler: 1}
+coverage_gap: {source: vpn, start_minute: 55, end_minute: 72}
+evidence_sources: [endpoint, browser, phone, vpn, scheduler]
+decoy_count: 15
+duplicate_count: 3
+missing_items: [{item: H1-EXP-2, expected_absence: UNOBSERVABLE}]
+hypotheses: [scheduled_backup, malicious_insider, session_misuse]
+correct_hypothesis: H1

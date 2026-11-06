@@ -1,0 +1,24 @@
+timestamp,action,actor,device,ip,object
+2026-10-17T16:42:00+05:30,process_start,mira.chen,field-laptop-07,198.51.100.42,calendar
+2026-10-17T17:28:00+05:30,search,mira.chen,field-laptop-07,198.51.100.42,health-check
+2026-10-17T17:28:01+05:30,search,mira.chen,field-laptop-07,198.51.100.42,/home/user/notes.txt
+2026-10-17T18:13:01+05:30,process_start,mira.chen,field-laptop-07,198.51.100.42,internal-wiki
+2026-10-17T18:19:00+05:30,login,mira.chen,field-laptop-07,198.51.100.42,printer-status
+2026-10-17T18:30:00+05:30,backup_job,mira.chen,field-laptop-07,198.51.100.42,CASE-001.tar.gz
+2026-10-17T18:33:00+05:30,file_read,mira.chen,field-laptop-07,198.51.100.42,internal-wiki
+2026-10-17T18:38:00+05:30,process_start,mira.chen,field-laptop-07,198.51.100.42,/home/user/notes.txt
+2026-10-17T18:47:00+05:30,login,mira.chen,field-laptop-07,198.51.100.42,/home/user/notes.txt
+2026-10-17T18:48:00+05:30,sync_check,mira.chen,field-laptop-07,198.51.100.42,printer-status
+2026-10-17T19:12:01+05:30,process_start,mira.chen,field-laptop-07,198.51.100.42,printer-status
+2026-10-17T20:11:00+05:30,login,mira.chen,field-laptop-07,198.51.100.42,printer-status
+2026-10-17T20:17:01+05:30,login,mira.chen,field-laptop-07,198.51.100.42,internal-wiki
+2026-10-17T20:50:01+05:30,sync_check,mira.chen,field-laptop-07,198.51.100.42,/home/user/notes.txt
+2026-10-17T21:03:00+05:30,file_read,mira.chen,field-laptop-07,198.51.100.42,internal-wiki
+2026-10-17T21:30:00+05:30,coverage_window_start,mira.chen,field-laptop-07,198.51.100.42,backup scheduler coverage
+2026-10-17T22:55:00+05:30,search,mira.chen,field-laptop-07,198.51.100.42,internal-wiki
+2026-10-17T23:04:00+05:30,search,mira.chen,field-laptop-07,198.51.100.42,printer-status
+2026-10-17T23:32:00+05:30,file_read,mira.chen,field-laptop-07,198.51.100.42,/home/user/notes.txt
+2026-10-17T23:56:01+05:30,search,mira.chen,field-laptop-07,198.51.100.42,health-check
+2026-10-18T00:02:00+05:30,search,mira.chen,field-laptop-07,198.51.100.42,internal-wiki
+2026-10-18T00:17:00+05:30,login,mira.chen,field-laptop-07,198.51.100.42,internal-wiki
+2026-10-18T00:30:00+05:30,coverage_window_end,mira.chen,field-laptop-07,198.51.100.42,backup scheduler coverage

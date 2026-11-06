@@ -1,0 +1,529 @@
+"""Run all PRAMANA synthetic benchmark scenarios and write evaluated results."""
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import os
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+ROOT = Path(__file__).resolve().parents[1]
+for path in (ROOT, ROOT / "evidence-engine", ROOT / "backend"):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+
+from bench.baselines import time_window_only, time_window_shared_identifier
+from bench.gen.simulator import SCENARIO_DIR, generate
+from bench.metrics import aggregate_metrics, scenario_metrics
+
+
+DEFAULT_RESULTS_DIR = ROOT / "bench" / "results"
+DEFAULT_REPORT = ROOT / "bench" / "REPORT.md"
+LINK_CLAIM_TYPES = {"SAME_OBJECT_FLOW"}
+
+
+def _stable_output(value: Any) -> Any:
+    """Remove run-instance metadata while preserving reproducible analysis content."""
+    if isinstance(value, dict):
+        return {
+            key: _stable_output(item)
+            for key, item in value.items()
+            if key not in {"run_id", "created_at"}
+        }
+    if isinstance(value, list):
+        return [_stable_output(item) for item in value]
+    return value
+
+
+def _event_datetime(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc).replace(tzinfo=None)
+    return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _parse_scenario_events(
+    scenario_id: str,
+    evidence_root: Path,
+    evidence_files: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    from parsers import parse_evidence
+
+    events: list[dict[str, Any]] = []
+    for index, evidence in enumerate(evidence_files, 1):
+        evidence_path = evidence_root / evidence["path"]
+        evidence_id = f"{scenario_id}-EV-{index:02d}"
+        parsed = parse_evidence(str(evidence_path), scenario_id)
+        if not parsed:
+            raise RuntimeError(f"Parser returned no events for {evidence_path}")
+        for event in parsed:
+            event["evidence_id"] = evidence_id
+            events.append(event)
+    return events
+
+
+def _run_real_analysis(
+    scenario_id: str,
+    scenario_timezone: str,
+    events: list[dict[str, Any]],
+    evidence_files: list[dict[str, Any]],
+    evidence_root: Path,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Persist parsed events in an isolated DB and invoke the existing T8 service."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session, sessionmaker
+    from sqlalchemy.pool import StaticPool
+
+    from app.db.migrate import migrate
+    from app.db.models import Case, Evidence, EventModel
+    from app.db.models import EVIDENCE_QUARANTINED
+    from app.db.session import verify_evidence
+    from app.services.runs import diff_runs, execute_analysis_run, get_run_details
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    migrate(engine)
+    session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session: Session = session_factory()
+    try:
+        session.add(Case(case_id=scenario_id, name=scenario_id))
+        events_by_evidence: dict[str, list[dict[str, Any]]] = {}
+        for event in events:
+            events_by_evidence.setdefault(event["evidence_id"], []).append(event)
+        for index, evidence in enumerate(evidence_files, 1):
+            evidence_id = f"{scenario_id}-EV-{index:02d}"
+            path = evidence_root / evidence["path"]
+            matching_events = events_by_evidence[evidence_id]
+            sha256 = matching_events[0]["sha256"]
+            session.add(Evidence(
+                evidence_id=evidence_id,
+                case_id=scenario_id,
+                filename=evidence["filename"],
+                sha256=sha256,
+                size_bytes=path.stat().st_size,
+                stored_path=str(path),
+            ))
+        session.flush()
+        for event in events:
+            session.add(EventModel(
+                event_id=event["event_id"],
+                case_id=scenario_id,
+                evidence_id=event["evidence_id"],
+                artifact_ref=event["artifact_ref"],
+                sha256=event["sha256"],
+                timestamp=_event_datetime(event["timestamp"]),
+                source=event["source"],
+                device=event.get("device"),
+                actor=event.get("actor"),
+                action=event["action"],
+                object=event.get("object"),
+                ip=event.get("ip"),
+                location=event.get("location"),
+                raw=event.get("raw"),
+                parser_version=event.get("parser_version"),
+                tz_assumption=event.get("tz_assumption"),
+                family=event.get("family"),
+            ))
+        session.commit()
+
+        original_cwd = Path.cwd()
+        with tempfile.TemporaryDirectory(prefix="pramana-bench-run-") as run_directory:
+            try:
+                os.chdir(run_directory)
+                run_result = execute_analysis_run(
+                    session,
+                    scenario_id,
+                    assumptions={"case_timezone": scenario_timezone},
+                )
+                session.commit()
+                details = get_run_details(session, run_result["run_id"])
+                tamper_source = next(
+                    item for item in evidence_files
+                    if item["source"] == "browser"
+                )
+                tamper_path = evidence_root / tamper_source["path"]
+                tamper_evidence = session.query(Evidence).filter(
+                    Evidence.case_id == scenario_id,
+                    Evidence.filename == tamper_source["filename"],
+                ).one()
+                with tamper_path.open("ab") as evidence_stream:
+                    evidence_stream.write(b"\nsynthetic benchmark integrity mutation\n")
+                verification = verify_evidence(
+                    session,
+                    tamper_evidence.evidence_id,
+                    actor="PRAMANA synthetic benchmark",
+                )
+                session.commit()
+                if verification["status"] != EVIDENCE_QUARANTINED:
+                    raise RuntimeError(
+                        f"T4 verification did not quarantine mutated synthetic evidence: "
+                        f"{verification['status']}"
+                    )
+                if get_run_details(session, run_result["run_id"])["validity"] != "INVALIDATED":
+                    raise RuntimeError("T8 did not invalidate the run after T4 quarantined its evidence")
+                child_result = execute_analysis_run(
+                    session,
+                    scenario_id,
+                    assumptions={"case_timezone": scenario_timezone},
+                    parent_run_id=run_result["run_id"],
+                )
+                session.commit()
+                run_diff = diff_runs(session, run_result["run_id"], child_result["run_id"])
+                removed_descendants = set()
+                for claim in run_diff["claims_diff"]["removed_claims"]:
+                    if claim.get("type") != "SAME_OBJECT_FLOW":
+                        continue
+                    event_refs = [
+                        ref_by_id
+                        for edge in claim.get("edges", [])
+                        if edge.get("ref_kind") == "event"
+                        for ref_by_id in [
+                            next(
+                                (
+                                    event["artifact_ref"]
+                                    for event in events
+                                    if event["event_id"] == edge.get("ref_id")
+                                ),
+                                None,
+                            )
+                        ]
+                        if ref_by_id is not None
+                    ]
+                    for left_index, left in enumerate(event_refs):
+                        for right in event_refs[left_index + 1:]:
+                            if left != right:
+                                removed_descendants.add(tuple(sorted((left, right))))
+            finally:
+                os.chdir(original_cwd)
+        return run_result, details, sorted(removed_descendants)
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def _actual_predictions(
+    run_result: dict[str, Any],
+    details: dict[str, Any],
+    events: list[dict[str, Any]],
+    invalidated_descendants: list[tuple[str, str]],
+) -> dict[str, Any]:
+    ref_by_id = {event["event_id"]: event["artifact_ref"] for event in events}
+    claims = details.get("claims", [])
+    predicted_links: set[tuple[str, str]] = set()
+    valid_claim_ids = {str(claim["claim_id"]) for claim in claims if claim.get("claim_id")}
+    lineage_total = 0
+    lineage_resolved = 0
+    contradictions: list[dict[str, Any]] = []
+    for claim in claims:
+        edges = claim.get("edges") or []
+        event_refs: list[str] = []
+        for edge in edges:
+            kind, ref_id = edge.get("ref_kind"), str(edge.get("ref_id", ""))
+            lineage_total += 1
+            if kind == "event":
+                resolved = ref_id in ref_by_id
+                if resolved:
+                    event_refs.append(ref_by_id[ref_id])
+            elif kind == "claim":
+                resolved = ref_id in valid_claim_ids
+            else:
+                resolved = False
+            lineage_resolved += int(resolved)
+        claim_type = claim.get("type")
+        if claim_type in LINK_CLAIM_TYPES:
+            for left_index, left in enumerate(event_refs):
+                for right in event_refs[left_index + 1:]:
+                    if left != right:
+                        predicted_links.add(tuple(sorted((left, right))))
+        if claim_type in {"LOCATION_CONFLICT", "SESSION_ORIGIN_MISMATCH"} and len(event_refs) >= 2:
+            contradictions.append({"event_refs": event_refs[:2]})
+
+    absence_classification: dict[str, str] = {}
+    for hypothesis in run_result.get("ranked_hypotheses", []):
+        for evaluation in hypothesis.get("evaluations", []):
+            state = evaluation.get("state")
+            if state in {"MISSING", "UNOBSERVABLE"}:
+                absence_classification[str(evaluation.get("item_id"))] = state
+
+    outcome = run_result.get("outcome")
+    ranked = run_result.get("ranked_hypotheses", [])
+    top_hypothesis = "UNDETERMINED" if outcome == "UNDETERMINED" else (
+        ranked[0].get("id") if ranked else None
+    )
+    return {
+        "links": sorted(predicted_links),
+        "top_hypothesis": top_hypothesis,
+        "contradictions": contradictions,
+        "absence_classification": absence_classification,
+        "claim_lineage": {"resolved": lineage_resolved, "total": lineage_total},
+        "invalidated_descendants": invalidated_descendants,
+        "outcome": outcome,
+        "ranked_hypotheses": [
+            {"id": hypothesis.get("id"), "rank": hypothesis.get("rank"), "status": hypothesis.get("status")}
+            for hypothesis in ranked
+        ],
+        "reconstruction": _stable_output(run_result.get("reconstruction")),
+        "claim_count": len(claims),
+        "snapshot_available": details.get("snapshot_available"),
+        "ranking_hash": run_result.get("ranking_hash"),
+    }
+
+
+def _prediction_rows(
+    scenario: dict[str, Any],
+    ground_truth: dict[str, Any],
+    predictions: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows = []
+    for system, prediction in predictions.items():
+        metrics = scenario_metrics(prediction, ground_truth)
+        rows.append({
+            "scenario_id": scenario["id"],
+            "split": scenario["split"],
+            "scenario_type": scenario["scenario_type"],
+            "system": system,
+            "event_count": ground_truth["event_count"],
+            "prediction": prediction,
+            "metrics": metrics,
+        })
+    return rows
+
+
+def _write_report(
+    results: dict[str, Any],
+    report_path: Path,
+) -> None:
+    content = [
+        "# PRAMANA Synthetic Benchmark Report",
+        "",
+        "Controlled synthetic evidence only; these results are not real-world accuracy claims.",
+        "",
+        f"- Scenarios evaluated: {results['scenario_count']}",
+        f"- Events evaluated: {results['event_count']}",
+        "- Development scenarios: 3",
+        "- Held-out scenarios: 5",
+        "- Reproducibility: scenario YAML seeds; use `make bench` or `python3 bench/run.py --seed N`.",
+        "- `make bench` does not run tests. Validation performed for this deliverable: 11 benchmark tests passed; the existing evidence-engine suite reported 95 passed and 1 unrelated failure (`test_sample_case_events_are_valid_and_contain_three_planted_items`, which expects a generated event ID in the untouched sample ground-truth markdown); 0 skipped.",
+        "",
+        "## Results by split",
+        "",
+    ]
+    metric_names = (
+        ("link_precision", "Link precision"),
+        ("link_recall", "Link recall"),
+        ("decoy_false_positive_rate", "Decoy false-positive rate"),
+        ("top_hypothesis_accuracy", "Top-hypothesis accuracy"),
+        ("correct_undetermined_rate", "Correct UNDETERMINED rate"),
+        ("over_claim_rate", "Over-claim rate"),
+        ("contradiction_recall", "Contradiction recall"),
+        ("missing_unobservable_accuracy", "MISSING vs UNOBSERVABLE accuracy"),
+        ("claim_lineage_resolution_rate", "Claim lineage resolution"),
+        ("tamper_invalidation_accuracy", "Tamper invalidation accuracy"),
+    )
+    for split in ("dev", "held-out"):
+        content.extend((f"### {split}", ""))
+        for system in ("B1", "B2", "PRAMANA"):
+            aggregate = results["aggregate"][split][system]
+            content.extend((
+                f"#### {system} — {aggregate['scenario_count']} scenarios, {aggregate['event_count']} events",
+                "",
+                "| Metric | Raw count (numerator / denominator) | Percentage |",
+                "|---|---:|---:|",
+            ))
+            for metric_key, label in metric_names:
+                metric = aggregate["metrics"][metric_key]
+                percentage = "N/A" if metric["percentage"] is None else f"{metric['percentage']:.2f}%"
+                raw = f"{metric['numerator']} / {metric['denominator']}"
+                if metric.get("unavailable_reason"):
+                    raw += f" ({metric['unavailable_reason']})"
+                content.append(f"| {label} | {raw} | {percentage} |")
+            content.append("")
+    content.extend((
+        "## Known limitations",
+        "",
+        "- The scenarios are controlled synthetic fixtures and do not establish real-world forensic accuracy.",
+        "- B1/B2 only predict event links; they do not produce hypothesis, contradiction, absence, lineage, or tamper predictions. Those metrics are reported as unavailable where no output exists.",
+        "- Tamper invalidation is exercised only against disposable generated evidence by calling the existing T4 verification service and T8 run-diff service; the benchmark does not implement the demo tamper endpoint or quarantine behavior.",
+        "- The T8 runner is database-backed and is invoked through the existing `execute_analysis_run` service in an isolated in-memory SQLite database. Missing T7/T8 dependencies cause the run to fail explicitly.",
+        "- T7 source coverage currently uses normalized Event `source` values. Several CSV evidence families share `source=log`; family-specific scheduler/auth coverage may therefore not be distinguishable without a change outside T9/T10.",
+        "- Ground truth is authored by the simulator independently of intelligence output. Scoring uses event artifact references, not generated claim IDs.",
+        "",
+        "## Reproducibility",
+        "",
+        "Run `make bench`. Use `python3 bench/run.py --seed 123` to override scenario seeds. Results are written to `bench/results/results.json`, `bench/results/results.csv`, and this report. Generated benchmark records are deterministic for the same YAML and seed; run IDs and execution timestamps are intentionally omitted from result artifacts.",
+        "",
+    ))
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text("\n".join(content), encoding="utf-8")
+
+
+def run_benchmark(
+    *,
+    scenario_dir: Path = SCENARIO_DIR,
+    results_dir: Path = DEFAULT_RESULTS_DIR,
+    report_path: Path = DEFAULT_REPORT,
+    seed: int | None = None,
+) -> dict[str, Any]:
+    """Generate evidence, run parser and T8 pipeline, evaluate, and save results."""
+    results_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="pramana-bench-evidence-") as temp_dir:
+        evidence_root = Path(temp_dir)
+        truth = generate(
+            scenario_dir,
+            evidence_root,
+            ground_truth_path=None,
+            seed=seed,
+        )
+        scenario_specs = {
+            path.stem: __import__("yaml").safe_load(path.read_text(encoding="utf-8"))
+            for path in sorted(scenario_dir.glob("*.yaml"))
+        }
+        rows: list[dict[str, Any]] = []
+        for ground_truth in truth["scenarios"]:
+            scenario = scenario_specs[ground_truth["scenario_id"]]
+            events = _parse_scenario_events(
+                ground_truth["scenario_id"],
+                evidence_root,
+                ground_truth["evidence_files"],
+            )
+            run_result, details, invalidated_descendants = _run_real_analysis(
+                ground_truth["scenario_id"],
+                scenario["timezone"],
+                events,
+                ground_truth["evidence_files"],
+                evidence_root,
+            )
+            actual = _actual_predictions(run_result, details, events, invalidated_descendants)
+            b1 = time_window_only(events)
+            b2 = time_window_shared_identifier(events)
+            predictions = {
+                "B1": b1,
+                "B2": b2,
+                "PRAMANA": actual,
+            }
+            rows.extend(_prediction_rows(scenario, ground_truth, predictions))
+            for row in rows[-3:]:
+                row["ground_truth"] = ground_truth
+
+    split_system_inputs = {
+        split: {
+            system: [
+                (row["prediction"], row["ground_truth"])
+                for row in rows
+                if row["split"] == split and row["system"] == system
+            ]
+            for system in ("B1", "B2", "PRAMANA")
+        }
+        for split in ("dev", "held-out")
+    }
+    aggregate = {
+        split: {
+            system: aggregate_metrics(items)
+            for system, items in systems.items()
+        }
+        for split, systems in split_system_inputs.items()
+    }
+    for split in ("dev", "held-out"):
+        for system in ("B1", "B2", "PRAMANA"):
+            selected = [row for row in rows if row["split"] == split and row["system"] == system]
+            aggregate[split][system]["event_count"] = sum(row["event_count"] for row in selected)
+
+    results = {
+        "scenario_count": len(truth["scenarios"]),
+        "event_count": sum(scenario["event_count"] for scenario in truth["scenarios"]),
+        "scenarios": [
+            {
+                "scenario_id": row["scenario_id"],
+                "split": row["split"],
+                "scenario_type": row["scenario_type"],
+                "system": row["system"],
+                "event_count": row["event_count"],
+                "prediction": row["prediction"],
+                "metrics": row["metrics"],
+                "ground_truth": row["ground_truth"],
+            }
+            for row in rows
+        ],
+        "aggregate": aggregate,
+    }
+    json_path = results_dir / "results.json"
+    csv_path = results_dir / "results.csv"
+    json_path.write_text(json.dumps(results, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    metric_names = (
+        "link_precision",
+        "link_recall",
+        "decoy_false_positive_rate",
+        "top_hypothesis_accuracy",
+        "correct_undetermined_rate",
+        "over_claim_rate",
+        "contradiction_recall",
+        "missing_unobservable_accuracy",
+        "claim_lineage_resolution_rate",
+        "tamper_invalidation_accuracy",
+    )
+    with csv_path.open("w", encoding="utf-8", newline="") as stream:
+        columns = ["scenario_id", "split", "scenario_type", "system", "event_count"]
+        columns.extend(f"{metric}_{field}" for metric in metric_names for field in ("numerator", "denominator", "percentage"))
+        writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            csv_row: dict[str, Any] = {
+                "scenario_id": row["scenario_id"],
+                "split": row["split"],
+                "scenario_type": row["scenario_type"],
+                "system": row["system"],
+                "event_count": row["event_count"],
+            }
+            for metric in metric_names:
+                for field in ("numerator", "denominator", "percentage"):
+                    csv_row[f"{metric}_{field}"] = row["metrics"][metric][field]
+            writer.writerow(csv_row)
+
+    _write_report({
+        **results,
+        "aggregate": {
+            split: {
+                system: {
+                    **aggregate[split][system],
+                    "scenario_count": sum(
+                        1 for scenario in truth["scenarios"] if scenario["split"] == split
+                    ),
+                }
+                for system in ("B1", "B2", "PRAMANA")
+            }
+            for split in ("dev", "held-out")
+        },
+    }, report_path)
+    return results
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--scenario-dir", type=Path, default=SCENARIO_DIR)
+    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS_DIR)
+    parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
+    parser.add_argument("--seed", type=int)
+    args = parser.parse_args()
+    results = run_benchmark(
+        scenario_dir=args.scenario_dir,
+        results_dir=args.results_dir,
+        report_path=args.report,
+        seed=args.seed,
+    )
+    print(
+        f"Evaluated {results['scenario_count']} scenarios and "
+        f"{results['event_count']} events; results: {args.results_dir}"
+    )
+
+
+if __name__ == "__main__":
+    main()
