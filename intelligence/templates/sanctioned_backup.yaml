@@ -1,0 +1,58 @@
+id: H2
+kind: sanctioned_backup
+name: Sanctioned Backup
+description: The activity is part of an authorized or scheduled backup process.
+stages:
+  - authorization
+  - staging
+  - backup_transfer
+  - verification
+requires:
+  - id: H2-REQ-1
+    stage: authorization
+    description: Authorized account operating on designated infrastructure
+    claim_type: ACTOR_DEVICE_CONSISTENT
+    source_kind: system_log
+    weight: 1.0
+    critical: true
+  - id: H2-REQ-2
+    stage: backup_transfer
+    description: Data archive staged and transferred to backup repository
+    claim_type: SAME_OBJECT_FLOW
+    source_kind: browser
+    weight: 1.0
+    critical: true
+expects:
+  - id: H2-EXP-1
+    stage: verification
+    description: Corroborating operational activity or administrative session
+    claim_type: ACTOR_DEVICE_CONSISTENT
+    source_kind: chat
+    weight: 0.5
+forbids:
+  - id: H2-FORBID-1
+    stage: staging
+    description: Unauthorized off-hours session outside approved maintenance window
+    claim_type: OFFHOURS_SESSION
+    source_kind: system_log
+    critical: true
+  - id: H2-FORBID-2
+    stage: verification
+    description: Missing audit records in covered window during backup run
+    claim_type: NO_RECORD_IN_COVERED_WINDOW
+    source_kind: audit
+    critical: true
+  - id: H2-FORBID-3
+    stage: authorization
+    description: Session origin mismatch for backup operator
+    claim_type: SESSION_ORIGIN_MISMATCH
+    source_kind: auth
+    critical: true
+constraints:
+  - type: same
+    target: device
+  - type: before
+    first: authorization
+    second: backup_transfer
+  - type: within
+    minutes: 720
