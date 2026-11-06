@@ -19,6 +19,7 @@ from app.db.runs import create_analysis_run, manifest_evidence
 from app.db.session import get_db
 from app.reports.lineage import get_finding_lineage
 from app.services.pipeline import execute_analyze
+from app.services.runs import execute_analysis_run
 from intelligence.claims import generate_claims
 
 router = APIRouter(tags=["findings"])
@@ -46,22 +47,20 @@ def analyze_case(id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
 
     findings_data = execute_analyze(events_payload, case_id=id)
 
-    # T3/T6: Create immutable analysis run if ACTIVE evidence exists
+    # T3/T6/T7/T8: Create immutable analysis run if ACTIVE evidence exists
     manifest = manifest_evidence(db, id)
     run_id = None
     claims_count = 0
     if manifest:
         assumptions = {"case_timezone": os.getenv("PRAMANA_INTEL_TIMEZONE", "UTC")}
-        claim_specs = generate_claims(events_payload)
-        run = create_analysis_run(
+        run_res = execute_analysis_run(
             db,
             case_id=id,
             engine_version="pramana-engine@1.0.0",
             assumptions=assumptions,
-            claims=claim_specs,
         )
-        run_id = run.run_id
-        claims_count = len(claim_specs)
+        run_id = run_res["run_id"]
+        claims_count = run_res["claims_count"]
 
     created_count = 0
     for f in findings_data:

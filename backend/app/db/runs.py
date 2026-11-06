@@ -35,7 +35,17 @@ from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app.db.claims import H, ClaimSpec, build_claim_rows
-from app.db.models import EVIDENCE_ACTIVE, AnalysisRun, Case, Claim, ClaimEdge, EventModel, Evidence, utc_now
+from app.db.models import (
+    EVIDENCE_ACTIVE,
+    AnalysisRun,
+    Case,
+    Claim,
+    ClaimEdge,
+    EventModel,
+    Evidence,
+    RunSnapshot,
+    utc_now,
+)
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -88,6 +98,8 @@ def create_analysis_run(
     parent_run_id: str | None = None,
     ranking_hash: str | None = None,
     run_id: str | None = None,
+    snapshot_data: dict[str, Any] | None = None,
+    template_hash: str | None = None,
 ) -> AnalysisRun:
     """Write a complete run (claims and edges included) in the current transaction.
 
@@ -141,5 +153,15 @@ def create_analysis_run(
         db.execute(insert(ClaimEdge.__table__), edge_rows)
     if claim_rows:
         db.execute(insert(Claim.__table__), claim_rows)
+    if snapshot_data is not None:
+        snap_row = {
+            "run_id": run_id,
+            "case_id": case_id,
+            "ranking_hash": ranking_hash,
+            "template_hash": template_hash or "bundled@1.0.0",
+            "snapshot": snapshot_data,
+            "created_at": utc_now(),
+        }
+        db.execute(insert(RunSnapshot.__table__), [snap_row])
     db.execute(insert(AnalysisRun.__table__), [run_row])  # last: seals the run
     return db.get(AnalysisRun, run_id)

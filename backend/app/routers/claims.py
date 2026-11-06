@@ -21,6 +21,12 @@ from app.db.claims import claim_lineage
 from app.db.models import AnalysisRun, Case, Claim, EventModel, Evidence
 from app.db.runs import create_analysis_run, manifest_evidence
 from app.db.session import get_db
+from app.services.runs import (
+    diff_runs,
+    execute_analysis_run,
+    get_run_details,
+    verify_run_reproducibility,
+)
 from intelligence.claims import generate_claims
 from intelligence.correlate import correlate_events
 
@@ -36,14 +42,14 @@ class RunCreateRequest(BaseModel):
 @router.post(
     "/cases/{case_id}/runs",
     status_code=status.HTTP_201_CREATED,
-    summary="Create an immutable analysis run with T5 correlation and T6 claims",
+    summary="Create an immutable analysis run with T5-T8 correlation, claims, and hypothesis evaluation",
 )
 def create_case_run(
     case_id: str,
     payload: RunCreateRequest | None = None,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Execute T5 correlation and T6 claim generation, persisting an immutable run."""
+    """Execute T5 correlation, T6 claim generation, and T7 hypothesis evaluation, persisting an immutable run."""
     case = db.query(Case).filter(Case.case_id == case_id).first()
     if not case:
         raise HTTPException(
@@ -53,40 +59,25 @@ def create_case_run(
 
     req = payload or RunCreateRequest()
 
-    # Load active evidence manifest
-    manifest = manifest_evidence(db, case_id)
-    if not manifest:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Case '{case_id}' has no ACTIVE evidence to analyze",
+    try:
+        run_data = execute_analysis_run(
+            db,
+            case_id=case_id,
+            engine_version=req.engine_version,
+            assumptions=req.assumptions,
+            parent_run_id=req.parent_run_id,
         )
-
-    # Load stored case events
-    events = db.query(EventModel).filter(EventModel.case_id == case_id).all()
-    events_payload = [e.to_dict() for e in events]
-
-    # Generate T5 candidates and T6 claims
-    claim_specs = generate_claims(events_payload)
-
-    # Create immutable write-once analysis run
-    run = create_analysis_run(
-        db,
-        case_id=case_id,
-        engine_version=req.engine_version,
-        assumptions=req.assumptions,
-        claims=claim_specs,
-        parent_run_id=req.parent_run_id,
-    )
-    db.commit()
-
-    return {
-        "run_id": run.run_id,
-        "case_id": case_id,
-        "claims_count": len(run.claims),
-        "manifest": run.manifest,
-        "assumptions_hash": run.assumptions_hash,
-        "created_at": run.created_at.isoformat() if run.created_at else None,
-    }
+        db.commit()
+        return run_data
+    except LookupError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get(
@@ -113,22 +104,77 @@ def list_case_runs(case_id: str, db: Session = Depends(get_db)) -> list[dict[str
 
 @router.get(
     "/cases/{case_id}/runs/{run_id}",
-    summary="Retrieve an analysis run",
+    summary="Retrieve an analysis run with full reproducible details",
 )
 def get_case_run(case_id: str, run_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
-    """Retrieve metadata for a specific analysis run."""
-    run = db.query(AnalysisRun).filter(AnalysisRun.run_id == run_id).first()
-    if not run:
+    """Retrieve metadata and evaluation for a specific analysis run."""
+    try:
+        details = get_run_details(db, run_id)
+        if details["case_id"] != case_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Run '{run_id}' does not belong to case '{case_id}'",
+            )
+        return details
+    except LookupError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run '{run_id}' not found",
-        )
-    if run.case_id != case_id:
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/runs/{run_id}",
+    summary="Retrieve complete, reproducible immutable run",
+)
+def get_run_endpoint(
+    run_id: str,
+    verify: bool = False,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Retrieve complete immutable run with inputs, claims, ranked hypotheses, H0, and reconstruction."""
+    try:
+        return get_run_details(db, run_id, verify=verify)
+    except LookupError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run '{run_id}' does not belong to case '{case_id}'",
-        )
-    return run.to_dict()
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/runs/{run_id}/verify",
+    summary="Independently verify immutable run reproducibility",
+)
+def verify_run_endpoint(run_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Independently recomputes from historical inputs and confirms whether the result
+    matches the persisted hash, without mutating the original run.
+    """
+    try:
+        run = db.get(AnalysisRun, run_id)
+        if not run:
+            raise LookupError(f"AnalysisRun '{run_id}' not found")
+        return verify_run_reproducibility(db, run)
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/runs/{run_a_id}/diff/{run_b_id}",
+    summary="Compare two immutable runs matching claims by claim_key",
+)
+def diff_runs_endpoint(run_a_id: str, run_b_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Compare two immutable runs matching claims by claim_key, explaining ranking and conclusion changes."""
+    try:
+        return diff_runs(db, run_a_id, run_b_id)
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

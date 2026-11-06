@@ -1,0 +1,54 @@
+id: H1
+kind: insider_exfiltration
+name: Insider Exfiltration
+description: An account holder intentionally accesses, stages, archives and uploads sensitive information.
+stages:
+  - access
+  - staging
+  - exfiltration
+  - evasion
+requires:
+  - id: H1-REQ-1
+    stage: access
+    description: Account holder access from expected device
+    claim_type: ACTOR_DEVICE_CONSISTENT
+    source_kind: system_log
+    weight: 1.0
+    critical: true
+  - id: H1-REQ-2
+    stage: exfiltration
+    description: Sensitive data moved across boundary or uploaded
+    claim_type: SAME_OBJECT_FLOW
+    source_kind: browser
+    weight: 1.0
+    critical: true
+expects:
+  - id: H1-EXP-1
+    stage: staging
+    description: Staging during off-hours window
+    claim_type: OFFHOURS_SESSION
+    source_kind: system_log
+    weight: 0.8
+  - id: H1-EXP-2
+    stage: evasion
+    description: Missing audit trail in covered window
+    claim_type: NO_RECORD_IN_COVERED_WINDOW
+    source_kind: audit
+    weight: 0.6
+forbids:
+  - id: H1-FORBID-1
+    stage: access
+    description: Session origin mismatch indicating remote session hijack
+    claim_type: SESSION_ORIGIN_MISMATCH
+    source_kind: auth
+    critical: true
+constraints:
+  - type: same
+    target: actor
+  - type: same
+    target: device
+  - type: before
+    first: access
+    second: exfiltration
+  - type: within
+    minutes: 1440

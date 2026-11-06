@@ -713,6 +713,75 @@ paths:
         "404":
           description: Run or case not found
 
+  /runs/{run_id}:
+    get:
+      summary: Retrieve complete, reproducible immutable run
+      operationId: getRunDetails
+      tags:
+        - claims
+        - runs
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: verify
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to independently recompute from current case events and verify ranking hash
+      responses:
+        "200":
+          description: Complete reproducible immutable run with manifest, claims, ranked hypotheses, H0, and reconstruction
+        "404":
+          description: Run not found
+
+  /runs/{run_id}/verify:
+    post:
+      summary: Independently verify immutable run reproducibility
+      operationId: verifyRunReproducibility
+      tags:
+        - claims
+        - runs
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Independent recomputation and cryptographic verification result without mutating the run
+        "404":
+          description: Run not found
+
+  /runs/{run_a_id}/diff/{run_b_id}:
+    get:
+      summary: Compare two immutable runs matching claims by claim_key
+      operationId: diffRuns
+      tags:
+        - claims
+        - runs
+      parameters:
+        - name: run_a_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run_b_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Semantic diff comparing manifest, claims (by claim_key), hypothesis rankings, and root causes
+        "404":
+          description: One or both runs not found
+
   /runs/{run_id}/claims/{claim_id}:
     get:
       summary: Retrieve a single claim

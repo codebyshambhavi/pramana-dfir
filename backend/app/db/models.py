@@ -299,7 +299,7 @@ CLAIM_TYPES = (
     "NO_RECORD_IN_COVERED_WINDOW",
     "SESSION_ORIGIN_MISMATCH",
 )
-CLAIM_STATUSES = ("ASSERTED", "CORROBORATED", "CONTESTED", "REFUTED")
+CLAIM_STATUSES = ("ASSERTED", "CORROBORATED", "CONTESTED", "REFUTED", "ASSUMED")
 CLAIM_GRADES = ("A", "B", "C")
 EDGE_REF_KINDS = ("event", "claim")
 EDGE_ROLES = ("SUPPORTS", "CONTRADICTS")
@@ -460,6 +460,33 @@ class SourceCoverage(Base):
     run_id = Column(String(64), ForeignKey("analysis_run.run_id", **_DEFERRED), nullable=False, index=True)
 
 
+class RunSnapshot(Base):
+    """Immutable snapshot of complete run results (T7/T8).
+
+    Guarantees deterministic, reproducible historical retrieval even if
+    events, parser versions, or hypothesis templates change later.
+    """
+
+    __tablename__ = "run_snapshots"
+
+    run_id = Column(String(64), ForeignKey("analysis_run.run_id", **_DEFERRED), primary_key=True)
+    case_id = Column(String(64), ForeignKey("cases.case_id"), nullable=False, index=True)
+    ranking_hash = Column(String(64), nullable=True)
+    template_hash = Column(String(64), nullable=False)
+    snapshot = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "case_id": self.case_id,
+            "ranking_hash": self.ranking_hash,
+            "template_hash": self.template_hash,
+            "snapshot": self.snapshot,
+            "created_at": _iso(self.created_at),
+        }
+
+
 class SchemaMigration(Base):
     """Data migration steps already applied (infrastructure, see app.db.migrate)."""
 
@@ -473,8 +500,8 @@ class SchemaMigration(Base):
 # ORM-level integrity guards. Database-level equivalents: app.db.db_guards.
 # -------------------------------------------------------------------------
 
-RUN_TABLE_MODELS = (AnalysisRun, Claim, ClaimEdge, HypothesisEval, SourceCoverage)
-RUN_CHILD_MODELS = (Claim, ClaimEdge, HypothesisEval, SourceCoverage)
+RUN_TABLE_MODELS = (AnalysisRun, Claim, ClaimEdge, HypothesisEval, SourceCoverage, RunSnapshot)
+RUN_CHILD_MODELS = (Claim, ClaimEdge, HypothesisEval, SourceCoverage, RunSnapshot)
 
 
 def _run_row_exists(session: Session, run_id: str | None) -> bool:

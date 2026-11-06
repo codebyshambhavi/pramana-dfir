@@ -1,0 +1,41 @@
+id: H3
+kind: session_misuse
+name: Session Misuse
+description: Another person uses an existing account or session to perform the activity.
+stages:
+  - initial_access
+  - unauthorized_activity
+  - egress
+requires:
+  - id: H3-REQ-1
+    stage: initial_access
+    description: Session origin mismatch indicating unauthorized remote hijack or concurrent session
+    claim_type: SESSION_ORIGIN_MISMATCH
+    source_kind: auth
+    weight: 1.0
+    critical: true
+expects:
+  - id: H3-EXP-1
+    stage: unauthorized_activity
+    description: Suspicious off-hours activity from hijacked session
+    claim_type: OFFHOURS_SESSION
+    source_kind: system_log
+    weight: 0.8
+  - id: H3-EXP-2
+    stage: egress
+    description: Data archive staged or egressed across boundary
+    claim_type: SAME_OBJECT_FLOW
+    source_kind: browser
+    weight: 0.8
+forbids:
+  - id: H3-FORBID-1
+    stage: initial_access
+    description: Missing records in covered window indicating internal tamper
+    claim_type: NO_RECORD_IN_COVERED_WINDOW
+    source_kind: audit
+    weight: 0.5
+constraints:
+  - type: same
+    target: actor
+  - type: within
+    minutes: 1440
