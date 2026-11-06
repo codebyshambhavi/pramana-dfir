@@ -198,6 +198,7 @@ class ItemEvaluation:
     disconfirmation_penalty: float = 0.0
     diagnostic: bool = True
     rationale: str = ""
+    assumed_claim_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -535,6 +536,10 @@ def _derive_witness_family(
     events: Sequence[Mapping[str, Any]],
     all_events: Sequence[Mapping[str, Any]] | None = None,
 ) -> str:
+    # ASSUMED claims are not evidence and must never participate in witness families
+    if claim and claim.get("status") == "ASSUMED":
+        claim = None
+        events = []
     source_kind = item.source_kind or "system"
     device = "unknown"
     if claim:
@@ -578,6 +583,9 @@ def evaluate_hypotheses(
     """
     loaded_templates = list(templates) if templates is not None else load_templates()
     dict_claims = [_claim_to_dict(c) for c in claims]
+    # ASSUMED claims are unbacked assumptions and must NEVER count as evidence
+    evidence_claims = [c for c in dict_claims if c.get("status") != "ASSUMED"]
+    assumed_claims = [c for c in dict_claims if c.get("status") == "ASSUMED"]
     events_by_id = {e["event_id"]: e for e in events if "event_id" in e}
     coverage = compute_source_coverage(events)
 
@@ -655,17 +663,18 @@ def evaluate_hypotheses(
 
         # 1. Evaluate REQUIRES
         for item in tmpl.requires:
-            matching = [c for c in dict_claims if _matches_item(item, c)]
+            matching_ev = [c for c in evidence_claims if _matches_item(item, c)]
+            matching_assumed = [c for c in assumed_claims if _matches_item(item, c)]
             family = _derive_witness_family(
                 item,
-                matching[0] if matching else None,
-                _extract_claim_events(matching[0], events_by_id) if matching else [],
+                matching_ev[0] if matching_ev else None,
+                _extract_claim_events(matching_ev[0], events_by_id) if matching_ev else [],
                 all_events=events,
             )
 
-            if matching:
-                # Check status
-                refuted = any(c.get("status") == "REFUTED" for c in matching)
+            if matching_ev:
+                # Check status among evidence claims
+                refuted = any(c.get("status") == "REFUTED" for c in matching_ev)
                 if refuted:
                     state = STATE_VIOLATED
                     penalty = 2.0 if item.critical else 1.0
@@ -676,7 +685,7 @@ def evaluate_hypotheses(
                     penalty = 0.0
                     rationale = f"Required claim {item.claim_type} is present and supported."
                     item_satisfaction_map.setdefault(item.id, set()).add(tmpl.id)
-                    for c in matching:
+                    for c in matching_ev:
                         hyp_claim_ids.add(c.get("claim_id") or c.get("claim_key", ""))
                         c_evs = _extract_claim_events(c, events_by_id)
                         stage_events[item.stage].extend(c_evs)
@@ -684,7 +693,7 @@ def evaluate_hypotheses(
                         for ev in c_evs:
                             hyp_explained_events.add(ev["event_id"])
             else:
-                # Absence of required evidence
+                # Absence of required evidence (ASSUMED claims NEVER satisfy required evidence)
                 item_win = _resolve_item_window(item)
                 is_covered = _source_demonstrably_covered(
                     item.source_kind,
@@ -703,6 +712,8 @@ def evaluate_hypotheses(
                     penalty = 0.0  # UNOBSERVABLE is strictly neutral!
                     unobservable_count += 1
                     rationale = f"Source {item.source_kind} does not cover window; requirement is UNOBSERVABLE."
+                if matching_assumed:
+                    rationale += " (ASSUMED claims present but excluded from evidence satisfaction)"
 
             evaluations.append(
                 ItemEvaluation(
@@ -712,29 +723,31 @@ def evaluate_hypotheses(
                     claim_type=item.claim_type,
                     state=state,
                     description=item.description,
-                    matched_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching],
+                    matched_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_ev],
                     witness_family=family,
                     disconfirmation_penalty=penalty,
                     rationale=rationale,
+                    assumed_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_assumed],
                 )
             )
 
         # 2. Evaluate EXPECTS
         for item in tmpl.expects:
-            matching = [c for c in dict_claims if _matches_item(item, c)]
+            matching_ev = [c for c in evidence_claims if _matches_item(item, c)]
+            matching_assumed = [c for c in assumed_claims if _matches_item(item, c)]
             family = _derive_witness_family(
                 item,
-                matching[0] if matching else None,
-                _extract_claim_events(matching[0], events_by_id) if matching else [],
+                matching_ev[0] if matching_ev else None,
+                _extract_claim_events(matching_ev[0], events_by_id) if matching_ev else [],
                 all_events=events,
             )
 
-            if matching:
+            if matching_ev:
                 state = STATE_SATISFIED
                 penalty = 0.0
                 rationale = f"Expected claim {item.claim_type} is present."
                 item_satisfaction_map.setdefault(item.id, set()).add(tmpl.id)
-                for c in matching:
+                for c in matching_ev:
                     hyp_claim_ids.add(c.get("claim_id") or c.get("claim_key", ""))
                     c_evs = _extract_claim_events(c, events_by_id)
                     stage_events[item.stage].extend(c_evs)
@@ -759,6 +772,8 @@ def evaluate_hypotheses(
                     penalty = 0.0  # UNOBSERVABLE is strictly neutral!
                     unobservable_count += 1
                     rationale = f"Source {item.source_kind} unobserved; expected evidence is UNOBSERVABLE."
+                if matching_assumed:
+                    rationale += " (ASSUMED claims present but excluded from evidence satisfaction)"
 
             evaluations.append(
                 ItemEvaluation(
@@ -768,30 +783,33 @@ def evaluate_hypotheses(
                     claim_type=item.claim_type,
                     state=state,
                     description=item.description,
-                    matched_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching],
+                    matched_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_ev],
                     witness_family=family,
                     disconfirmation_penalty=penalty,
                     rationale=rationale,
+                    assumed_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_assumed],
                 )
             )
 
         # 3. Evaluate FORBIDS
         for item in tmpl.forbids:
-            matching = [c for c in dict_claims if _matches_item(item, c)]
+            matching_ev = [c for c in evidence_claims if _matches_item(item, c)]
+            matching_assumed = [c for c in assumed_claims if _matches_item(item, c)]
             family = _derive_witness_family(
                 item,
-                matching[0] if matching else None,
-                _extract_claim_events(matching[0], events_by_id) if matching else [],
+                matching_ev[0] if matching_ev else None,
+                _extract_claim_events(matching_ev[0], events_by_id) if matching_ev else [],
                 all_events=events,
             )
 
-            if matching:
-                # Forbidden item is present -> Contradiction / Violation!
+            if matching_ev:
+                # Forbidden item is present as real evidence -> Contradiction / Violation!
                 state = STATE_VIOLATED
                 penalty = 2.0 if item.critical else 1.2
                 hard_violations += 1
                 rationale = f"FORBIDDEN claim {item.claim_type} is present! Direct contradiction."
             else:
+                # No evidence exists for the forbidden item (ASSUMED claims cannot violate forbidden items)
                 item_win = _resolve_item_window(item)
                 is_covered = _source_demonstrably_covered(
                     item.source_kind,
@@ -807,6 +825,8 @@ def evaluate_hypotheses(
                     state = STATE_NEUTRAL
                     penalty = 0.0
                     rationale = f"Source {item.source_kind} unobserved; cannot verify absence of forbidden event."
+                if matching_assumed:
+                    rationale += " (ASSUMED claims present but cannot violate forbidden items)"
 
             evaluations.append(
                 ItemEvaluation(
@@ -816,10 +836,11 @@ def evaluate_hypotheses(
                     claim_type=item.claim_type,
                     state=state,
                     description=item.description,
-                    matched_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching],
+                    matched_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_ev],
                     witness_family=family,
                     disconfirmation_penalty=penalty,
                     rationale=rationale,
+                    assumed_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_assumed],
                 )
             )
 

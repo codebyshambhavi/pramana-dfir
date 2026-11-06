@@ -270,28 +270,74 @@ As part of the final Role 3 completion audit, the following hardening improvemen
 
 ---
 
-## 6. Test Suite Verification
+## 6. Phase 3 Forensic Integrity Hardening & Reviewer Deliverables
 
-### Real PostgreSQL Execution:
-When connected to a disposable PostgreSQL >= 14 database (`PRAMANA_TEST_PG_URL`):
+Following the Role 3 Phase 3 audit, six material integrity enhancements were implemented and verified across the codebase:
+
+### 6.1 PostgreSQL Test Safety & Disposable Database Safeguards (`backend/tests/test_postgres_migration.py`, `backend/tests/test_postgres_safety.py`)
+- **Disposable Confirmation Guard:** The destructive PostgreSQL test fixture requires an explicit confirmation variable: `PRAMANA_TEST_PG_DISPOSABLE=1` in addition to `PRAMANA_TEST_PG_URL`.
+- **Database Target Validation:** Rejects dangerous database names (e.g. `postgres`, `template1`, `prod`, `production`, `main`, `master`) and enforces that the target database name contains an explicit disposable marker (`test`, `disposable`, `scratch`, `tmp`, or `temp`).
+- **Server Identity Verification:** Executes `SELECT current_database()` upon connection to verify that the active database name matches the validated URL before executing any DDL.
+- **Fail-Closed Semantics:** Missing configuration, ambiguous URLs, or safety violations fail closed immediately. Destructive schema drops are impossible on accidental production targets.
+- **Safety Test Suite:** 7 dedicated unit tests in `backend/tests/test_postgres_safety.py` guarantee that unsafe configurations are rejected.
+
+### 6.2 ASSUMED Claims Evidence Exclusion (`intelligence/hyp/engine.py`, `intelligence/tests/test_t7_assumed_claims.py`)
+- **Strict Evidence Semantics:** `ASSUMED` claims are explicitly separated from verified evidence claims (`ASSERTED`, `INFERRED`).
+- **No Requirement Satisfaction:** `ASSUMED` claims cannot satisfy `requires` or `expects` items.
+- **No Falsification Contradictions:** `ASSUMED` claims cannot trigger `forbids` penalties or violate constraints.
+- **Witness Family Exclusion:** `ASSUMED` claims never contribute to witness family groupings or alter evidence deduplication.
+- **Metadata Context Preservation:** Assumptions are preserved as contextual metadata in `ItemEvaluation.assumed_claim_ids` without polluting evidence scores.
+- **Invariance Guarantee:** Removing an `ASSUMED` claim leaves evidence-derived hypothesis scores, ranking orders, ranking hash, and residual H0 events 100% identical.
+
+### 6.3 Historical Reconstruction with Preserved Snapshot Templates (`intelligence/hyp/reconstruct.py`, `backend/app/services/runs.py`)
+- **Preserved Template Injection:** `reconstruct_narrative()` accepts an explicit `templates` parameter. Historical replay passes the exact `HypothesisTemplate` objects preserved in the run snapshot.
+- **No Silent Disk Substitution:** Replay never falls back to active disk templates. If a historical run snapshot lacks preserved template definitions, replay returns an explicit `UNAVAILABLE` status (`replay_possible = False`).
+- **Disk Template Isolation:** Loading active templates from disk is strictly reserved for creating genuinely new analysis runs.
+
+### 6.4 Strengthened Substantive Replay Verification (`backend/app/services/runs.py`, `backend/tests/test_t8_reproducibility.py`)
+- **Narrative Reconstruction Verification:** Compares stage names, ordering, stage status (`SUPPORTED`/`GAP`), normalized time window boundaries (`lo`/`hi`), stage temporal relationships (`PRECEDES`, `CONCURRENT_OR_OVERLAPPING`, `OUT_OF_ORDER`, `UNPROVEN`), raw event assignments per stage, claims per stage, background activity counts and event IDs, and narrative summaries.
+- **Hypotheses Evaluation Verification:** Compares hypothesis count, ranking order, status, inconsistency score (within tolerance), and all individual item evaluations (`item_id`, `category`, `stage`, `state`, `disconfirmation_penalty`, `matched_claim_ids`, `witness_family`).
+- **H0 Residual Verification:** Compares unassigned event IDs (sorted) and total unassigned event counts.
+- **Mutation Sensitivity:** Regressions tests prove that deliberate tampering of a stage time window, temporal relationship, event assignment, H0 event, item evaluation, or hypothesis score causes historical replay verification to fail with explicit discrepancy reporting.
+
+### 6.5 Separation of Snapshot Availability from Ranking Verification (`backend/app/services/runs.py`, `backend/tests/test_t8_reproducibility.py`)
+- **Corrected Verification Model:** Snapshot existence (`snapshot_available: True`) and database authority (`snapshot_authoritative: True`) do not imply ranking hash verification.
+- **Actual Replay Execution:** `ranking_hash_verified` is set to `True` only after executing actual historical replay from preserved inputs and confirming that the recomputed ranking hash matches `run.ranking_hash`.
+- **Unavailable on Missing Inputs:** If preserved events or templates are absent, `ranking_hash_verified` is strictly `False`.
+- **Structured Verification Response:** Explicitly separates `historical_replay` (reproducibility of original conclusions from preserved inputs) from `current_state_comparison` (data drift detection against current database state).
+
+### 6.6 Canonical Event Representation & Drift Detection (`backend/app/services/runs.py`, `backend/tests/test_t8_reproducibility.py`)
+- **15+ Canonical Fields:** Compares all relevant event fields: `event_id`, `case_id`, `evidence_id`, `artifact_ref`, `sha256`, `timestamp`, `source`, `family`, `device`, `actor`, `action`, `object`, `ip`, `location`, `raw`, `parser_version`, `tz_assumption`.
+- **Normalization:** Canonicalizes timestamps across ISO formats and timezones (`_normalize_timestamp`), and recursively sorts nested JSON keys and structures (`_canonicalize_json`).
+- **Preserved Null/Empty Distinction:** Distinguishes between `None`, empty string `""`, and empty collections.
+- **Field-Level Drift Reporting:** Returns detailed mutation records identifying the exact field, original value, and mutated value for any drifted event. Parameterized tests verify detection across every canonical field.
+
+---
+
+## 7. Test Suite Verification
+
+### Real PostgreSQL Execution (with Safe Disposable Database):
+When connected to an explicitly disposable PostgreSQL database (`PRAMANA_TEST_PG_URL` and `PRAMANA_TEST_PG_DISPOSABLE=1`):
 ```text
-====================== 526 passed, 62 warnings in 10.16s =======================
+====================== 563 passed, 62 warnings in 9.92s =======================
 ```
-- **526 passed, 0 skipped, 0 failed**.
+- **563 passed, 0 skipped, 0 failed**.
 
 ### Standard Environment (SQLite with PostgreSQL Tests Skipped):
 ```text
-================= 517 passed, 9 skipped, 62 warnings in 8.12s ==================
+================= 554 passed, 9 skipped, 62 warnings in 14.75s ==================
 ```
-- **517 passed, 9 skipped** (the 9 PostgreSQL integration tests in `test_postgres_migration.py`), **0 failed**.
+- **554 passed, 9 skipped** (the 9 PostgreSQL integration tests in `test_postgres_migration.py`), **0 failed**.
 
 ### Full Test Coverage Breakdown:
+- `backend/tests/test_postgres_safety.py` (7 tests)
+- `intelligence/tests/test_t7_assumed_claims.py` (6 tests)
+- `backend/tests/test_t8_reproducibility.py` (32 tests)
 - `intelligence/tests/test_t7_hypothesis.py` (11 tests)
 - `intelligence/tests/test_t7_coverage_semantics.py` (11 tests)
 - `intelligence/tests/test_t7_edge_cases.py` (5 tests)
 - `intelligence/tests/test_t8_reconstruct.py` (4 tests)
 - `backend/tests/test_t8_runs_diff.py` (4 tests)
-- `backend/tests/test_t8_reproducibility.py` (8 tests)
 - `backend/tests/test_t8_scheduler_invalidation.py` (1 test)
 - `backend/tests/test_t8_db_safety.py` (4 tests)
 - `backend/tests/test_postgres_migration.py` (9 tests)

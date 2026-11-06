@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Sequence
-from datetime import datetime
+from typing import Any, Mapping, Sequence
 
 from sqlalchemy.orm import Session
 
@@ -28,10 +28,178 @@ from app.db.models import (
 )
 from app.db.runs import create_analysis_run, manifest_evidence
 from intelligence.claims import generate_claims
-from intelligence.hyp.engine import evaluate_hypotheses, load_templates
+from intelligence.hyp.engine import evaluate_hypotheses
 from intelligence.hyp.reconstruct import reconstruct_narrative
+import intelligence.hyp.engine as hyp_engine
+
+
+def load_templates():
+    """Load current active hypothesis templates from intelligence package."""
+    return hyp_engine.load_templates()
 
 logger = logging.getLogger("pramana.services.runs")
+
+
+def _normalize_timestamp(ts: Any) -> str | None:
+    """Normalize timestamps consistently across ISO strings, datetimes, and timezones."""
+    if ts is None:
+        return None
+    if isinstance(ts, datetime):
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        else:
+            ts = ts.astimezone(timezone.utc)
+        return ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if ts.microsecond else ts.strftime("%Y-%m-%dT%H:%M:%SZ")
+    if isinstance(ts, str):
+        s = ts.strip()
+        if not s:
+            return ""
+        try:
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+            return dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if dt.microsecond else dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            return s
+    return str(ts)
+
+
+def _canonicalize_json(val: Any) -> Any:
+    """Recursively sort dict keys and normalize nested collections deterministically."""
+    if val is None:
+        return None
+    if isinstance(val, dict):
+        return {str(k): _canonicalize_json(v) for k, v in sorted(val.items())}
+    if isinstance(val, (list, tuple)):
+        return [_canonicalize_json(item) for item in val]
+    if isinstance(val, str):
+        stripped = val.strip()
+        if (stripped.startswith("{") and stripped.endswith("}")) or (stripped.startswith("[") and stripped.endswith("]")):
+            try:
+                parsed = json.loads(stripped)
+                return _canonicalize_json(parsed)
+            except Exception:
+                pass
+        return val
+    return val
+
+
+CANONICAL_EVENT_FIELDS: tuple[str, ...] = (
+    "event_id",
+    "case_id",
+    "evidence_id",
+    "artifact_ref",
+    "sha256",
+    "timestamp",
+    "source",
+    "family",
+    "device",
+    "actor",
+    "action",
+    "object",
+    "ip",
+    "location",
+    "raw",
+    "parser_version",
+    "tz_assumption",
+)
+
+
+def canonical_event(event: Mapping[str, Any] | Any) -> dict[str, Any]:
+    """Extract and canonicalize all 15+ event fields deterministically."""
+    if hasattr(event, "to_dict"):
+        event = event.to_dict()
+    elif not isinstance(event, dict):
+        event = dict(event)
+
+    canon: dict[str, Any] = {}
+    for f in CANONICAL_EVENT_FIELDS:
+        if f not in event:
+            canon[f] = None
+            continue
+        v = event[f]
+        if v is None:
+            canon[f] = None
+        elif f == "timestamp":
+            canon[f] = _normalize_timestamp(v)
+        elif f in ("raw", "location"):
+            canon[f] = _canonicalize_json(v)
+        else:
+            canon[f] = v
+    return canon
+
+
+def detect_event_drift(
+    orig_events: Sequence[Mapping[str, Any] | Any],
+    current_events: Sequence[Mapping[str, Any] | Any],
+) -> tuple[bool, list[dict[str, Any]]]:
+    """Detect field-level drift across all canonical event fields between
+    preserved original events and current database events.
+    Returns (events_identical, drift_details).
+    """
+    orig_canon_map: dict[str, dict[str, Any]] = {}
+    for e in orig_events:
+        c = canonical_event(e)
+        eid = c.get("event_id")
+        if eid:
+            orig_canon_map[str(eid)] = c
+
+    curr_canon_map: dict[str, dict[str, Any]] = {}
+    for e in current_events:
+        c = canonical_event(e)
+        eid = c.get("event_id")
+        if eid:
+            curr_canon_map[str(eid)] = c
+
+    drift_details: list[dict[str, Any]] = []
+
+    # 1. Missing events (deleted from database)
+    for eid in sorted(set(orig_canon_map.keys()) - set(curr_canon_map.keys())):
+        drift_details.append({
+            "event_id": eid,
+            "type": "EVENT_REMOVED",
+            "message": f"Event '{eid}' was present in original run snapshot but is missing from current database",
+        })
+
+    # 2. Added events (new events added to case)
+    for eid in sorted(set(curr_canon_map.keys()) - set(orig_canon_map.keys())):
+        drift_details.append({
+            "event_id": eid,
+            "type": "EVENT_ADDED",
+            "message": f"Event '{eid}' is in current database but was not present in original run snapshot",
+        })
+
+    # 3. Field-level mutations for events present in both
+    for eid in sorted(set(orig_canon_map.keys()) & set(curr_canon_map.keys())):
+        orig_e = orig_canon_map[eid]
+        curr_e = curr_canon_map[eid]
+        for f in CANONICAL_EVENT_FIELDS:
+            o_val = orig_e.get(f)
+            c_val = curr_e.get(f)
+            if o_val != c_val:
+                drift_details.append({
+                    "event_id": eid,
+                    "type": "FIELD_MUTATED",
+                    "field": f,
+                    "original_value": o_val,
+                    "current_value": c_val,
+                    "message": f"Event '{eid}' field '{f}' drifted from {o_val!r} to {c_val!r}",
+                })
+
+    has_drift = len(drift_details) > 0
+    return (not has_drift, drift_details)
+
+
+def _normalize_time_window(tw: dict[str, Any] | None) -> dict[str, str | None] | None:
+    """Normalize stage time window boundary timestamps for robust replay comparison."""
+    if not tw or not isinstance(tw, dict):
+        return None
+    return {
+        "lo": _normalize_timestamp(tw.get("lo")),
+        "hi": _normalize_timestamp(tw.get("hi")),
+    }
 
 
 def execute_analysis_run(
@@ -90,14 +258,20 @@ def execute_analysis_run(
     for c_row in claim_rows:
         c_row["edges"] = edges_by_claim.get(c_row["claim_id"], [])
 
-    # 5. Evaluate T7 competing hypotheses & residual H0 using real claim_ids
+    # Load and preserve active templates
+    templates_used = load_templates()
+    template_dicts = [t.to_dict() for t in templates_used]
+    template_hash = H(template_dicts)
+
+    # 5. Evaluate T7 competing hypotheses & residual H0 using real claim_ids and preserved templates
     hyp_result = evaluate_hypotheses(
         claims=claim_rows,
         events=events_payload,
         assumptions=case_assumptions,
+        templates=templates_used,
     )
 
-    # 6. Reconstruct narrative for leading/top hypothesis
+    # 6. Reconstruct narrative for leading/top hypothesis using preserved templates
     top_hyp = hyp_result.ranked_hypotheses[0] if hyp_result.ranked_hypotheses else None
     reconstruction = None
     if top_hyp:
@@ -106,12 +280,8 @@ def execute_analysis_run(
             claims=claim_rows,
             events=events_payload,
             h0_event_ids=hyp_result.h0_residual.unassigned_event_ids,
+            templates=templates_used,
         )
-
-    # Compute template hash and preserve template definitions
-    templates_used = load_templates()
-    template_dicts = [t.to_dict() for t in templates_used]
-    template_hash = H(template_dicts)
 
     # Build snapshot capturing complete historical conclusions and original inputs
     snapshot_data = {
@@ -250,6 +420,25 @@ def get_run_details(db: Session, run_id: str, verify: bool = False) -> dict[str,
         snapshot_data.get("template_hash", "bundled@1.0.0") if snapshot_data else "bundled@1.0.0"
     )
 
+    # Ranking hash verification requires an actual historical replay execution against preserved inputs.
+    # Snapshot existence/authority != ranking hash verified.
+    ranking_hash_verified = False
+    if snapshot_data and snapshot_data.get("events") is not None and snapshot_data.get("templates") is not None:
+        try:
+            from intelligence.hyp.engine import HypothesisTemplate
+            pres_events = snapshot_data["events"]
+            pres_templates = [HypothesisTemplate.from_dict(t) for t in snapshot_data["templates"]]
+            replay_res = evaluate_hypotheses(
+                claims=claims_payload,
+                events=pres_events,
+                assumptions=run.manifest.get("assumptions", {}),
+                templates=pres_templates,
+            )
+            ranking_hash_verified = (replay_res.ranking_hash == run.ranking_hash)
+        except Exception as exc:
+            logger.warning(f"Failed to verify ranking hash via replay for run '{run_id}': {exc}")
+            ranking_hash_verified = False
+
     response = {
         "run_id": run.run_id,
         "case_id": run.case_id,
@@ -262,8 +451,9 @@ def get_run_details(db: Session, run_id: str, verify: bool = False) -> dict[str,
         "is_valid": is_valid,
         "invalidation_reasons": invalidating_reasons,
         "ranking_hash": run.ranking_hash,
-        "ranking_hash_verified": True if snapshot_data is not None else False,
+        "ranking_hash_verified": ranking_hash_verified,
         "template_hash": template_hash,
+        "snapshot_available": (snapshot_data is not None),
         "snapshot_status": snapshot_status,
         "snapshot_source": snapshot_source,
         "snapshot_authoritative": snapshot_authoritative,
@@ -283,7 +473,12 @@ def get_run_details(db: Session, run_id: str, verify: bool = False) -> dict[str,
     if verify:
         verification = verify_run_reproducibility(db, run)
         response["verification"] = verification
-        response["ranking_hash_verified"] = verification["verified"]
+        response["historical_replay"] = verification["historical_replay"]
+        response["current_state_comparison"] = verification["current_state_comparison"]
+        response["ranking_hash_verified"] = (
+            verification["historical_replay"]["verified"]
+            and verification["historical_replay"]["ranking_hash_match"]
+        )
 
     return response
 
@@ -305,11 +500,13 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
     snapshot_data: dict[str, Any] | None = None
     snapshot_source: str | None = None
     snapshot_authoritative = False
+    snapshot_status = "UNAVAILABLE"
 
     if snap:
         snapshot_data = snap.snapshot
         snapshot_source = "database"
         snapshot_authoritative = True
+        snapshot_status = "AUTHORITATIVE_DB"
     else:
         storage_file = Path("storage/runs") / f"{run.run_id}.json"
         if storage_file.exists():
@@ -317,8 +514,12 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
                 snapshot_data = json.loads(storage_file.read_text(encoding="utf-8"))
                 snapshot_source = "local_cache"
                 snapshot_authoritative = False
+                snapshot_status = "EPHEMERAL_LOCAL_FALLBACK"
             except Exception:
                 snapshot_data = None
+                snapshot_status = "UNAVAILABLE"
+
+    snapshot_available = (snapshot_data is not None)
 
     # Load stored claims and edges for this run
     claims = db.query(Claim).filter(Claim.run_id == run.run_id).order_by(Claim.claim_id.asc()).all()
@@ -333,7 +534,17 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
         claims_payload.append(cd)
 
     # --- Operation 1: Historical Replay ---
-    replay_possible = snapshot_data is not None
+    preserved_events = snapshot_data.get("events") if snapshot_data else None
+    preserved_templates_data = snapshot_data.get("templates") if snapshot_data else None
+
+    # Replay requires both preserved events and preserved templates in the snapshot.
+    # Never fall back to live events or disk templates during historical replay.
+    replay_possible = bool(
+        snapshot_data is not None
+        and preserved_events is not None
+        and preserved_templates_data is not None
+    )
+
     replay_verified = False
     ranking_hash_match = False
     ranking_order_match = False
@@ -342,29 +553,35 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
     reconstruction_match = False
     replay_discrepancies: list[str] = []
 
-    if replay_possible:
-        # Extract preserved inputs
-        preserved_events = snapshot_data.get("events")
-        preserved_templates_data = snapshot_data.get("templates")
-
-        if preserved_events is None:
-            manifest_evidence_list = run.manifest.get("evidence", [])
-            ev_ids = [e["evidence_id"] for e in manifest_evidence_list]
-            ev_objs = (
-                db.query(EventModel)
-                .filter(EventModel.case_id == run.case_id, EventModel.evidence_id.in_(ev_ids))
-                .all()
-            )
-            preserved_events = [e.to_dict() for e in ev_objs]
-
-        if preserved_templates_data is not None:
-            templates = [HypothesisTemplate.from_dict(t) for t in preserved_templates_data]
+    if not replay_possible:
+        missing_inputs = []
+        if snapshot_data is None:
+            missing_inputs.append("snapshot record missing")
         else:
-            templates = load_templates()
-
+            if preserved_events is None:
+                missing_inputs.append("preserved input events missing from snapshot")
+            if preserved_templates_data is None:
+                missing_inputs.append("preserved templates missing from snapshot")
+        discrepancy_msg = f"Historical replay unavailable: {', '.join(missing_inputs)}"
+        replay_discrepancies.append(discrepancy_msg)
+        historical_replay = {
+            "status": "UNAVAILABLE",
+            "verified": False,
+            "replay_possible": False,
+            "ranking_hash_match": False,
+            "ranking_order_match": False,
+            "h0_residual_match": False,
+            "hypotheses_match": False,
+            "reconstruction_match": False,
+            "snapshot_source": snapshot_source,
+            "snapshot_authoritative": snapshot_authoritative,
+            "discrepancies": replay_discrepancies,
+        }
+    else:
+        # Replay evaluation using preserved inputs only
+        templates = [HypothesisTemplate.from_dict(t) for t in preserved_templates_data]
         assumptions = run.manifest.get("assumptions", {})
 
-        # Replay evaluation from preserved inputs
         replay_result = evaluate_hypotheses(
             claims=claims_payload,
             events=preserved_events,
@@ -376,7 +593,7 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
         ranking_hash_match = (replay_result.ranking_hash == run.ranking_hash)
         if not ranking_hash_match:
             replay_discrepancies.append(
-                f"Replay ranking hash {replay_result.ranking_hash} does not match persisted {run.ranking_hash}"
+                f"Replay ranking hash '{replay_result.ranking_hash}' does not match persisted '{run.ranking_hash}'"
             )
 
         # 2. Ranking Order & Scores Match
@@ -389,35 +606,99 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
             )
 
         # 3. H0 Residual Match
-        expected_h0_ids = sorted(snapshot_data.get("h0_residual", {}).get("unassigned_event_ids", []) if snapshot_data.get("h0_residual") else [])
+        expected_h0 = snapshot_data.get("h0_residual") or {}
+        expected_h0_ids = sorted(expected_h0.get("unassigned_event_ids", []))
         replay_h0_ids = sorted(replay_result.h0_residual.unassigned_event_ids)
-        h0_residual_match = (replay_h0_ids == expected_h0_ids)
-        if not h0_residual_match:
+        expected_h0_count = expected_h0.get("unassigned_event_count", len(expected_h0_ids))
+        replay_h0_count = replay_result.h0_residual.unassigned_event_count
+
+        h0_match = True
+        if replay_h0_ids != expected_h0_ids:
+            h0_match = False
             replay_discrepancies.append(
                 f"Replay H0 unassigned events ({len(replay_h0_ids)}) differ from snapshot ({len(expected_h0_ids)})"
             )
+        if replay_h0_count != expected_h0_count:
+            h0_match = False
+            replay_discrepancies.append(
+                f"Replay H0 unassigned count ({replay_h0_count}) differs from snapshot ({expected_h0_count})"
+            )
+        h0_residual_match = h0_match
 
         # 4. Hypotheses Evaluation Match
         expected_hyps = {h["id"]: h for h in snapshot_data.get("ranked_hypotheses", [])}
         hyp_match_all = True
+        if len(replay_result.ranked_hypotheses) != len(expected_hyps):
+            hyp_match_all = False
+            replay_discrepancies.append(
+                f"Replay evaluated {len(replay_result.ranked_hypotheses)} hypotheses; snapshot has {len(expected_hyps)}"
+            )
         for h in replay_result.ranked_hypotheses:
-            if h.id in expected_hyps:
-                exp = expected_hyps[h.id]
-                if abs(h.inconsistency_score - exp.get("inconsistency_score", 0.0)) > 1e-4:
-                    hyp_match_all = False
-                    replay_discrepancies.append(
-                        f"Hypothesis {h.id} inconsistency score {h.inconsistency_score} != snapshot {exp.get('inconsistency_score')}"
-                    )
-                if h.status != exp.get("status"):
-                    hyp_match_all = False
-                    replay_discrepancies.append(
-                        f"Hypothesis {h.id} status '{h.status}' != snapshot '{exp.get('status')}'"
-                    )
-            else:
+            if h.id not in expected_hyps:
                 hyp_match_all = False
+                replay_discrepancies.append(f"Hypothesis '{h.id}' in replay was not in snapshot")
+                continue
+            exp = expected_hyps[h.id]
+            if abs(h.inconsistency_score - exp.get("inconsistency_score", 0.0)) > 1e-4:
+                hyp_match_all = False
+                replay_discrepancies.append(
+                    f"Hypothesis '{h.id}' inconsistency score {h.inconsistency_score} != snapshot {exp.get('inconsistency_score')}"
+                )
+            if h.status != exp.get("status"):
+                hyp_match_all = False
+                replay_discrepancies.append(
+                    f"Hypothesis '{h.id}' status '{h.status}' != snapshot '{exp.get('status')}'"
+                )
+            if h.rank != exp.get("rank"):
+                hyp_match_all = False
+                replay_discrepancies.append(
+                    f"Hypothesis '{h.id}' rank {h.rank} != snapshot {exp.get('rank')}"
+                )
+
+            # Compare individual item evaluations
+            exp_evals = {e["item_id"]: e for e in exp.get("evaluations", []) if "item_id" in e}
+            replay_evals = {e.item_id: e.to_dict() for e in h.evaluations}
+            if len(exp_evals) != len(replay_evals):
+                hyp_match_all = False
+                replay_discrepancies.append(
+                    f"Hypothesis '{h.id}' item evaluations count ({len(replay_evals)}) != snapshot ({len(exp_evals)})"
+                )
+            for item_id, r_eval in replay_evals.items():
+                if item_id not in exp_evals:
+                    hyp_match_all = False
+                    replay_discrepancies.append(
+                        f"Hypothesis '{h.id}' evaluation item '{item_id}' missing in snapshot"
+                    )
+                    continue
+                x_eval = exp_evals[item_id]
+                if r_eval.get("state") != x_eval.get("state"):
+                    hyp_match_all = False
+                    replay_discrepancies.append(
+                        f"Hypothesis '{h.id}' item '{item_id}' state '{r_eval.get('state')}' != snapshot '{x_eval.get('state')}'"
+                    )
+                if r_eval.get("category") != x_eval.get("category"):
+                    hyp_match_all = False
+                    replay_discrepancies.append(
+                        f"Hypothesis '{h.id}' item '{item_id}' category '{r_eval.get('category')}' != snapshot '{x_eval.get('category')}'"
+                    )
+                if abs(r_eval.get("disconfirmation_penalty", 0.0) - x_eval.get("disconfirmation_penalty", 0.0)) > 1e-4:
+                    hyp_match_all = False
+                    replay_discrepancies.append(
+                        f"Hypothesis '{h.id}' item '{item_id}' penalty {r_eval.get('disconfirmation_penalty')} != snapshot {x_eval.get('disconfirmation_penalty')}"
+                    )
+                if sorted(r_eval.get("matched_claim_ids", [])) != sorted(x_eval.get("matched_claim_ids", [])):
+                    hyp_match_all = False
+                    replay_discrepancies.append(
+                        f"Hypothesis '{h.id}' item '{item_id}' matched claims differ"
+                    )
+                if r_eval.get("witness_family") != x_eval.get("witness_family"):
+                    hyp_match_all = False
+                    replay_discrepancies.append(
+                        f"Hypothesis '{h.id}' item '{item_id}' witness family '{r_eval.get('witness_family')}' != snapshot '{x_eval.get('witness_family')}'"
+                    )
         hypotheses_match = hyp_match_all
 
-        # 5. Narrative Reconstruction Match
+        # 5. Narrative Reconstruction Match (using preserved templates)
         top_hyp = replay_result.ranked_hypotheses[0] if replay_result.ranked_hypotheses else None
         replay_reconstruction = None
         if top_hyp:
@@ -426,23 +707,93 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
                 claims=claims_payload,
                 events=preserved_events,
                 h0_event_ids=replay_result.h0_residual.unassigned_event_ids,
+                templates=templates,
             )
         expected_recon = snapshot_data.get("reconstruction")
         if expected_recon is None and replay_reconstruction is None:
             reconstruction_match = True
-        elif expected_recon is not None and replay_reconstruction is not None:
-            recon_dict = replay_reconstruction.to_dict()
-            exp_stages = {s.get("stage_name", s.get("stage")): s.get("status") for s in expected_recon.get("stages", [])}
-            replay_stages = {s.get("stage_name", s.get("stage")): s.get("status") for s in recon_dict.get("stages", [])}
-            reconstruction_match = (
-                exp_stages == replay_stages
-                and expected_recon.get("status") == recon_dict.get("status")
-            )
-            if not reconstruction_match:
-                replay_discrepancies.append("Replay narrative reconstruction stages differ from snapshot")
-        else:
+        elif expected_recon is None or replay_reconstruction is None:
             reconstruction_match = False
             replay_discrepancies.append("Reconstruction presence mismatch between replay and snapshot")
+        else:
+            recon_dict = replay_reconstruction.to_dict()
+            recon_all_match = True
+            if recon_dict.get("hypothesis_id") != expected_recon.get("hypothesis_id"):
+                recon_all_match = False
+                replay_discrepancies.append(
+                    f"Reconstruction hypothesis_id '{recon_dict.get('hypothesis_id')}' != snapshot '{expected_recon.get('hypothesis_id')}'"
+                )
+            if recon_dict.get("status") != expected_recon.get("status"):
+                recon_all_match = False
+                replay_discrepancies.append(
+                    f"Reconstruction status '{recon_dict.get('status')}' != snapshot '{expected_recon.get('status')}'"
+                )
+            if recon_dict.get("narrative_summary") != expected_recon.get("narrative_summary"):
+                recon_all_match = False
+                replay_discrepancies.append("Reconstruction narrative_summary differs from snapshot")
+            if recon_dict.get("background_activity_count") != expected_recon.get("background_activity_count"):
+                recon_all_match = False
+                replay_discrepancies.append(
+                    f"Reconstruction background_activity_count ({recon_dict.get('background_activity_count')}) != snapshot ({expected_recon.get('background_activity_count')})"
+                )
+            if sorted(recon_dict.get("background_activity_event_ids", [])) != sorted(expected_recon.get("background_activity_event_ids", [])):
+                recon_all_match = False
+                replay_discrepancies.append("Reconstruction background_activity_event_ids differ from snapshot")
+            if recon_dict.get("residual_h0_count") != expected_recon.get("residual_h0_count"):
+                recon_all_match = False
+                replay_discrepancies.append(
+                    f"Reconstruction residual_h0_count ({recon_dict.get('residual_h0_count')}) != snapshot ({expected_recon.get('residual_h0_count')})"
+                )
+            if sorted(recon_dict.get("residual_h0_event_ids", [])) != sorted(expected_recon.get("residual_h0_event_ids", [])):
+                recon_all_match = False
+                replay_discrepancies.append("Reconstruction residual_h0_event_ids differ from snapshot")
+
+            # Compare stages in order
+            exp_stages = expected_recon.get("stages", [])
+            rep_stages = recon_dict.get("stages", [])
+            if len(exp_stages) != len(rep_stages):
+                recon_all_match = False
+                replay_discrepancies.append(
+                    f"Reconstruction stages count ({len(rep_stages)}) != snapshot ({len(exp_stages)})"
+                )
+            else:
+                for idx, (exp_s, rep_s) in enumerate(zip(exp_stages, rep_stages)):
+                    s_name = exp_s.get("stage_name", f"stage_{idx}")
+                    if rep_s.get("stage_name") != exp_s.get("stage_name"):
+                        recon_all_match = False
+                        replay_discrepancies.append(
+                            f"Stage {idx} name '{rep_s.get('stage_name')}' != snapshot '{exp_s.get('stage_name')}'"
+                        )
+                    if rep_s.get("status") != exp_s.get("status"):
+                        recon_all_match = False
+                        replay_discrepancies.append(
+                            f"Stage '{s_name}' status '{rep_s.get('status')}' != snapshot '{exp_s.get('status')}'"
+                        )
+                    if _normalize_time_window(rep_s.get("time_window")) != _normalize_time_window(exp_s.get("time_window")):
+                        recon_all_match = False
+                        replay_discrepancies.append(
+                            f"Stage '{s_name}' time window {rep_s.get('time_window')} != snapshot {exp_s.get('time_window')}"
+                        )
+                    if rep_s.get("relationship_to_previous") != exp_s.get("relationship_to_previous"):
+                        recon_all_match = False
+                        replay_discrepancies.append(
+                            f"Stage '{s_name}' relationship '{rep_s.get('relationship_to_previous')}' != snapshot '{exp_s.get('relationship_to_previous')}'"
+                        )
+                    rep_evs = sorted([e.get("event_id") for e in rep_s.get("raw_events", []) if isinstance(e, dict) and "event_id" in e])
+                    exp_evs = sorted([e.get("event_id") for e in exp_s.get("raw_events", []) if isinstance(e, dict) and "event_id" in e])
+                    if rep_evs != exp_evs:
+                        recon_all_match = False
+                        replay_discrepancies.append(
+                            f"Stage '{s_name}' raw_events differ from snapshot"
+                        )
+                    rep_cls = sorted([c.get("claim_id") for c in rep_s.get("claims", []) if isinstance(c, dict) and "claim_id" in c])
+                    exp_cls = sorted([c.get("claim_id") for c in exp_s.get("claims", []) if isinstance(c, dict) and "claim_id" in c])
+                    if rep_cls != exp_cls:
+                        recon_all_match = False
+                        replay_discrepancies.append(
+                            f"Stage '{s_name}' claims differ from snapshot"
+                        )
+            reconstruction_match = recon_all_match
 
         replay_verified = (
             ranking_hash_match
@@ -451,6 +802,20 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
             and hypotheses_match
             and reconstruction_match
         )
+
+        historical_replay = {
+            "status": "VERIFIED" if replay_verified else "FAILED",
+            "verified": replay_verified,
+            "replay_possible": True,
+            "ranking_hash_match": ranking_hash_match,
+            "ranking_order_match": ranking_order_match,
+            "h0_residual_match": h0_residual_match,
+            "hypotheses_match": hypotheses_match,
+            "reconstruction_match": reconstruction_match,
+            "snapshot_source": snapshot_source,
+            "snapshot_authoritative": snapshot_authoritative,
+            "discrepancies": replay_discrepancies,
+        }
 
     # --- Operation 2: Current State Comparison ---
     manifest_evidence_list = run.manifest.get("evidence", [])
@@ -462,23 +827,9 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
     )
     current_events_payload = [e.to_dict() for e in current_db_events]
 
-    events_identical = True
-    if snapshot_data and "events" in snapshot_data:
-        orig_events = snapshot_data["events"]
-        if len(orig_events) != len(current_events_payload):
-            events_identical = False
-        else:
-            orig_map = {e["event_id"]: e for e in orig_events if "event_id" in e}
-            for ce in current_events_payload:
-                eid = ce.get("event_id")
-                if eid not in orig_map:
-                    events_identical = False
-                    break
-                oe = orig_map[eid]
-                for f in ("action", "actor", "device", "timestamp", "object", "ip"):
-                    if ce.get(f) != oe.get(f):
-                        events_identical = False
-                        break
+    # Detect field-level drift across all canonical event fields
+    orig_events = snapshot_data.get("events", []) if snapshot_data else []
+    events_identical, drift_details = detect_event_drift(orig_events, current_events_payload)
 
     current_disk_templates = load_templates()
     current_template_hash = H([t.to_dict() for t in current_disk_templates])
@@ -492,42 +843,47 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
         templates=current_disk_templates,
     )
 
-    matches_current_state = (current_recomputed.ranking_hash == run.ranking_hash)
+    matches_current_state = (
+        (current_recomputed.ranking_hash == run.ranking_hash)
+        and events_identical
+        and templates_identical
+    )
     divergence_reasons: list[str] = []
-    if not matches_current_state:
+    if current_recomputed.ranking_hash != run.ranking_hash:
         divergence_reasons.append(
             f"Persisted ranking hash {run.ranking_hash} differs from current database recomputation {current_recomputed.ranking_hash}"
         )
-        if not events_identical:
-            divergence_reasons.append("Underlying case events in database have been modified or removed since run was sealed")
-        if not templates_identical:
-            divergence_reasons.append("Active hypothesis templates on disk differ from templates used at run creation")
+    if not events_identical:
+        divergence_reasons.append(
+            f"Underlying case events in database have drifted: {len(drift_details)} change(s) detected"
+        )
+        for d in drift_details:
+            divergence_reasons.append(d["message"])
+    if not templates_identical:
+        divergence_reasons.append("Active hypothesis templates on disk differ from templates used at run creation")
+
+    overall_verified = matches_current_state and replay_verified
+    overall_diverged = not matches_current_state
 
     return {
-        "verified": matches_current_state,
+        "verified": overall_verified,
         "persisted_ranking_hash": run.ranking_hash,
         "recomputed_ranking_hash": current_recomputed.ranking_hash,
-        "diverged": not matches_current_state,
+        "diverged": overall_diverged,
         "divergence_details": divergence_reasons,
-        "historical_replay": {
-            "status": "VERIFIED" if replay_verified else ("FAILED" if replay_possible else "UNAVAILABLE"),
-            "verified": replay_verified,
-            "replay_possible": replay_possible,
-            "ranking_hash_match": ranking_hash_match,
-            "ranking_order_match": ranking_order_match,
-            "h0_residual_match": h0_residual_match,
-            "hypotheses_match": hypotheses_match,
-            "reconstruction_match": reconstruction_match,
-            "snapshot_source": snapshot_source,
-            "snapshot_authoritative": snapshot_authoritative,
-            "discrepancies": replay_discrepancies,
-        },
+        "snapshot_available": snapshot_available,
+        "snapshot_authoritative": snapshot_authoritative,
+        "snapshot_status": snapshot_status,
+        "ranking_hash_verified": replay_verified and ranking_hash_match,
+        "historical_replay": historical_replay,
         "current_state_comparison": {
-            "diverged": not matches_current_state,
+            "diverged": overall_diverged,
             "events_identical": events_identical,
             "templates_identical": templates_identical,
             "current_ranking_hash": current_recomputed.ranking_hash,
             "divergence_reasons": divergence_reasons,
+            "event_drift_detected": not events_identical,
+            "event_drift_details": drift_details,
         },
     }
 

@@ -76,6 +76,7 @@ def reconstruct_narrative(
     events: Sequence[Mapping[str, Any]],
     source_clocks: Mapping[str, SourceClock] | None = None,
     h0_event_ids: Sequence[str] | None = None,
+    templates: Sequence[HypothesisTemplate] | None = None,
 ) -> NarrativeReconstruction:
     """Reconstruct a hypothesis into chronological stages with interval analysis.
 
@@ -85,6 +86,8 @@ def reconstruct_narrative(
         events: Ingested case events.
         source_clocks: Optional SourceClock uncertainties.
         h0_event_ids: Optional precomputed H0 residual event IDs.
+        templates: Optional explicit hypothesis templates (e.g. preserved from run snapshot).
+                   When provided, templates are NEVER loaded from disk.
 
     Returns:
         NarrativeReconstruction computed view.
@@ -92,12 +95,19 @@ def reconstruct_narrative(
     clocks = dict(source_clocks) if source_clocks is not None else load_source_clocks()
     events_by_id = {e["event_id"]: e for e in events if "event_id" in e}
 
-    # Resolve template
-    all_templates = {t.id: t for t in load_templates()}
-    hyp_id = hypothesis.id if hasattr(hypothesis, "id") else str(hypothesis)
-    tmpl = all_templates.get(hyp_id)
-    if not tmpl:
-        raise ValueError(f"Unknown hypothesis '{hyp_id}'")
+    # Resolve template: prefer explicit templates, avoiding silent disk loads on historical replay
+    if isinstance(hypothesis, HypothesisTemplate):
+        tmpl = hypothesis
+        hyp_id = tmpl.id
+    else:
+        hyp_id = hypothesis.id if hasattr(hypothesis, "id") else str(hypothesis)
+        if templates is not None:
+            all_templates = {t.id: t for t in templates}
+        else:
+            all_templates = {t.id: t for t in load_templates()}
+        tmpl = all_templates.get(hyp_id)
+        if not tmpl:
+            raise ValueError(f"Unknown hypothesis '{hyp_id}'")
 
     hyp_name = tmpl.name
     hyp_status = getattr(hypothesis, "status", "VIABLE")
