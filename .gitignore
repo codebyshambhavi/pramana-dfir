@@ -39,3 +39,6 @@ build/
 Thumbs.db
 .idea/
 .vscode/
+
+# T12 demo check output
+.demo-runs/

@@ -9,7 +9,7 @@ import { ArrowRight, Info } from "../../../components/console/icons";
 import { useSourceLink } from "../../../components/console/useSourceLink";
 import { describe } from "../../dashboard/components/TimelinePanel";
 import { SectionGate, humanize } from "../../dashboard/components/ui";
-import { formatUtc } from "../../hypotheses/components/HypothesesView";
+import { Stamp } from "../../../lib/time";
 import type { LoadedRun } from "../../hypotheses/runSource";
 import { CopyButton } from "../../vault/components/ui";
 import { truncateHash } from "../../vault/model";
@@ -213,7 +213,7 @@ function EvidenceGroup({
                 </span>
                 {full && <span className="ml-2 text-white">{describe(full)}</span>}
                 <span className="block text-[11.5px] text-soft/55">
-                  {full && `${formatUtc(full.timestamp)} · `}
+                  {full && <><Stamp iso={full.timestamp} /> · </>}
                   <span className="font-mono">{e.artifact_ref ?? "no artifact reference"}</span>
                 </span>
               </span>

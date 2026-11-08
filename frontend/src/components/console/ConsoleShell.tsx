@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { LogoMark, Menu } from "../landing/icons";
 import { useSourceLink } from "./useSourceLink";
+import { ZoneToggle } from "../../lib/time";
 
 const LINKS = [
   { to: "/app", label: "Dashboard", end: true },
@@ -47,9 +48,12 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
               </li>
             ))}
           </ul>
+          <div className="ml-auto">
+            <ZoneToggle />
+          </div>
           <button
             type="button"
-            className="ml-auto rounded-md p-2 text-soft hover:text-white md:hidden"
+            className="rounded-md p-2 text-soft hover:text-white md:hidden"
             aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen(v => !v)}

@@ -8,7 +8,7 @@ import { getFindingLineage } from "../../../api/client";
 import type { Finding, FindingLineage } from "../../../api/types";
 import { StatusChip, TYPE_CHIP } from "../../dashboard/components/FindingsPanel";
 import { describe } from "../../dashboard/components/TimelinePanel";
-import { formatStamp } from "../../dashboard/components/ui";
+import { Stamp } from "../../../lib/time";
 import { CopyButton, FileKindBadge } from "../../vault/components/ui";
 import type { EvidenceSourceKind } from "../../vault/evidenceSource";
 import { fileKind, truncateHash } from "../../vault/model";
@@ -95,7 +95,7 @@ function EvidenceTab({ finding, index, sourceKind }: { finding: Finding; index: 
                             from metadata
                           </span>
                         )}
-                        <span className="block text-[11.5px] text-soft/55">{formatStamp(full.timestamp)}</span>
+                        <span className="block text-[11.5px] text-soft/55"><Stamp iso={full.timestamp} /></span>
                       </span>
                     )}
                   </li>
@@ -135,7 +135,7 @@ function AnalysisTab({ finding, index }: { finding: Finding; index: CaseIndex })
               {event ? (
                 <>
                   <span className="text-soft/60 tabular-nums">
-                    {formatStamp(event.timestamp)} · {event.evidence_id}
+                    <Stamp iso={event.timestamp} /> · {event.evidence_id}
                   </span>
                   <span className="block text-white">{describe(event)}</span>
                 </>

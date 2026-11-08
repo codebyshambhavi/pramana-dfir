@@ -1,3 +1,6 @@
 # Ensure deterministic line endings for sample case forensic evidence files
 datasets/sample_case_001/*.csv text eol=crlf
 datasets/sample_case_001/*.json text eol=crlf
+
+# Shell scripts must keep LF so bash can run them on Windows checkouts too
+*.sh text eol=lf

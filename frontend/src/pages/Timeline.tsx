@@ -5,17 +5,10 @@ import { Link } from "react-router-dom";
 import { useSourceLink } from "../components/console/useSourceLink";
 import type { CaseEvent } from "../api/types";
 import { SOURCE_ICON, describe } from "../features/dashboard/components/TimelinePanel";
+import { formatClock, formatDay, storedTime, useDisplayZone } from "../lib/time";
 
 const SOURCES: CaseEvent["source"][] = ["browser", "chat", "log", "pcap", "image"];
 
-const dayKey = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "Unknown date" : d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-};
-const timeOf = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-};
 
 export default function Timeline({
   events,
@@ -30,12 +23,17 @@ export default function Timeline({
   const toPath = useSourceLink();
   const [source, setSource] = useState<CaseEvent["source"] | "all">("all");
   const present = useMemo(() => SOURCES.filter(s => events.some(e => e.source === s)), [events]);
+  const zone = useDisplayZone();
   const groups = useMemo(() => {
-    const sorted = [...events].filter(e => source === "all" || e.source === source).sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+    const sorted = [...events].filter(e => source === "all" || e.source === source).sort((a, b) => storedTime(a.timestamp) - storedTime(b.timestamp));
     const map = new Map<string, CaseEvent[]>();
-    sorted.forEach(e => map.set(dayKey(e.timestamp), [...(map.get(dayKey(e.timestamp)) ?? []), e]));
+    // Days are grouped in the display zone, so an event can move to another day when the zone changes.
+    sorted.forEach(e => {
+      const day = formatDay(e.timestamp, zone);
+      map.set(day, [...(map.get(day) ?? []), e]);
+    });
     return [...map];
-  }, [events, source]);
+  }, [events, source, zone]);
 
   const chip = (value: CaseEvent["source"] | "all", label: string) => (
     <button
@@ -89,8 +87,8 @@ export default function Timeline({
                         hot ? "border-alert/40 bg-alert/[0.06]" : "border-transparent hover:border-trace/25 hover:bg-trace/[0.04]"
                       }`}
                     >
-                      <time dateTime={event.timestamp} className="text-[13px] text-soft/75 tabular-nums">
-                        {timeOf(event.timestamp)}
+                      <time dateTime={event.timestamp} title={`Stored: ${event.timestamp}`} className="text-[13px] text-soft/75 tabular-nums">
+                        {formatClock(event.timestamp, zone)}
                       </time>
                       <span className="min-w-0">
                         <span className="block truncate text-[14px] text-white">{describe(event)}</span>
