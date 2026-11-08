@@ -1,5 +1,6 @@
 // Role 4: says which data a console page is showing. Demo mode gets a permanent label; a live API failure gets a
 // clear notice with Retry and an explicit switch to the demo data (never an automatic fallback).
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Alert, Database, Refresh } from "../../../components/console/icons";
 import { API_URL } from "../../../api/client";
@@ -11,7 +12,8 @@ export default function SourceBanner({
   total,
   onRetry,
   liveHref,
-  demoHref
+  demoHref,
+  demoNote
 }: {
   sourceKind: EvidenceSourceKind;
   errors: number;
@@ -19,13 +21,16 @@ export default function SourceBanner({
   onRetry: () => void;
   liveHref: string;
   demoHref: string;
+  /** Replaces the default demo description when a page shows something other than the synthetic set. */
+  demoNote?: ReactNode;
 }) {
   if (sourceKind === "demo")
     return (
       <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-amber-300/25 bg-amber-300/[0.06] px-4 py-2.5 text-[13px] text-amber-100/90">
         <Database size={16} className="text-amber-300" />
         <span>
-          <strong className="font-semibold">Demo data.</strong> Synthetic evidence, events and findings for UI development; none of it came from the backend.
+          <strong className="font-semibold">Demo data.</strong>{" "}
+          {demoNote ?? "Synthetic evidence, events and findings for UI development; none of it came from the backend."}
         </span>
         <Link to={liveHref} className="ml-auto text-amber-200 underline-offset-4 hover:underline">
           Use live API

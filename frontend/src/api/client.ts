@@ -1,6 +1,18 @@
 // Role 4: typed client for contracts/openapi.yaml.
 // Point VITE_API_URL at a Prism mock first, then at the real backend.
-import type { CaseEvent, CaseGraph, EvidenceItem, EvidenceUploadResult, Finding, FindingLineage, FindingStatusUpdate } from "./types";
+import type {
+  CaseEvent,
+  CaseGraph,
+  CaseIntegrity,
+  EvidenceItem,
+  EvidenceStateChange,
+  EvidenceUploadResult,
+  Finding,
+  FindingLineage,
+  FindingStatusUpdate,
+  TamperSimulation,
+  VerificationResult
+} from "./types";
 
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4010";
 
@@ -14,7 +26,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, init);
@@ -124,6 +136,45 @@ export async function updateFindingStatus(findingId: string, status: "approved" 
     body: JSON.stringify({ status }),
     signal
   });
+}
+
+const enc = encodeURIComponent;
+
+/** POST with an optional JSON body. */
+export function postJson<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal
+  });
+}
+
+const isRecord = (data: unknown): data is Record<string, unknown> => data !== null && typeof data === "object" && !Array.isArray(data);
+
+// --- T4 evidence integrity (documented in contracts/openapi.yaml) ---
+
+/** POST /evidence/{id}/verify: re-hash the stored file against the intake SHA-256 and check custody. */
+export function verifyEvidence(evidenceId: string, actor?: string, signal?: AbortSignal): Promise<VerificationResult> {
+  return postJson<VerificationResult>(`/evidence/${enc(evidenceId)}/verify`, actor ? { actor } : undefined, signal);
+}
+
+/** POST /evidence/{id}/remove: soft removal; the row, file and hashes are kept. 409 if already REMOVED. */
+export function removeEvidence(evidenceId: string, body: { actor?: string; reason?: string | null } = {}, signal?: AbortSignal): Promise<EvidenceStateChange> {
+  return postJson<EvidenceStateChange>(`/evidence/${enc(evidenceId)}/remove`, body, signal);
+}
+
+/** GET /cases/{id}/integrity: read-only summary; does not re-hash. */
+export async function getCaseIntegrity(caseId: string, signal?: AbortSignal): Promise<CaseIntegrity> {
+  const data = await request<unknown>(`/cases/${enc(caseId)}/integrity`, { signal });
+  if (!isRecord(data) || typeof data.intact !== "boolean" || !Array.isArray(data.evidence))
+    throw new ApiError("The integrity summary did not match the documented response shape.");
+  return data as unknown as CaseIntegrity;
+}
+
+/** POST /evidence/{id}/simulate-tamper: demo only, 404 unless the backend runs with DEMO_MODE=1. */
+export function simulateTamper(evidenceId: string, signal?: AbortSignal): Promise<TamperSimulation> {
+  return postJson<TamperSimulation>(`/evidence/${enc(evidenceId)}/simulate-tamper`, undefined, signal);
 }
 
 /** GET /cases/{id}/report?format=pdf, returned as a Blob so the page can preview and save exactly what the server sent. */

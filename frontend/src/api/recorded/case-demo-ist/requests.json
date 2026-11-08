@@ -1,0 +1,127 @@
+[
+  {
+    "method": "POST",
+    "path": "/cases",
+    "status": 201
+  },
+  {
+    "method": "POST",
+    "path": "/cases/CASE-DEMO-IST/evidence",
+    "status": 201
+  },
+  {
+    "method": "POST",
+    "path": "/cases/CASE-DEMO-IST/evidence",
+    "status": 201
+  },
+  {
+    "method": "POST",
+    "path": "/cases/CASE-DEMO-IST/evidence",
+    "status": 201
+  },
+  {
+    "method": "POST",
+    "path": "/cases/CASE-DEMO-IST/evidence",
+    "status": 201
+  },
+  {
+    "method": "POST",
+    "path": "/cases/CASE-DEMO-IST/evidence",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/cases/CASE-DEMO-IST/evidence",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/cases/CASE-DEMO-IST/events",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/cases/CASE-DEMO-IST/integrity",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/cases/CASE-DEMO-IST/runs",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/runs/RUN-65AFDDAA2C2D",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/runs/RUN-65AFDDAA2C2D/verify",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/runs/RUN-65AFDDAA2C2D/claims/517308df98c8abff8c4c241d7531e84a2649b111577463e70b639f2afd56661e/lineage",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/runs/RUN-65AFDDAA2C2D/claims/5227c523f5f58f121e50db883aef5ff5d70c4bdbe419be4b7e1ebb05d1eaa3f6/lineage",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/runs/RUN-65AFDDAA2C2D/claims/68fb9ecf3320f66503f7386fa858446f7db3d5099d1f8eeead244d9537f9606f/lineage",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/evidence/EVID-002/simulate-tamper",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/evidence/EVID-002/verify",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/cases/CASE-DEMO-IST/integrity",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/cases/CASE-DEMO-IST/evidence",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/runs/RUN-65AFDDAA2C2D",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/cases/CASE-DEMO-IST/runs",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/runs/RUN-8722EC1AF15B",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/runs/RUN-8722EC1AF15B/claims/0fa86f7a4187f2eea6562d851a4fc6596ba1fd0bcf3c7f8d8d1886d3a6a2df3b/lineage",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/cases/CASE-DEMO-IST/runs",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/runs/RUN-65AFDDAA2C2D/diff/RUN-8722EC1AF15B",
+    "status": 200
+  }
+]

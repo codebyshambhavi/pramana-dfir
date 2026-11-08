@@ -1,9 +1,10 @@
-// Role 4: Investigation Workspace. Findings, Timeline, Graph and Report as tabs over the same case data
-// (GET evidence/events/findings/graph, or the labelled demo set). URL state: ?tab=…&finding=…&type=…&source=demo.
+// Role 4: Investigation Workspace. Findings, Hypotheses, Timeline, Graph and Report as tabs over the same case data
+// (GET evidence/events/findings/graph, or the labelled demo set). The Hypotheses tab reads an analysis run instead
+// (see features/hypotheses/runSource.ts). URL state: ?tab=…&finding=…&type=…&hyp=…&source=demo.
 import { Suspense, lazy, useCallback, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import ConsoleShell, { GUTTER } from "../components/console/ConsoleShell";
-import { Alert, CircleCheck, GraphIcon, ReportIcon, ScanSearch, Timeline as TimelineIcon } from "../components/console/icons";
+import { Activity, Alert, Braces, CircleCheck, Clock, Refresh, GraphIcon, ReportIcon, ScanSearch, Timeline as TimelineIcon } from "../components/console/icons";
 import { useSourceLink } from "../components/console/useSourceLink";
 import type { Finding } from "../api/types";
 import { statusOf } from "../features/dashboard/components/FindingsPanel";
@@ -16,21 +17,34 @@ import { entityIdsOfEvent } from "../features/dashboard/graph";
 import FindingDetail from "../features/investigation/components/FindingDetail";
 import FindingsList, { matchesFinding, type TypeFilter } from "../features/investigation/components/FindingsList";
 import { CaseContext, FindingSummary } from "../features/investigation/components/FindingSidePanel";
+import ClaimInspector from "../features/claims/components/ClaimInspector";
+import HypothesesView from "../features/hypotheses/components/HypothesesView";
+import { useLatestRun } from "../features/hypotheses/runSource";
+import ReconstructionView from "../features/reconstruction/components/ReconstructionView";
+import RunDiffView from "../features/rundiff/components/RunDiffView";
+import { useRunDiff } from "../features/rundiff/runDiffSource";
+import { useReconstruction } from "../features/reconstruction/reconstructionSource";
 import { buildIndex } from "../features/investigation/findingModel";
-import { DEFAULT_CASE_ID, resolveSourceKind } from "../features/vault/evidenceSource";
+import { DEFAULT_CASE_ID, resolveSourceKind, type EvidenceSourceKind } from "../features/vault/evidenceSource";
 import Report from "./Report";
 import Timeline from "./Timeline";
 
 // React Flow is only needed on the Graph tab, so it loads on demand.
 const GraphView = lazy(() => import("./GraphView"));
 
-export type WorkspaceTab = "findings" | "timeline" | "graph" | "report";
+export type WorkspaceTab = "findings" | "hypotheses" | "claims" | "reconstruction" | "diff" | "timeline" | "graph" | "report";
 const TABS: { key: WorkspaceTab; label: string; icon: typeof ScanSearch }[] = [
   { key: "findings", label: "Findings", icon: ScanSearch },
+  { key: "hypotheses", label: "Hypotheses", icon: Activity },
+  { key: "claims", label: "Claims", icon: Braces },
+  { key: "reconstruction", label: "Reconstruction", icon: Clock },
+  { key: "diff", label: "Run diff", icon: Refresh },
   { key: "timeline", label: "Timeline", icon: TimelineIcon },
   { key: "graph", label: "Graph", icon: GraphIcon },
   { key: "report", label: "Report", icon: ReportIcon }
 ];
+/** T11 tabs: they read an analysis run (the recorded CASE-DEMO-IST run in demo mode), not the synthetic demo set. */
+const RUN_TABS: WorkspaceTab[] = ["hypotheses", "claims", "reconstruction", "diff"];
 const isTab = (v: string | null): v is WorkspaceTab => TABS.some(t => t.key === v);
 const isType = (v: string | null): v is Finding["type"] => ["contradiction", "anomaly", "correlation", "hypothesis"].includes(v ?? "");
 
@@ -49,6 +63,154 @@ function Pane({ title, note, children, className = "" }: { title?: string; note?
       )}
       {children}
     </section>
+  );
+}
+
+/** Mounted only while the Hypotheses or Claims tab is open, so the run is fetched on demand. */
+function RunTab({
+  view,
+  sourceKind,
+  caseId,
+  runId,
+  selectedId,
+  onSelect
+}: {
+  view: "hypotheses" | "claims";
+  sourceKind: EvidenceSourceKind;
+  caseId: string;
+  runId: string | null;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const { state, reload } = useLatestRun(sourceKind, caseId, runId);
+  return (
+    <Pane
+      title={view === "hypotheses" ? "Hypotheses" : "Claim inspector"}
+      note={sourceKind === "demo" ? "recorded CASE-DEMO-IST run (real backend output, not the synthetic demo case)" : `latest run for ${caseId}`}
+      className="mt-5"
+    >
+      <SectionGate
+        section={state}
+        isEmpty={d => d === null}
+        empty="No analysis runs for this case yet. Create one with POST /cases/{id}/runs."
+        rows={5}
+        recover={
+          <button type="button" onClick={reload} className="rounded-md border border-white/10 px-2.5 py-1.5 text-[12.5px] text-soft hover:border-trace/40 hover:text-white">
+            Retry
+          </button>
+        }
+      >
+        {loaded =>
+          loaded &&
+          (view === "hypotheses" ? (
+            <HypothesesView loaded={loaded} selectedId={selectedId} onSelect={onSelect} />
+          ) : (
+            <ClaimInspector loaded={loaded} selectedId={selectedId} onSelect={onSelect} />
+          ))
+        }
+      </SectionGate>
+    </Pane>
+  );
+}
+
+/** Mounted only while the Reconstruction tab is open. */
+function ReconstructionTab({ sourceKind, caseId, runId }: { sourceKind: EvidenceSourceKind; caseId: string; runId: string | null }) {
+  const { state, reload } = useReconstruction(sourceKind, caseId, runId);
+  return (
+    <Pane
+      title="Reconstruction"
+      note={sourceKind === "demo" ? "recorded CASE-DEMO-IST run (real backend output, not the synthetic demo case)" : `latest run for ${caseId}`}
+      className="mt-5"
+    >
+      <SectionGate
+        section={state}
+        empty=""
+        rows={5}
+        recover={
+          <button type="button" onClick={reload} className="rounded-md border border-white/10 px-2.5 py-1.5 text-[12.5px] text-soft hover:border-trace/40 hover:text-white">
+            Retry
+          </button>
+        }
+      >
+        {result =>
+          result.kind === "ready" ? (
+            <ReconstructionView loaded={result.loaded} reconstruction={result.reconstruction} />
+          ) : (
+            <p className="py-10 text-center text-[13.5px] text-soft/70">
+              {result.kind === "no-run" ? "No analysis runs for this case yet, so there is nothing to reconstruct." : `Reconstruction unavailable. ${result.reason}`}
+            </p>
+          )
+        }
+      </SectionGate>
+    </Pane>
+  );
+}
+
+/** Mounted only while the Run diff tab is open. In live mode, ?a= and ?b= pick the two runs. */
+function RunDiffTab({
+  sourceKind,
+  caseId,
+  runA,
+  runB,
+  onPick
+}: {
+  sourceKind: EvidenceSourceKind;
+  caseId: string;
+  runA: string | null;
+  runB: string | null;
+  onPick: (a: string, b: string) => void;
+}) {
+  const { state, reload } = useRunDiff(sourceKind, caseId, runA, runB);
+  return (
+    <Pane
+      title="Run diff"
+      note={sourceKind === "demo" ? "recorded CASE-DEMO-IST runs (real backend output, not the synthetic demo case)" : `runs of ${caseId}`}
+      className="mt-5"
+    >
+      <SectionGate
+        section={state}
+        empty=""
+        rows={6}
+        recover={
+          <button type="button" onClick={reload} className="rounded-md border border-white/10 px-2.5 py-1.5 text-[12.5px] text-soft hover:border-trace/40 hover:text-white">
+            Retry
+          </button>
+        }
+      >
+        {result =>
+          result.kind === "insufficient" ? (
+            <p className="py-10 text-center text-[13.5px] text-soft/70">
+              A diff needs two runs; this case has {result.runs.length}. Create another with POST /cases/{"{id}"}/runs.
+            </p>
+          ) : (
+            <div className="space-y-5">
+              {result.runs.length > 1 && (
+                <div className="flex flex-wrap items-center gap-3 text-[12.5px] text-soft/75">
+                  {(["a", "b"] as const).map(side => (
+                    <label key={side} className="flex items-center gap-2">
+                      Run {side.toUpperCase()}
+                      <select
+                        value={side === "a" ? result.a.run.run_id : result.b.run.run_id}
+                        onChange={e => (side === "a" ? onPick(e.target.value, result.b.run.run_id) : onPick(result.a.run.run_id, e.target.value))}
+                        className="rounded-md border border-white/10 bg-black/40 px-2 py-1 text-white"
+                      >
+                        {result.runs.map(r => (
+                          <option key={r.run_id} value={r.run_id}>
+                            {r.run_id}
+                            {r.created_at ? ` · ${r.created_at}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <RunDiffView a={result.a} b={result.b} diff={result.diff} evidence={result.evidence} />
+            </div>
+          )
+        }
+      </SectionGate>
+    </Pane>
   );
 }
 
@@ -121,6 +283,11 @@ export default function InvestigationWorkspace() {
           onRetry={reload}
           liveHref={`/app/investigation?tab=${tab}`}
           demoHref={`/app/investigation?tab=${tab}&source=demo`}
+          demoNote={
+            RUN_TABS.includes(tab)
+              ? "This tab shows a recorded real backend run of CASE-DEMO-IST (not synthetic). The Findings, Timeline, Graph and Report tabs still use the synthetic demo set."
+              : undefined
+          }
         />
 
         {/* Hero */}
@@ -146,7 +313,7 @@ export default function InvestigationWorkspace() {
         </section>
 
         {/* Tabs */}
-        <nav aria-label="Workspace sections" className={`mt-7 grid grid-cols-2 overflow-hidden sm:grid-cols-4 ${GLASS} p-1.5`}>
+        <nav aria-label="Workspace sections" className={`mt-7 grid grid-cols-2 overflow-hidden sm:grid-cols-4 2xl:grid-cols-8 ${GLASS} p-1.5`}>
           {TABS.map(({ key, label, icon: Icon }) => {
             const active = tab === key;
             return (
@@ -262,6 +429,20 @@ export default function InvestigationWorkspace() {
               </div>
             </div>
           </>
+        )}
+
+        {tab === "hypotheses" && (
+          <RunTab view="hypotheses" sourceKind={sourceKind} caseId={caseId} runId={params.get("run")} selectedId={params.get("hyp")} onSelect={id => update({ hyp: id })} />
+        )}
+
+        {tab === "claims" && (
+          <RunTab view="claims" sourceKind={sourceKind} caseId={caseId} runId={params.get("run")} selectedId={params.get("claim")} onSelect={id => update({ claim: id })} />
+        )}
+
+        {tab === "reconstruction" && <ReconstructionTab sourceKind={sourceKind} caseId={caseId} runId={params.get("run")} />}
+
+        {tab === "diff" && (
+          <RunDiffTab sourceKind={sourceKind} caseId={caseId} runA={params.get("a")} runB={params.get("b")} onPick={(a, b) => update({ a, b })} />
         )}
 
         {tab === "timeline" && (

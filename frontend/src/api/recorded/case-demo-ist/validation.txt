@@ -1,0 +1,43 @@
+[PASS] all HTTP calls 2xx -- 25 requests
+[PASS] endpoint_system_log.csv: intake sha256 = file sha256
+[PASS] endpoint_system_log.csv: API events == direct parse -- api=25 direct=25
+[PASS] browser_history.csv: intake sha256 = file sha256
+[PASS] browser_history.csv: API events == direct parse -- api=25 direct=25
+[PASS] phone_chat.json: intake sha256 = file sha256
+[PASS] phone_chat.json: API events == direct parse -- api=24 direct=24
+[PASS] vpn_authentication.csv: intake sha256 = file sha256
+[PASS] vpn_authentication.csv: API events == direct parse -- api=23 direct=23
+[PASS] backup_scheduler.csv: intake sha256 = file sha256
+[PASS] backup_scheduler.csv: API events == direct parse -- api=23 direct=23
+[PASS] events carry parser_version -- versions=['browser_csv@1.1.0', 'chat_json@1.1.0', 'log_csv@1.1.0']
+       total events: api=120 direct=120
+[PASS] run A manifest == all 5 ACTIVE evidence with intake hashes
+[PASS] every claim has at least one edge -- 3 claims
+[PASS] every event edge points at a stored event -- 123 event edges
+[PASS] lineage recorded for every run A claim
+[PASS] lineage resolves to the right evidence and intake sha256
+[PASS] run A reproducible (POST /runs/{id}/verify) -- ranking_hash=aa71551da2b4a845
+[PASS] run A snapshot authoritative -- AUTHORITATIVE_DB
+       run A claims: [('SAME_OBJECT_FLOW', 'CORROBORATED', 'A'), ('SAME_OBJECT_FLOW', 'CORROBORATED', 'A'), ('ACTOR_DEVICE_CONSISTENT', 'CORROBORATED', 'A')]
+       run A hypotheses: [(1, 'H2', 'Sanctioned Backup', 'LEADING'), (2, 'H1', 'Insider Exfiltration', 'WEAKENED'), (3, 'H3', 'Session Misuse', 'REFUTED')] outcome: LEADING
+       matrix states present: ['MISSING', 'NEUTRAL', 'SATISFIED', 'UNOBSERVABLE']
+       H2 matrix: [('H2-REQ-1', 'requires', 'SATISFIED'), ('H2-REQ-2', 'requires', 'SATISFIED'), ('H2-EXP-1', 'expects', 'SATISFIED'), ('H2-EXP-2', 'expects', 'UNOBSERVABLE'), ('H2-FORBID-1', 'forbids', 'SATISFIED'), ('H2-FORBID-2', 'forbids', 'NEUTRAL'), ('H2-FORBID-3', 'forbids', 'SATISFIED')]
+       reconstruction: H2 [('authorization', 'SUPPORTED', 'FIRST_STAGE'), ('staging', 'GAP', 'GAP_DETECTED'), ('backup_transfer', 'SUPPORTED', 'GAP_DETECTED'), ('verification', 'SUPPORTED', 'CONCURRENT_OR_OVERLAPPING')]
+       h0 residual events: 1 | next-best: 2
+[PASS] tamper changed the stored file hash
+[PASS] tamper alone does not change status -- ACTIVE
+[PASS] verify after tamper: MISMATCH -> QUARANTINED -- ACTIVE -> QUARANTINED (MISMATCH)
+[PASS] integrity intact before, not after -- after by_status={'ACTIVE': 4, 'QUARANTINED': 1, 'REMOVED': 0}
+[PASS] intake sha256 unchanged after quarantine
+[PASS] run A becomes INVALIDATED -- Evidence 'EVID-002' status is now QUARANTINED (verify_state: MISMATCH)
+[PASS] run A content unchanged (write-once)
+[PASS] run B manifest excludes the quarantined file
+[PASS] run B parent is run A
+[PASS] diff: evidence removed == quarantined file
+[PASS] diff: every removed claim depended on the quarantined file -- removed=['ACTOR_DEVICE_CONSISTENT', 'SAME_OBJECT_FLOW', 'SAME_OBJECT_FLOW']
+[PASS] diff: claims not depending on it were kept -- kept=[]
+       hypothesis changes: [('H1', 'WEAKENED', 'WEAKENED', 2, 2), ('H2', 'LEADING', 'WEAKENED', 1, 1), ('H3', 'REFUTED', 'WEAKENED', 3, 3)]
+       stage changes: [{'stage_name': 'backup_transfer', 'old_status': 'SUPPORTED', 'new_status': 'GAP'}]
+       root cause: H1 item H1-FORBID-1 shifted from SATISFIED to NEUTRAL (penalty: 0.0 -> 0.0). H1 item H1-REQ-2 shifted from SATISFIED to UNOBSERVABLE (penalty: 0.0 -> 0.0). H2 item H2-FORBID-3 shifted from SATISFIED to NEUTRAL (penalty: 0.0 -> 0.0). H2 item H2-REQ-2 shifted from SATISFIED to UNOBSERVABLE (penalty: 0.0 -> 0.0). H2 (Sanctioned Backup) transitioned from LEADING to WEAKENED. H3 item H3-EXP-2 shifted f
+
+31/31 checks passed

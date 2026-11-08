@@ -1,5 +1,5 @@
-// Role 4: recent findings; a row opens the finding in the Investigation Workspace. Claim, type, confidence and status come from the Finding contract; the
-// related evidence is resolved through the cited events. The contract has no timestamp, so none is shown.
+// Role 4: recent findings; a row opens the finding in the Investigation Workspace. Claim, type and status come from the Finding contract; the
+// related evidence is resolved through the cited events. The contract has no timestamp, so none is shown. Confidence is not shown or used (T11).
 import { useNavigate } from "react-router-dom";
 import type { Finding } from "../../../api/types";
 
@@ -38,10 +38,8 @@ export default function FindingsPanel({
   linkFor: (finding: Finding) => string;
 }) {
   const navigate = useNavigate();
-  // Unresolved first, then by confidence.
-  const rows = [...findings]
-    .sort((a, b) => Number(statusOf(b) === "pending") - Number(statusOf(a) === "pending") || b.confidence - a.confidence)
-    .slice(0, 6);
+  // Unresolved first, otherwise in API order.
+  const rows = [...findings].sort((a, b) => Number(statusOf(b) === "pending") - Number(statusOf(a) === "pending")).slice(0, 6);
 
   return (
     <div className="-mx-5 overflow-x-auto">
@@ -51,7 +49,6 @@ export default function FindingsPanel({
             <th scope="col" className="w-[78px] py-2 pr-3 pl-5 font-medium">ID</th>
             <th scope="col" className="py-2 pr-3 font-medium">Finding</th>
             <th scope="col" className="w-[118px] py-2 pr-3 font-medium">Type</th>
-            <th scope="col" className="w-[104px] py-2 pr-3 font-medium">Confidence</th>
             <th scope="col" className="w-[118px] py-2 pr-3 font-medium">Status</th>
             <th scope="col" className="w-[112px] py-2 pr-5 font-medium">Evidence</th>
           </tr>
@@ -73,17 +70,6 @@ export default function FindingsPanel({
                 <td className="truncate py-2.5 pr-3 text-white" title={f.claim}>{f.claim}</td>
                 <td className="py-2.5 pr-3">
                   <span className={`inline-flex rounded-md border px-2 py-0.5 text-[12px] capitalize ${TYPE_CHIP[f.type] ?? TYPE_CHIP.hypothesis}`}>{f.type}</span>
-                </td>
-                <td className="py-2.5 pr-3">
-                  <span className="flex items-center gap-2">
-                    <span className="h-1 w-12 overflow-hidden rounded-full bg-white/[0.08]">
-                      <span
-                        className={`block h-full rounded-full ${f.type === "contradiction" ? "bg-alert" : "bg-trace"}`}
-                        style={{ width: `${Math.round(f.confidence * 100)}%` }}
-                      />
-                    </span>
-                    <span className="tabular-nums">{Math.round(f.confidence * 100)}%</span>
-                  </span>
                 </td>
                 <td className="py-2.5 pr-3">
                   <StatusChip finding={f} />

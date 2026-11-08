@@ -1,0 +1,17 @@
+{
+  "evidence_id": "EVID-002",
+  "demo": true,
+  "intake_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd",
+  "tampered_sha256": "146284a7565ec5aaa8e86394e000acbae4f1a4168f187737b28d680241e13d76",
+  "status": "ACTIVE",
+  "custody_entry": {
+    "id": 6,
+    "evidence_id": "EVID-002",
+    "actor": "DEMO_MODE",
+    "action": "DEMO: simulated tamper of stored file",
+    "time": "2026-11-08T04:39:28.956152",
+    "sha256": "146284a7565ec5aaa8e86394e000acbae4f1a4168f187737b28d680241e13d76",
+    "prev_hash": "fe65527a09f1812150bf2880298973b4acfadc96eedaf924a3d45f9b2ff0a0c1",
+    "entry_hash": "3c9aedaa12aa0ace4e48e9964bab88c5706eb52917a79f815ff099a9396eefd4"
+  }
+}

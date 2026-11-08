@@ -1,0 +1,50 @@
+# Recorded run: CASE-DEMO-IST
+
+Real backend responses, saved verbatim. Nothing in this folder was written or edited by hand.
+
+## Provenance
+
+- **Code:** clean `git archive` of `a6e9ffd` (`origin/main`, after T3/T4 #9, T5/T6 #10, T7/T8 #11, T9/T10 #12).
+- **Input:** the five T9 evidence files in `bench/scenarios/CASE-DEMO-IST/evidence/`, uploaded through `POST /cases/{id}/evidence`.
+- **Backend:** uvicorn, Python 3.12, fresh SQLite database, Docker with networking switched off, `PYTHONPATH` as in `docker-compose.yml`.
+- **Assumptions:** `{"case_timezone": "Asia/Kolkata"}`.
+- **DEMO_MODE=1:** only enables `POST /evidence/{id}/simulate-tamper` (`backend/app/routers/integrity.py`). No analysis code reads it.
+- **Recorded:** 2026-11-08. Every call and its status code is in `requests.json`. All returned 2xx.
+
+## Sequence
+
+| Step | Request | File |
+|---|---|---|
+| 1 | `POST /cases`, then `POST /cases/CASE-DEMO-IST/evidence` × 5 | `uploads.json` |
+| 2 | `GET /cases/CASE-DEMO-IST/evidence`, `/events`, `/integrity` | `evidence_before.json`, `events.json`, `integrity_before.json` |
+| 3 | `POST /cases/CASE-DEMO-IST/runs` → run A `RUN-65AFDDAA2C2D` | `run_a_created.json` |
+| 4 | `GET /runs/{A}`, `POST /runs/{A}/verify`, lineage of each claim | `run_a.json`, `run_a_verify.json`, `run_a_lineage.json` |
+| 5 | `POST /evidence/EVID-002/simulate-tamper` (browser_history.csv) | `tamper.json` |
+| 6 | `POST /evidence/EVID-002/verify` → MISMATCH, QUARANTINED | `verify_after_tamper.json` |
+| 7 | `GET /cases/CASE-DEMO-IST/integrity`, `/evidence`, `GET /runs/{A}` | `integrity_after.json`, `evidence_after.json`, `run_a_after_quarantine.json` |
+| 8 | `POST /cases/CASE-DEMO-IST/runs` with `parent_run_id` A → run B `RUN-8722EC1AF15B` | `run_b_created.json` |
+| 9 | `GET /runs/{B}`, lineage of each claim, `GET /cases/CASE-DEMO-IST/runs` | `run_b.json`, `run_b_lineage.json`, `runs.json` |
+| 10 | `GET /runs/{A}/diff/{B}` | `diff_a_b.json` |
+
+`*_lineage.json` maps each claim ID to its `GET /runs/{run}/claims/{claim}/lineage` response.
+
+## Validation
+
+`validation.txt` has 31 checks, all passing:
+- API events match a direct run of the parsers (120 events).
+- Every claim edge and lineage step resolves to a stored event and an intake SHA-256.
+- Run A reproduces its ranking hash.
+- Tamper, then verify, quarantines the file and invalidates run A.
+- The diff removes exactly the claims that depended on the quarantined file.
+
+Run A's `ranking_hash` (`aa71551d…a01b7`) matches the PRAMANA entry for this case in `bench/results/results.json`.
+
+## Known result: H2 leads, ground truth is H1
+
+The engine ranks **H2 Sanctioned Backup** LEADING, H1 Insider Exfiltration WEAKENED and H3 Session Misuse REFUTED. `bench/scenarios/CASE-DEMO-IST.yaml` gives `correct_hypothesis: H1` and expects `H2-EXP-2` to be MISSING, but the engine reports UNOBSERVABLE. The committed benchmark shows the same ranking (`top_hypothesis_accuracy` 0.0 for this case).
+
+This is the engine's real output, kept as recorded. Do not edit these files to show a different result. If T7 or the scenario changes, re-record.
+
+## Contract status
+
+The T4 responses follow `contracts/openapi.yaml`. The run, claim, lineage and diff responses have no OpenAPI response schema yet; their types are in `../../pending/runs.ts`. `index.ts` makes `tsc` check every file here against those types.

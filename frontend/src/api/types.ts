@@ -137,3 +137,24 @@ export interface FindingStatusUpdate {
   finding_id: string;
   status: "pending" | "approved" | "rejected";
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// T4 evidence state changes (contracts/openapi.yaml: EvidenceStateChange, TamperSimulation).
+
+/** 200 response of POST /evidence/{id}/remove. */
+export interface EvidenceStateChange {
+  evidence_id: string;
+  previous_status: EvidenceStatus;
+  status: EvidenceStatus;
+  custody_entry: unknown;
+}
+
+/** 200 response of POST /evidence/{id}/simulate-tamper (404 unless the backend runs with DEMO_MODE=1). */
+export interface TamperSimulation {
+  evidence_id: string;
+  demo: boolean;
+  intake_sha256: string;
+  tampered_sha256: string;
+  status: EvidenceStatus;
+  custody_entry: unknown;
+}
