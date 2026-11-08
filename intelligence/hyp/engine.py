@@ -359,13 +359,23 @@ def compute_source_coverage(
 
         device = e.get("device")
 
-        # Track primary source kind
+        # Preserve source-level coverage and add the Event v1.1 artifact family.
         kinds_to_record = {norm_kind}
-        # If event records authentication/session activity, it also covers "auth"
-        if action in ("login", "auth", "token_refresh", "session_start", "authenticate") or "auth" in raw_source:
-            kinds_to_record.add("auth")
-        if "sched" in raw_source or action in ("job_start", "scheduled_task", "cron_run"):
-            kinds_to_record.add("scheduler")
+        raw_family = e.get("family")
+        family_kind = (
+            _normalize_source_kind(raw_family.strip())
+            if isinstance(raw_family, str) and raw_family.strip()
+            else None
+        )
+        if family_kind:
+            kinds_to_record.add(family_kind)
+        # Older events lack family metadata, so retain their source/action inference.
+        # Explicit log-family metadata prevents unrelated log rows being reclassified.
+        if family_kind not in {"scheduler", "system_log"}:
+            if action in ("login", "auth", "token_refresh", "session_start", "authenticate") or "auth" in raw_source:
+                kinds_to_record.add("auth")
+            if "sched" in raw_source or action in ("job_start", "scheduled_task", "cron_run"):
+                kinds_to_record.add("scheduler")
 
         for k in kinds_to_record:
             if k not in coverage:
