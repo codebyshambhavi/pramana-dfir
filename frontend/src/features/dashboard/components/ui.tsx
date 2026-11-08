@@ -97,11 +97,3 @@ export const humanize = (action: string) => {
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
-export function formatStamp(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}, ${d.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit"
-  })}`;
-}

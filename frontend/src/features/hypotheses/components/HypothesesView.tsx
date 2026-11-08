@@ -8,6 +8,7 @@ import type { HypothesisStatus, ItemCategory, ItemEvaluation, ItemState, RankedH
 import { Info } from "../../../components/console/icons";
 import { CopyButton } from "../../vault/components/ui";
 import { truncateHash } from "../../vault/model";
+import { Stamp } from "../../../lib/time";
 import type { LoadedRun } from "../runSource";
 
 const CHIP = "inline-flex items-center rounded-md border px-2 py-0.5 text-[12px] whitespace-nowrap";
@@ -68,12 +69,6 @@ export const StateChip = ({ state }: { state: ItemState }) => {
   );
 };
 
-/** Run times come back as naive UTC ("2026-11-08T04:39:12"); read them as UTC and say so, instead of as local time. */
-export const formatUtc = (iso: string) => {
-  const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${d.toLocaleString(undefined, { timeZone: "UTC", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} UTC`;
-};
 
 /** The engine appends "[NON-DIAGNOSTIC: …]" to the rationale of items that every hypothesis shares. */
 const splitRationale = (text: string) => {
@@ -94,7 +89,7 @@ function RunHeader({ loaded }: { loaded: LoadedRun }) {
       <span>
         Run <span className="text-white tabular-nums">{run.run_id}</span>
       </span>
-      {run.created_at && <span title={run.created_at}>{formatUtc(run.created_at)}</span>}
+      {run.created_at && <Stamp iso={run.created_at} />}
       <span>
         Validity{" "}
         <span className={run.validity === "VALID" ? "text-teal-200" : "text-alert-soft"} title={run.invalidation_reasons.join("\n") || undefined}>

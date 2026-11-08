@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Close, Custody, FileIcon, Hash, Info, Shield } from "../../../components/console/icons";
 import type { EvidenceItem } from "../../../api/types";
 import { fileKind, formatIntake, readCustody, type CustodyView } from "../model";
+import { useDisplayZone } from "../../../lib/time";
 import { CopyButton, Derived, FileKindBadge } from "./ui";
+import IntegrityPanel from "./IntegrityPanel";
 
 export interface LocalHashCheck {
   localHash: string;
@@ -36,6 +38,7 @@ const ACTION_CHIP: Record<string, string> = {
 };
 
 function CustodyTimeline({ entries }: { entries: CustodyView[] }) {
+  const zone = useDisplayZone();
   return (
     <ol className="relative mt-4 space-y-5 pl-7">
       <span
@@ -43,7 +46,7 @@ function CustodyTimeline({ entries }: { entries: CustodyView[] }) {
         aria-hidden="true"
       />
       {entries.map((entry, i) => {
-        const time = entry.time ? formatIntake(entry.time) : null;
+        const time = entry.time ? formatIntake(entry.time, zone) : null;
         return (
           <li key={i} className="relative">
             <span
@@ -100,16 +103,19 @@ export default function EvidenceDetailDrawer({
   item,
   isDemo,
   localCheck,
-  onClose
+  onClose,
+  onChanged
 }: {
   item: EvidenceItem;
   isDemo: boolean;
   localCheck?: LocalHashCheck;
   onClose: () => void;
+  /** Live API only: reload the evidence list after a verify or tamper. */
+  onChanged?: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const kind = fileKind(item.filename);
-  const intake = formatIntake(item.intake_time);
+  const intake = formatIntake(item.intake_time, useDisplayZone());
   const custody = readCustody(item.custody);
 
   const [tab, setTab] = useState<"details" | "custody">("details");
@@ -244,13 +250,15 @@ export default function EvidenceDetailDrawer({
                 </p>
               </div>
             </div>
+          ) : !isDemo && onChanged ? (
+            <IntegrityPanel item={item} onChanged={onChanged} />
           ) : (
             <div className="mt-3 flex gap-3 rounded-lg border border-trace/20 bg-trace/[0.05] p-3.5">
               <Shield size={22} className="text-trace-soft" />
               <div className="text-[13px]">
                 <p className="font-semibold text-white">Recorded at intake</p>
                 <p className="mt-0.5 text-soft/75">
-                  The API does not report a verification status yet. Re-hash the original file to compare.
+                  Synthetic demo record: integrity checks run only against the live API.
                 </p>
               </div>
             </div>

@@ -3,6 +3,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { FileIcon, SortArrows } from "../../../components/console/icons";
 import type { EvidenceItem } from "../../../api/types";
 import { fileKind, formatIntake, isParsedKind, truncateHash } from "../model";
+import { useDisplayZone } from "../../../lib/time";
 import RowMenu from "./RowMenu";
 import { CopyButton, FileKindBadge } from "./ui";
 
@@ -54,7 +55,7 @@ function SortHeader({ label, sortKey, sort, onSort }: { label: string; sortKey: 
 }
 
 const Intake = ({ iso }: { iso: string }) => {
-  const t = formatIntake(iso);
+  const t = formatIntake(iso, useDisplayZone());
   return (
     <time dateTime={t.iso} title={t.valid ? t.iso : "Unparseable timestamp"} className="whitespace-nowrap tabular-nums">
       {t.date}

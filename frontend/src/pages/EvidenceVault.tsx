@@ -19,6 +19,7 @@ import { Eyebrow, PANEL } from "../features/vault/components/ui";
 import { DEFAULT_CASE_ID, getEvidenceSource, resolveSourceKind } from "../features/vault/evidenceSource";
 import { useCopy, useEvidenceList } from "../features/vault/hooks";
 import { fileKind, isParsedKind, matchesQuery, type FileKind } from "../features/vault/model";
+import { storedTime } from "../lib/time";
 
 const PAGE_SIZE = 8;
 const EMPTY_FILTERS: VaultFilters = { query: "", kind: "all", support: "all" };
@@ -45,7 +46,7 @@ export default function EvidenceVault() {
   const sourceKind = resolveSourceKind(searchParams.get("source"));
   const toPath = useSourceLink();
   const source = useMemo(() => getEvidenceSource(sourceKind), [sourceKind]);
-  const { state, reload } = useEvidenceList(source, caseId);
+  const { state, reload, refresh } = useEvidenceList(source, caseId);
 
   const [filters, setFilters] = useState<VaultFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<SortState>({ key: "intake_time", dir: "desc" });
@@ -90,7 +91,7 @@ export default function EvidenceVault() {
     });
     const dir = sort.dir === "asc" ? 1 : -1;
     return filtered.sort((a, b) => {
-      if (sort.key === "intake_time") return (Date.parse(a.intake_time) - Date.parse(b.intake_time)) * dir || a.evidence_id.localeCompare(b.evidence_id);
+      if (sort.key === "intake_time") return (storedTime(a.intake_time) - storedTime(b.intake_time)) * dir || a.evidence_id.localeCompare(b.evidence_id);
       return a.evidence_id.localeCompare(b.evidence_id, undefined, { numeric: true }) * dir;
     });
   }, [items, filters, sort]);
@@ -327,6 +328,7 @@ export default function EvidenceVault() {
                   isDemo={sourceKind === "demo"}
                   localCheck={localChecks.get(active.evidence_id)}
                   onClose={() => setActiveId(null)}
+                  onChanged={sourceKind === "api" ? refresh : undefined}
                 />
               </div>
             </>

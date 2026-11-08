@@ -28,6 +28,14 @@ Real backend responses, saved verbatim. Nothing in this folder was written or ed
 
 `*_lineage.json` maps each claim ID to its `GET /runs/{run}/claims/{claim}/lineage` response.
 
+## Reproducing (T12)
+
+The recorder and checks are in `scripts/demo/`: `demo_run.py` (makes the calls in the order below), `validate_recording.py`
+(the 31 checks) and `compare.py` (fresh run vs this folder). `bash scripts/demo/check.sh 3` runs all three, three times,
+each on a new empty database. Run IDs and custody times change every run, so `compare.py` leaves them out and compares
+everything else that is shown in the demo. To re-record, run `demo_run.py full` against a clean backend and copy its
+output here, except `_timings.json`.
+
 ## Validation
 
 `validation.txt` has 31 checks, all passing:

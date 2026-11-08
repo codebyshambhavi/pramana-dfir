@@ -1,6 +1,7 @@
 // Role 4: client-side helpers for the Evidence Vault. Anything here that isn't in the API response is
 // derived on the client (file kind from the extension) and is labelled as such in the UI.
 import type { EvidenceItem } from "../../api/types";
+import { storedTime, timestampParts, type DisplayZone } from "../../lib/time";
 
 export type FileKind = "csv" | "json" | "pcap" | "image" | "video" | "audio" | "pdf" | "other";
 
@@ -46,16 +47,8 @@ export const isParsedKind = (kind: FileKind) => PARSED_KINDS.has(kind);
 
 export const truncateHash = (hash: string) => (hash.length > 16 ? `${hash.slice(0, 8)}…${hash.slice(-4)}` : hash);
 
-export function formatIntake(iso: string) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return { valid: false as const, date: iso, time: "", iso };
-  return {
-    valid: true as const,
-    date: date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
-    time: date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false }),
-    iso: date.toISOString()
-  };
-}
+/** Intake and custody times in the chosen display zone (naive backend values are UTC). */
+export const formatIntake = (iso: string, zone: DisplayZone) => timestampParts(iso, zone);
 
 export function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -102,8 +95,8 @@ export function readCustody(entries: unknown[]): { entries: CustodyView[]; recog
   });
   const recognised = views.every(v => v.action !== undefined || v.time !== undefined);
   const sorted = [...views].sort((a, b) => {
-    const ta = a.time ? Date.parse(a.time) : NaN;
-    const tb = b.time ? Date.parse(b.time) : NaN;
+    const ta = a.time ? storedTime(a.time) : NaN;
+    const tb = b.time ? storedTime(b.time) : NaN;
     if (Number.isNaN(ta) || Number.isNaN(tb)) return 0;
     return ta - tb;
   });

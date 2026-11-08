@@ -11,7 +11,8 @@ import { ArrowRight, Info } from "../../../components/console/icons";
 import { useSourceLink } from "../../../components/console/useSourceLink";
 import { SectionGate, humanize } from "../../dashboard/components/ui";
 import { useClaimLineage } from "../../claims/claimSource";
-import { HypothesisChip, StateChip, formatUtc } from "../../hypotheses/components/HypothesesView";
+import { HypothesisChip, StateChip } from "../../hypotheses/components/HypothesesView";
+import { Stamp } from "../../../lib/time";
 import type { LoadedRun } from "../../hypotheses/runSource";
 import { truncateHash } from "../../vault/model";
 
@@ -41,7 +42,7 @@ function RunCard({ label, loaded }: { label: string; loaded: LoadedRun }) {
       <p className="text-[11px] font-semibold tracking-[0.18em] text-soft/60 uppercase">{label}</p>
       <p className="mt-1 text-[14px] text-white tabular-nums">{run.run_id}</p>
       <p className="mt-0.5">
-        {run.created_at ? formatUtc(run.created_at) : "no creation time"}
+        {run.created_at ? <Stamp iso={run.created_at} /> : "no creation time"}
         {run.parent_run_id && <span className="text-soft/55"> · parent {run.parent_run_id}</span>}
       </p>
       <p className="mt-1">

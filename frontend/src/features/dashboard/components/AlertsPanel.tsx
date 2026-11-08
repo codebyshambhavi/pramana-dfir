@@ -3,7 +3,7 @@
 import type { ComponentType, SVGProps } from "react";
 import { Link } from "react-router-dom";
 import { Alert, Custody, FileIcon } from "../../../components/console/icons";
-import { formatStamp } from "./ui";
+import { Stamp } from "../../../lib/time";
 
 export interface AlertItem {
   key: string;
@@ -43,7 +43,7 @@ export default function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
             </span>
             {alert.time && (
               <span className="hidden shrink-0 text-right text-[12px] text-soft/65 sm:block" title={alert.time.label}>
-                {formatStamp(alert.time.iso)}
+                <Stamp iso={alert.time.iso} />
               </span>
             )}
           </>

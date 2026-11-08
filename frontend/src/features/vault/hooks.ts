@@ -11,10 +11,13 @@ export type LoadState =
 export function useEvidenceList(source: EvidenceSource, caseId: string) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [version, setVersion] = useState(0);
+  // A silent refresh keeps the current rows (and the open drawer) on screen until the new list arrives.
+  const silent = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
-    setState({ status: "loading" });
+    if (!silent.current) setState({ status: "loading" });
+    silent.current = false;
     source
       .list(caseId, controller.signal)
       .then(items => setState({ status: "ready", items }))
@@ -26,7 +29,11 @@ export function useEvidenceList(source: EvidenceSource, caseId: string) {
   }, [source, caseId, version]);
 
   const reload = useCallback(() => setVersion(v => v + 1), []);
-  return { state, reload };
+  const refresh = useCallback(() => {
+    silent.current = true;
+    setVersion(v => v + 1);
+  }, []);
+  return { state, reload, refresh };
 }
 
 export function useCopy(resetMs = 1600) {

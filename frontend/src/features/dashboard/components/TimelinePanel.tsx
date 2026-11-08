@@ -4,7 +4,8 @@ import type { ComponentType, SVGProps } from "react";
 import { Link } from "react-router-dom";
 import { Globe, ImageIcon, Message, Network, Terminal } from "../../../components/console/icons";
 import type { CaseEvent } from "../../../api/types";
-import { formatStamp, humanize } from "./ui";
+import { humanize } from "./ui";
+import { Stamp, storedTime } from "../../../lib/time";
 
 export const SOURCE_ICON: Record<CaseEvent["source"], ComponentType<SVGProps<SVGSVGElement> & { size?: number }>> = {
   browser: Globe,
@@ -29,7 +30,7 @@ export default function TimelinePanel({
   linkTo: (evidenceId: string) => string;
 }) {
   const latest = [...events]
-    .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
+    .sort((a, b) => storedTime(b.timestamp) - storedTime(a.timestamp))
     .slice(0, 5)
     .reverse();
 
@@ -61,7 +62,7 @@ export default function TimelinePanel({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[12.5px] text-soft/70 tabular-nums">
-                  <time dateTime={event.timestamp}>{formatStamp(event.timestamp)}</time>
+                  <Stamp iso={event.timestamp} />
                   <span className="ml-2 text-soft/45">{event.evidence_id}</span>
                 </span>
                 <span className="mt-0.5 block truncate text-[13.5px] text-white group-hover:text-trace-soft" title={describe(event)}>

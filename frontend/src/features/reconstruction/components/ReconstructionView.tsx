@@ -8,7 +8,8 @@ import type { HypothesisStatus, NarrativeReconstruction, StageReconstruction, St
 import { Info } from "../../../components/console/icons";
 import { useSourceLink } from "../../../components/console/useSourceLink";
 import { humanize } from "../../dashboard/components/ui";
-import { HypothesisChip, formatUtc } from "../../hypotheses/components/HypothesesView";
+import { HypothesisChip } from "../../hypotheses/components/HypothesesView";
+import { Stamp } from "../../../lib/time";
 import type { LoadedRun } from "../../hypotheses/runSource";
 
 const CHIP = "inline-flex items-center rounded-md border px-2 py-0.5 text-[12px] whitespace-nowrap";
@@ -34,7 +35,7 @@ function EventRow({ event }: { event: Record<string, unknown> }) {
   return (
     <li className="relative text-[12.5px]">
       <span aria-hidden="true" className="absolute top-1.5 -left-[19px] size-[7px] rounded-full bg-trace/70" />
-      <span className="text-soft/60 tabular-nums">{ts ? formatUtc(ts) : "no timestamp"}</span>
+      <span className="text-soft/60 tabular-nums">{ts ? <Stamp iso={ts} /> : "no timestamp"}</span>
       <span className="ml-2 text-white">
         {action ? humanize(action) : "Unknown action"}
         {target && <span className="text-soft/80"> — {target}</span>}
@@ -85,7 +86,7 @@ function Stage({ stage, index, runId }: { stage: StageReconstruction; index: num
           <span className="ml-auto text-[12px] text-soft/65 tabular-nums">
             {stage.time_window ? (
               <>
-                {stage.time_window.lo ? formatUtc(stage.time_window.lo) : "?"} → {stage.time_window.hi ? formatUtc(stage.time_window.hi) : "?"}
+                {stage.time_window.lo ? <Stamp iso={stage.time_window.lo} /> : "?"} → {stage.time_window.hi ? <Stamp iso={stage.time_window.hi} /> : "?"}
               </>
             ) : (
               "No time window"
@@ -194,7 +195,7 @@ export default function ReconstructionView({ loaded, reconstruction }: { loaded:
           <span className="text-white">Backend summary: </span>
           {reconstruction.narrative_summary}
           <span className="mt-1 block text-[12px] text-soft/55">
-            Stages follow the hypothesis template's order. Each label above a stage is the backend's comparison of its time window with the previous stage's. Times are UTC.
+            Stages follow the hypothesis template's order. Each label above a stage is the backend's comparison of its time window with the previous stage's. Times follow the UTC/IST switch in the header.
           </span>
         </span>
       </p>

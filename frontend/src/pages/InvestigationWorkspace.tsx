@@ -22,12 +22,14 @@ import HypothesesView from "../features/hypotheses/components/HypothesesView";
 import { useLatestRun } from "../features/hypotheses/runSource";
 import ReconstructionView from "../features/reconstruction/components/ReconstructionView";
 import RunDiffView from "../features/rundiff/components/RunDiffView";
+import NewRunButton from "../features/rundiff/components/NewRunButton";
 import { useRunDiff } from "../features/rundiff/runDiffSource";
 import { useReconstruction } from "../features/reconstruction/reconstructionSource";
 import { buildIndex } from "../features/investigation/findingModel";
 import { DEFAULT_CASE_ID, resolveSourceKind, type EvidenceSourceKind } from "../features/vault/evidenceSource";
 import Report from "./Report";
 import Timeline from "./Timeline";
+import { formatTimestamp, useDisplayZone } from "../lib/time";
 
 // React Flow is only needed on the Graph tab, so it loads on demand.
 const GraphView = lazy(() => import("./GraphView"));
@@ -161,6 +163,9 @@ function RunDiffTab({
   onPick: (a: string, b: string) => void;
 }) {
   const { state, reload } = useRunDiff(sourceKind, caseId, runA, runB);
+  const zone = useDisplayZone();
+  // A new run with a parent is shown against that parent; otherwise the default pair (newest and its parent) reloads.
+  const onCreated = (parent: string | null, created: string) => (parent ? onPick(parent, created) : reload());
   return (
     <Pane
       title="Run diff"
@@ -179,13 +184,15 @@ function RunDiffTab({
       >
         {result =>
           result.kind === "insufficient" ? (
-            <p className="py-10 text-center text-[13.5px] text-soft/70">
-              A diff needs two runs; this case has {result.runs.length}. Create another with POST /cases/{"{id}"}/runs.
-            </p>
+            <div className="flex flex-col items-center gap-3 py-10 text-center text-[13.5px] text-soft/70">
+              <p>A diff needs two runs; this case has {result.runs.length}.</p>
+              <NewRunButton caseId={caseId} parentRunId={result.runs[0]?.run_id ?? null} onCreated={onCreated} />
+            </div>
           ) : (
             <div className="space-y-5">
               {result.runs.length > 1 && (
                 <div className="flex flex-wrap items-center gap-3 text-[12.5px] text-soft/75">
+                  <NewRunButton caseId={caseId} parentRunId={result.runs[0].run_id} onCreated={onCreated} />
                   {(["a", "b"] as const).map(side => (
                     <label key={side} className="flex items-center gap-2">
                       Run {side.toUpperCase()}
@@ -197,7 +204,7 @@ function RunDiffTab({
                         {result.runs.map(r => (
                           <option key={r.run_id} value={r.run_id}>
                             {r.run_id}
-                            {r.created_at ? ` · ${r.created_at}` : ""}
+                            {r.created_at ? ` · ${formatTimestamp(r.created_at, zone)}` : ""}
                           </option>
                         ))}
                       </select>

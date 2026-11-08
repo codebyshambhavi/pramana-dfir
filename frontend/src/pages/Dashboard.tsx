@@ -23,7 +23,8 @@ import FindingsPanel, { statusOf } from "../features/dashboard/components/Findin
 import KpiCard, { type KpiValue } from "../features/dashboard/components/KpiCard";
 import NetworkBackdrop from "../features/dashboard/components/NetworkBackdrop";
 import TimelinePanel from "../features/dashboard/components/TimelinePanel";
-import { GLASS, Panel, PanelLink, SectionGate, formatStamp } from "../features/dashboard/components/ui";
+import { GLASS, Panel, PanelLink, SectionGate } from "../features/dashboard/components/ui";
+import { Stamp, storedTime } from "../lib/time";
 import SourceBanner from "../features/dashboard/components/SourceBanner";
 import { readyData, useDashboardData, type Section } from "../features/dashboard/dashboardData";
 import { DEFAULT_CASE_ID, resolveSourceKind } from "../features/vault/evidenceSource";
@@ -38,7 +39,7 @@ const SECTIONS: { to: string; label: string; icon: IconType; end?: boolean }[] =
 ];
 
 const span = (times: string[]) => {
-  const sorted = times.map(t => Date.parse(t)).filter(t => !Number.isNaN(t)).sort((a, b) => a - b);
+  const sorted = times.map(storedTime).filter(t => !Number.isNaN(t)).sort((a, b) => a - b);
   return sorted.length ? { first: new Date(sorted[0]).toISOString(), last: new Date(sorted[sorted.length - 1]).toISOString() } : null;
 };
 
@@ -165,8 +166,8 @@ export default function Dashboard() {
                   <dd className="mt-0.5 text-white">
                     {intake ? (
                       <>
-                        {formatStamp(intake.first)}
-                        {intake.last !== intake.first && <span className="block text-soft/70">to {formatStamp(intake.last)}</span>}
+                        <Stamp iso={intake.first} />
+                        {intake.last !== intake.first && <span className="block text-soft/70">to <Stamp iso={intake.last} /></span>}
                       </>
                     ) : (
                       <span className="text-soft/50">{data.evidence.status === "loading" ? "Loading…" : "Not available"}</span>
@@ -178,8 +179,8 @@ export default function Dashboard() {
                   <dd className="mt-0.5 text-white">
                     {activity ? (
                       <>
-                        {formatStamp(activity.first)}
-                        <span className="block text-soft/70">to {formatStamp(activity.last)}</span>
+                        <Stamp iso={activity.first} />
+                        <span className="block text-soft/70">to <Stamp iso={activity.last} /></span>
                       </>
                     ) : (
                       <span className="text-soft/50">{data.events.status === "loading" ? "Loading…" : "Not available"}</span>
