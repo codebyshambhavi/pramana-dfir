@@ -45,6 +45,26 @@ def test_dispatches_log_csv(tmp_path: Path):
     assert events[0]["source"] == "log"
 
 
+@pytest.mark.parametrize(
+    ("filename", "expected_family"),
+    [
+        ("backup_scheduler.csv", "scheduler"),
+        ("vpn_authentication.csv", "authentication"),
+    ],
+)
+def test_log_csv_preserves_source_family(tmp_path: Path, filename: str, expected_family: str):
+    path = _write(
+        tmp_path / filename,
+        "timestamp,action,actor,device,ip,object\n"
+        "2026-01-01T02:30:00Z,login,alice,host-1,192.0.2.1,archive.tar\n",
+    )
+
+    (event,) = parse_evidence(str(path), "CASE-001")
+
+    assert event["source"] == "log"
+    assert event["family"] == expected_family
+
+
 def test_dispatches_chat_json(tmp_path: Path):
     path = tmp_path / "chat.json"
     path.write_text(

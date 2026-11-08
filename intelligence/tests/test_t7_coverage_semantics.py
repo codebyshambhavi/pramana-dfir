@@ -260,6 +260,88 @@ def test_coverage_different_source_kinds(kind: str):
     assert _source_demonstrably_covered(kind, cov, target_window=target_window) is True
 
 
+def test_log_family_scheduler_is_recognized():
+    coverage = compute_source_coverage([
+        {**_ev("E1", "log", "2026-10-18T10:00:00Z", "login"), "family": "scheduler"},
+    ])
+
+    assert coverage["scheduler"]["event_count"] == 1
+    assert coverage["system_log"]["event_count"] == 1
+    assert "auth" not in coverage
+    assert _source_demonstrably_covered("scheduler", coverage) is True
+
+
+def test_log_family_authentication_is_recognized():
+    coverage = compute_source_coverage([
+        {**_ev("E1", "log", "2026-10-18T10:00:00Z"), "family": "authentication"},
+    ])
+
+    assert coverage["auth"]["event_count"] == 1
+    assert coverage["system_log"]["event_count"] == 1
+    assert _source_demonstrably_covered("authentication", coverage) is True
+
+
+def test_system_log_family_is_not_misclassified_as_scheduler_or_authentication():
+    coverage = compute_source_coverage([
+        {**_ev("E1", "log", "2026-10-18T10:00:00Z", "login"), "family": "system_log"},
+    ])
+
+    assert coverage["system_log"]["event_count"] == 1
+    assert "scheduler" not in coverage
+    assert "auth" not in coverage
+
+
+@pytest.mark.parametrize("family", ["missing", None])
+def test_missing_or_null_family_preserves_source_coverage(family):
+    event = _ev("E1", "log", "2026-10-18T10:00:00Z")
+    if family != "missing":
+        event["family"] = family
+
+    coverage = compute_source_coverage([event])
+
+    assert coverage["system_log"]["event_count"] == 1
+    assert "scheduler" not in coverage
+    assert "auth" not in coverage
+
+
+def test_legacy_event_without_family_retains_auth_action_inference():
+    coverage = compute_source_coverage([
+        _ev("E1", "log", "2026-10-18T10:00:00Z", "login"),
+    ])
+
+    assert coverage["system_log"]["event_count"] == 1
+    assert coverage["auth"]["event_count"] == 1
+
+
+def test_mixed_source_and_family_coverage_is_independent():
+    events = [
+        {**_ev("E1", "log", "2026-10-18T10:00:00Z", "job_start"), "family": "scheduler"},
+        {**_ev("E2", "log", "2026-10-18T10:15:00Z"), "family": "authentication"},
+        {**_ev("E3", "log", "2026-10-18T10:30:00Z"), "family": "system_log"},
+        {**_ev("E4", "chat", "2026-10-18T10:45:00Z"), "family": "chat_export"},
+        {**_ev("E5", "image", "2026-10-18T11:00:00Z"), "family": "image_exif"},
+    ]
+
+    coverage = compute_source_coverage(events)
+
+    assert coverage["scheduler"]["event_count"] == 1
+    assert coverage["auth"]["event_count"] == 1
+    assert coverage["system_log"]["event_count"] == 3
+    assert coverage["chat"]["event_count"] == 1
+    assert coverage["image"]["event_count"] == 1
+
+
+def test_source_and_matching_family_do_not_double_count_event():
+    coverage = compute_source_coverage([
+        {**_ev("E1", "log", "2026-10-18T10:00:00Z"), "family": "system_log"},
+    ])
+
+    assert coverage["system_log"]["event_count"] == 1
+    assert coverage["system_log"]["timestamps"] == [
+        datetime(2026, 10, 18, 10, 0, 0)
+    ]
+
+
 # --- 7. Missing source entirely ---
 
 def test_coverage_missing_source_entirely():

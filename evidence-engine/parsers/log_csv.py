@@ -10,11 +10,14 @@ Supported synthetic CSV columns:
 
 Each row becomes one Event with:
 - source = "log"
+- family = "system_log" by default; scheduler/authentication filenames retain
+  their more specific Event v1.1 family
 - artifact_ref = "{filename}#row={row_number}" (1-indexed)
 - object = object column value (when present)
 - raw = original row as dict
 """
 import csv
+from pathlib import Path
 from typing import Dict, List, Any
 
 from parsers.provenance import provenance_fields
@@ -26,8 +29,18 @@ PARSER_VERSION = "1.1.0"
 FAMILY = "system_log"
 
 
+def _family_for_path(path: str) -> str:
+    """Keep known log-like evidence families distinct without changing source."""
+    stem = Path(path).stem.casefold()
+    if "scheduler" in stem:
+        return "scheduler"
+    if "authentication" in stem or "auth" in stem or "vpn" in stem:
+        return "authentication"
+    return FAMILY
+
+
 def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[str, Any]]:
-    """Parse system log CSV and return Events.
+    """Parse log-like CSV evidence and return Events.
 
     Args:
         path: Path to the CSV file
@@ -97,7 +110,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                     "raw": raw,
                     **provenance_fields(
                         parser=PARSER_NAME, version=PARSER_VERSION,
-                        family=FAMILY, tz_assumption=tz_basis,
+                        family=_family_for_path(path), tz_assumption=tz_basis,
                     ),
                 }
 

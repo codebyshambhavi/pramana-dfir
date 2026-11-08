@@ -77,18 +77,28 @@ def test_generated_evidence_parses_and_ground_truth_refs_resolve(tmp_path: Path)
         evidence_root = tmp_path / "evidence"
         actual_refs = set()
         parsed_by_ref = {}
+        all_event_ids = set()
         total_events = 0
         for source in scenario["evidence_files"]:
+            evidence_path = evidence_root / source["path"]
+            assert evidence_path.is_file()
+            assert evidence_path.name == source["filename"]
             events = parse_evidence(
-                str(evidence_root / source["path"]),
+                str(evidence_path),
                 scenario["scenario_id"],
             )
+            assert len(events) == source["event_count"]
             total_events += len(events)
             for event in events:
+                assert event["event_id"] not in all_event_ids
+                all_event_ids.add(event["event_id"])
+                assert event["artifact_ref"].startswith(f"{source['filename']}#")
+                assert event["artifact_ref"] not in actual_refs
                 actual_refs.add(event["artifact_ref"])
                 parsed_by_ref[event["artifact_ref"]] = event
         assert 100 <= total_events <= 300
         assert total_events == scenario["event_count"]
+        assert len(actual_refs) == total_events
         truth_refs = set(scenario["stage_labels"])
         truth_refs.update(scenario["background_unassigned_events"])
         truth_refs.update(scenario["decoy_events"])
@@ -145,6 +155,14 @@ def test_demo_ist_contains_five_parser_supported_evidence_sources(tmp_path: Path
     for source in scenario["evidence_files"]:
         events = parse_evidence(str(tmp_path / "demo" / source["path"]), "CASE-DEMO-IST")
         event_counts[source["source"]] = len(events)
+        expected_family = {
+            "endpoint": "system_log",
+            "browser": "browser_history",
+            "phone": "chat_export",
+            "vpn": "authentication",
+            "scheduler": "scheduler",
+        }[source["source"]]
+        assert all(event["family"] == expected_family for event in events)
     assert all(count > 0 for count in event_counts.values())
     assert scenario["absence_classification"]["H2-EXP-2"] == "MISSING"
     archive = next(
