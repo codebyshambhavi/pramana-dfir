@@ -1,0 +1,33 @@
+{
+  "verified": true,
+  "persisted_ranking_hash": "aa71551da2b4a845f960475c9b2ceda7be8f9e91003f9a52fd160fb88a1a01b7",
+  "recomputed_ranking_hash": "aa71551da2b4a845f960475c9b2ceda7be8f9e91003f9a52fd160fb88a1a01b7",
+  "diverged": false,
+  "divergence_details": [],
+  "snapshot_available": true,
+  "snapshot_authoritative": true,
+  "snapshot_status": "AUTHORITATIVE_DB",
+  "ranking_hash_verified": true,
+  "historical_replay": {
+    "status": "VERIFIED",
+    "verified": true,
+    "replay_possible": true,
+    "ranking_hash_match": true,
+    "ranking_order_match": true,
+    "h0_residual_match": true,
+    "hypotheses_match": true,
+    "reconstruction_match": true,
+    "snapshot_source": "database",
+    "snapshot_authoritative": true,
+    "discrepancies": []
+  },
+  "current_state_comparison": {
+    "diverged": false,
+    "events_identical": true,
+    "templates_identical": true,
+    "current_ranking_hash": "aa71551da2b4a845f960475c9b2ceda7be8f9e91003f9a52fd160fb88a1a01b7",
+    "divergence_reasons": [],
+    "event_drift_detected": false,
+    "event_drift_details": []
+  }
+}

@@ -106,10 +106,6 @@ export function FindingSummary({
             </dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-soft/65">Confidence</dt>
-            <dd className="text-white tabular-nums">{Math.round(finding.confidence * 100)}%</dd>
-          </div>
-          <div className="flex justify-between gap-3">
             <dt className="text-soft/65">Cited events</dt>
             <dd className="text-white tabular-nums">{finding.evidence_event_ids.length}</dd>
           </div>

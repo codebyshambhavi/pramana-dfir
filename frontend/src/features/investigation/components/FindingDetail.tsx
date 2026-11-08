@@ -16,16 +16,7 @@ import { TYPE_LABEL, lineageFromIndex, type CaseIndex } from "../findingModel";
 
 type Tab = "evidence" | "analysis" | "alternatives" | "notes";
 
-function Confidence({ value, tone }: { value: number; tone: "alert" | "trace" }) {
-  return (
-    <span className="flex items-center gap-2.5">
-      <span className="h-1.5 w-24 overflow-hidden rounded-full bg-white/[0.08]">
-        <span className={`block h-full rounded-full ${tone === "alert" ? "bg-alert shadow-[0_0_8px_#ef2b3c]" : "bg-trace shadow-[0_0_8px_#3b8cff]"}`} style={{ width: `${Math.round(value * 100)}%` }} />
-      </span>
-      <span className="text-[13px] text-white tabular-nums">{Math.round(value * 100)}%</span>
-    </span>
-  );
-}
+// T11: no confidence values are shown anywhere. Finding.confidence is still in the contract but is not displayed.
 
 function Empty({ children }: { children: ReactNode }) {
   return <p className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-[13px] text-soft/70">{children}</p>;
@@ -131,10 +122,6 @@ function AnalysisTab({ finding, index }: { finding: Finding; index: CaseIndex })
       <dl className="grid gap-x-6 gap-y-3 text-[13.5px] sm:grid-cols-[120px_minmax(0,1fr)]">
         <dt className="text-soft/60">Reasoning</dt>
         <dd className="text-white">{finding.reasoning ?? <span className="text-soft/55">No reasoning supplied by the analysis.</span>}</dd>
-        <dt className="text-soft/60">Confidence</dt>
-        <dd>
-          <Confidence value={finding.confidence} tone={finding.type === "contradiction" ? "alert" : "trace"} />
-        </dd>
         <dt className="text-soft/60">Human review</dt>
         <dd className="text-white">{finding.needs_human_review ? "Required" : "Not required"}</dd>
       </dl>
@@ -169,10 +156,7 @@ function AlternativesTab({ finding }: { finding: Finding }) {
     <ul className="space-y-3">
       {finding.alternatives.map(alt => (
         <li key={alt.claim} className="rounded-xl border border-violet-400/25 bg-violet-500/[0.05] p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[14px] text-white">{alt.claim}</p>
-            <Confidence value={alt.confidence} tone="trace" />
-          </div>
+          <p className="text-[14px] text-white">{alt.claim}</p>
           {alt.needed_evidence && alt.needed_evidence.length > 0 && (
             <p className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12px] text-soft/70">
               Would be settled by:
