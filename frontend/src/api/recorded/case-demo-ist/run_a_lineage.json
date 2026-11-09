@@ -1,9 +1,983 @@
 {
+  "0f93a9eb42817b7801e8521328d0846fa3478222bd8c721da0f1e1278de92773": {
+    "claim": {
+      "claim_id": "0f93a9eb42817b7801e8521328d0846fa3478222bd8c721da0f1e1278de92773",
+      "claim_key": "f2233da73a6773d6d1b9768618d5e4bcdc2ab63847a5149f678ee592a679b225",
+      "run_id": "RUN-869D4041830D",
+      "case_id": "CASE-DEMO-IST",
+      "type": "ACTOR_DEVICE_CONSISTENT",
+      "params": {
+        "actor": "mira.chen",
+        "device": "field-laptop-07",
+        "supporting_families_count": 5
+      },
+      "status": "CORROBORATED",
+      "grade": "A",
+      "rule_id": "rule_actor_device_consistent",
+      "rule_version": "1.0.0",
+      "assumptions_hash": "9f3d2c19c41f9e60ad2c7f0d764f21e49614686654455b9fcfa945abc664cba9"
+    },
+    "events": [
+      {
+        "event_id": "021fdb61808b17ad:2266c8e8f15e:EV-000006",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=6",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "03efea3a3836851b:7c33333c3a78:EV-000008",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=8",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "03f9a6219adf1881:59ba3071d32a:EV-000011",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=10",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "044b6a12e54e33c9:2266c8e8f15e:EV-000010",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=10",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "05c6facbffb0992b:2266c8e8f15e:EV-000013",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=13",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "07570caeb6382056:59ba3071d32a:EV-000005",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=4",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "07b264ac62725632:baf91c91b7c3:EV-000002",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=2",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "0c8b6c62ec02adb9:2266c8e8f15e:EV-000016",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=16",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "17b592d08f5c9171:7c33333c3a78:EV-000020",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=20",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "17fd19f8960642f1:59ba3071d32a:EV-000024",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=23",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "19c09582d6852e1d:59ba3071d32a:EV-000008",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=7",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "210cbb8882711b2a:6f05aa818e85:EV-000002",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=2",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "2116b4b513d3445c:baf91c91b7c3:EV-000008",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=8",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "226ee3e2ce985124:6f05aa818e85:EV-000005",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=5",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "2aa8abe6b083ce0c:6f05aa818e85:EV-000012",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=12",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "2c296a1e055620c3:2266c8e8f15e:EV-000024",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=24",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "2c8d092361685d3c:7c33333c3a78:EV-000003",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=3",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "2de69261424fa7e2:59ba3071d32a:EV-000016",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=15",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "30ec03b9dcddf1bd:6f05aa818e85:EV-000009",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=9",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "32d297eaea5ad0c6:59ba3071d32a:EV-000021",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=20",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "35fd5bc7de66a98e:59ba3071d32a:EV-000007",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=6",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "3721c1673812a416:6f05aa818e85:EV-000003",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=3",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "380839ac6e360679:59ba3071d32a:EV-000006",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=5",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "380f71c1b0a614f1:2266c8e8f15e:EV-000019",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=19",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "3a648a95a3f6baf4:6f05aa818e85:EV-000024",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=24",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "3bda1aa470dade79:7c33333c3a78:EV-000011",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=11",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "3d3e87535337fbe1:7c33333c3a78:EV-000013",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=13",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "420e1ff0064e0a75:baf91c91b7c3:EV-000001",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=1",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "4270f0b132e54e46:6f05aa818e85:EV-000021",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=21",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "45c77419eb7c93bd:baf91c91b7c3:EV-000007",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=7",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "4713ef52f1316ba5:6f05aa818e85:EV-000010",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=10",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "47bbfa59a0d84c9c:6f05aa818e85:EV-000018",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=18",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "4cea33b8ba28e911:baf91c91b7c3:EV-000018",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=18",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "4fd879bcfab1b8e9:7c33333c3a78:EV-000007",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=7",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "511c5b53b2ac35fd:2266c8e8f15e:EV-000018",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=18",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "52badf08156abf65:6f05aa818e85:EV-000007",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=7",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "534b08ae6fe58681:6f05aa818e85:EV-000017",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=17",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "5712bd97be259ca9:6f05aa818e85:EV-000006",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=6",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "57b7dffeac7d9058:2266c8e8f15e:EV-000022",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=22",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "580d03f0a3cef71e:7c33333c3a78:EV-000023",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=23",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "584176c2c949b297:6f05aa818e85:EV-000016",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=16",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "5b063d4a4513ea72:baf91c91b7c3:EV-000011",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=11",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "5f9ac137da3120f8:baf91c91b7c3:EV-000022",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=22",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "6505294e424fe57d:59ba3071d32a:EV-000004",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=3",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "67fc5cef92f8e575:6f05aa818e85:EV-000020",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=20",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "6a7dbedbc40b2c32:59ba3071d32a:EV-000002",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=1",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "6b9d7eb53961536f:6f05aa818e85:EV-000015",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=15",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "6d7414fce35d7b48:baf91c91b7c3:EV-000003",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=3",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "6dd1a22cedcc213f:2266c8e8f15e:EV-000008",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=8",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "6e7194a6d4e18590:2266c8e8f15e:EV-000009",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=9",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "7003e6a46589688f:7c33333c3a78:EV-000002",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=2",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "70e3da07de7a0505:7c33333c3a78:EV-000010",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=10",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "7303bca82311740a:2266c8e8f15e:EV-000003",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=3",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "7559f99f31653562:59ba3071d32a:EV-000022",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=21",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "755e881f0357c08e:7c33333c3a78:EV-000012",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=12",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "75680f98766e6f6f:baf91c91b7c3:EV-000004",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=4",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "768008a2c80e43a3:7c33333c3a78:EV-000005",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=5",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "78bdb97c7d743bbf:7c33333c3a78:EV-000017",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=17",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "7c9a7e94e60c64fa:baf91c91b7c3:EV-000013",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=13",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "7ebb4aa8bf0ed54e:baf91c91b7c3:EV-000010",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=10",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "804666f6372a7ed3:baf91c91b7c3:EV-000016",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=16",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "82b19c264cd0335f:59ba3071d32a:EV-000023",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=22",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "8a8b5bc29b60d845:7c33333c3a78:EV-000019",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=19",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "8fd7274a9bc0eb66:2266c8e8f15e:EV-000007",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=7",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "9090233aea5d909e:7c33333c3a78:EV-000001",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=1",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "91309e5eaa4baed9:7c33333c3a78:EV-000016",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=16",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "958f328beebc5cef:7c33333c3a78:EV-000021",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=21",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "9afda6ae023da88d:2266c8e8f15e:EV-000005",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=5",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "9bf6df3de41d7e27:59ba3071d32a:EV-000001",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=0",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "9d3ff3a0f3efe7a1:6f05aa818e85:EV-000025",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=25",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "9ed09299a4f933e4:59ba3071d32a:EV-000020",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=19",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "9f3eb095ed2570a9:baf91c91b7c3:EV-000006",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=6",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "9f8be83885338486:baf91c91b7c3:EV-000014",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=14",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "a0b9f3c778dbb46f:7c33333c3a78:EV-000018",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=18",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "a0fa793adee3a9a7:7c33333c3a78:EV-000022",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=22",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "a492fea485ba078a:59ba3071d32a:EV-000015",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=14",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "a5d87dce1bb65394:6f05aa818e85:EV-000019",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=19",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "a61d6f61d5f9dbdd:7c33333c3a78:EV-000015",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=15",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "a66d08e3d238a600:2266c8e8f15e:EV-000025",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=25",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "ab9ca1c0ee017de4:2266c8e8f15e:EV-000015",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=15",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "ae2a3189fe99b9d8:6f05aa818e85:EV-000022",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=22",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "b0a20d3c512a52f1:6f05aa818e85:EV-000004",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=4",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "b44747fb78def316:6f05aa818e85:EV-000014",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=14",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "b52692f474a2dcea:59ba3071d32a:EV-000019",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=18",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "b8d0e0b487a83cf4:2266c8e8f15e:EV-000021",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=21",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "b93ec328d85ea5fa:baf91c91b7c3:EV-000017",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=17",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "ba4c0011bd5349e8:59ba3071d32a:EV-000003",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=2",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "ba9eb5afe53aa1a3:2266c8e8f15e:EV-000014",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=14",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "bb1c63b73f4891c9:59ba3071d32a:EV-000009",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=8",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "be0c9f5598b0f9c4:2266c8e8f15e:EV-000011",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=11",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "c21f615c60b1f55a:7c33333c3a78:EV-000009",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=9",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "c3f2c477bbd45983:59ba3071d32a:EV-000017",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=16",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "c50b529b32a87c07:2266c8e8f15e:EV-000012",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=12",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "c7a7af63c44c7011:2266c8e8f15e:EV-000001",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=1",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "c8c9a17ff83e18e0:6f05aa818e85:EV-000001",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=1",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "c8d20053e7bbaaf0:baf91c91b7c3:EV-000005",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=5",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "cb407dc3007607f8:6f05aa818e85:EV-000011",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=11",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "cc695c1641f14e14:7c33333c3a78:EV-000004",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=4",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "d0bfca92a4f8ca79:baf91c91b7c3:EV-000009",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=9",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "d2dbd7b0352fda82:2266c8e8f15e:EV-000017",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=17",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "d5555896ebb6c1d6:59ba3071d32a:EV-000012",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=11",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "d9acb783d44dc0d6:2266c8e8f15e:EV-000004",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=4",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "da2274139cce83e2:7c33333c3a78:EV-000014",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=14",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "da3b0119721c191d:baf91c91b7c3:EV-000012",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=12",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "db1cec9285d1880a:baf91c91b7c3:EV-000020",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=20",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "dd0235a02bff3f8b:6f05aa818e85:EV-000013",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=13",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "dec560a1b8e448b0:7c33333c3a78:EV-000006",
+        "role": "SUPPORTS",
+        "family": "scheduler",
+        "artifact_ref": "CASE-DEMO-IST_09117e_backup_scheduler.csv#row=6",
+        "evidence_id": "EVID-005",
+        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
+      },
+      {
+        "event_id": "e1bb1c87c4ee4972:baf91c91b7c3:EV-000021",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=21",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "e2bb28e451756671:59ba3071d32a:EV-000018",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=17",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "e6538d6b905a4cf0:59ba3071d32a:EV-000014",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=13",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "ea9c7d49c7b1bf3f:2266c8e8f15e:EV-000020",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=20",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "ebc6f980eff651da:baf91c91b7c3:EV-000023",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=23",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "ed58876f20e96b7e:59ba3071d32a:EV-000013",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=12",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      },
+      {
+        "event_id": "ed92d54ac08d734e:6f05aa818e85:EV-000023",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=23",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "f20d3d9acdba709e:baf91c91b7c3:EV-000019",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=19",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "f703fa70c2548608:baf91c91b7c3:EV-000015",
+        "role": "SUPPORTS",
+        "family": "authentication",
+        "artifact_ref": "CASE-DEMO-IST_22963a_vpn_authentication.csv#row=15",
+        "evidence_id": "EVID-004",
+        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
+      },
+      {
+        "event_id": "fd4295de43cc4955:6f05aa818e85:EV-000008",
+        "role": "SUPPORTS",
+        "family": "browser_history",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=8",
+        "evidence_id": "EVID-002",
+        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
+      },
+      {
+        "event_id": "fddba37608776689:2266c8e8f15e:EV-000002",
+        "role": "SUPPORTS",
+        "family": "system_log",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=2",
+        "evidence_id": "EVID-001",
+        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
+      },
+      {
+        "event_id": "fe917a22e477c8d7:59ba3071d32a:EV-000010",
+        "role": "SUPPORTS",
+        "family": "chat_export",
+        "artifact_ref": "CASE-DEMO-IST_fba2d0_phone_chat.json#item=9",
+        "evidence_id": "EVID-003",
+        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
+      }
+    ],
+    "claims": []
+  },
   "517308df98c8abff8c4c241d7531e84a2649b111577463e70b639f2afd56661e": {
     "claim": {
       "claim_id": "517308df98c8abff8c4c241d7531e84a2649b111577463e70b639f2afd56661e",
       "claim_key": "b57da69df48326c43dfde935a2737301c11b37847889b295871ead55cea70784",
-      "run_id": "RUN-65AFDDAA2C2D",
+      "run_id": "RUN-869D4041830D",
       "case_id": "CASE-DEMO-IST",
       "type": "SAME_OBJECT_FLOW",
       "params": {
@@ -25,7 +999,7 @@
         "event_id": "3a648a95a3f6baf4:6f05aa818e85:EV-000024",
         "role": "SUPPORTS",
         "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=24",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=24",
         "evidence_id": "EVID-002",
         "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
       },
@@ -33,7 +1007,7 @@
         "event_id": "57b7dffeac7d9058:2266c8e8f15e:EV-000022",
         "role": "SUPPORTS",
         "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=22",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=22",
         "evidence_id": "EVID-001",
         "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
       }
@@ -44,7 +1018,7 @@
     "claim": {
       "claim_id": "5227c523f5f58f121e50db883aef5ff5d70c4bdbe419be4b7e1ebb05d1eaa3f6",
       "claim_key": "cd44356cc1bb1a81c4350fbc4dcfd6749bdb7a23a57837551f3a91952d1084ad",
-      "run_id": "RUN-65AFDDAA2C2D",
+      "run_id": "RUN-869D4041830D",
       "case_id": "CASE-DEMO-IST",
       "type": "SAME_OBJECT_FLOW",
       "params": {
@@ -66,7 +1040,7 @@
         "event_id": "57b7dffeac7d9058:2266c8e8f15e:EV-000022",
         "role": "SUPPORTS",
         "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=22",
+        "artifact_ref": "CASE-DEMO-IST_82ae6d_endpoint_system_log.csv#row=22",
         "evidence_id": "EVID-001",
         "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
       },
@@ -74,983 +1048,9 @@
         "event_id": "ed92d54ac08d734e:6f05aa818e85:EV-000023",
         "role": "SUPPORTS",
         "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=23",
+        "artifact_ref": "CASE-DEMO-IST_737038_browser_history.csv#row=23",
         "evidence_id": "EVID-002",
         "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      }
-    ],
-    "claims": []
-  },
-  "68fb9ecf3320f66503f7386fa858446f7db3d5099d1f8eeead244d9537f9606f": {
-    "claim": {
-      "claim_id": "68fb9ecf3320f66503f7386fa858446f7db3d5099d1f8eeead244d9537f9606f",
-      "claim_key": "9cb4e5d7ab4161365bd324ed1341555435a6203c57f0f47de1e9d0a7f10f202c",
-      "run_id": "RUN-65AFDDAA2C2D",
-      "case_id": "CASE-DEMO-IST",
-      "type": "ACTOR_DEVICE_CONSISTENT",
-      "params": {
-        "actor": "mira.chen",
-        "device": "field-laptop-07",
-        "supporting_families_count": 3
-      },
-      "status": "CORROBORATED",
-      "grade": "A",
-      "rule_id": "rule_actor_device_consistent",
-      "rule_version": "1.0.0",
-      "assumptions_hash": "9f3d2c19c41f9e60ad2c7f0d764f21e49614686654455b9fcfa945abc664cba9"
-    },
-    "events": [
-      {
-        "event_id": "021fdb61808b17ad:2266c8e8f15e:EV-000006",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=6",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "03efea3a3836851b:7c33333c3a78:EV-000008",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=8",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "03f9a6219adf1881:59ba3071d32a:EV-000011",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=10",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "044b6a12e54e33c9:2266c8e8f15e:EV-000010",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=10",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "05c6facbffb0992b:2266c8e8f15e:EV-000013",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=13",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "07570caeb6382056:59ba3071d32a:EV-000005",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=4",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "07b264ac62725632:baf91c91b7c3:EV-000002",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=2",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "0c8b6c62ec02adb9:2266c8e8f15e:EV-000016",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=16",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "17b592d08f5c9171:7c33333c3a78:EV-000020",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=20",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "17fd19f8960642f1:59ba3071d32a:EV-000024",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=23",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "19c09582d6852e1d:59ba3071d32a:EV-000008",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=7",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "210cbb8882711b2a:6f05aa818e85:EV-000002",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=2",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "2116b4b513d3445c:baf91c91b7c3:EV-000008",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=8",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "226ee3e2ce985124:6f05aa818e85:EV-000005",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=5",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "2aa8abe6b083ce0c:6f05aa818e85:EV-000012",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=12",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "2c296a1e055620c3:2266c8e8f15e:EV-000024",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=24",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "2c8d092361685d3c:7c33333c3a78:EV-000003",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=3",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "2de69261424fa7e2:59ba3071d32a:EV-000016",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=15",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "30ec03b9dcddf1bd:6f05aa818e85:EV-000009",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=9",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "32d297eaea5ad0c6:59ba3071d32a:EV-000021",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=20",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "35fd5bc7de66a98e:59ba3071d32a:EV-000007",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=6",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "3721c1673812a416:6f05aa818e85:EV-000003",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=3",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "380839ac6e360679:59ba3071d32a:EV-000006",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=5",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "380f71c1b0a614f1:2266c8e8f15e:EV-000019",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=19",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "3a648a95a3f6baf4:6f05aa818e85:EV-000024",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=24",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "3bda1aa470dade79:7c33333c3a78:EV-000011",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=11",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "3d3e87535337fbe1:7c33333c3a78:EV-000013",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=13",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "420e1ff0064e0a75:baf91c91b7c3:EV-000001",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=1",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "4270f0b132e54e46:6f05aa818e85:EV-000021",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=21",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "45c77419eb7c93bd:baf91c91b7c3:EV-000007",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=7",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "4713ef52f1316ba5:6f05aa818e85:EV-000010",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=10",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "47bbfa59a0d84c9c:6f05aa818e85:EV-000018",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=18",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "4cea33b8ba28e911:baf91c91b7c3:EV-000018",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=18",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "4fd879bcfab1b8e9:7c33333c3a78:EV-000007",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=7",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "511c5b53b2ac35fd:2266c8e8f15e:EV-000018",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=18",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "52badf08156abf65:6f05aa818e85:EV-000007",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=7",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "534b08ae6fe58681:6f05aa818e85:EV-000017",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=17",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "5712bd97be259ca9:6f05aa818e85:EV-000006",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=6",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "57b7dffeac7d9058:2266c8e8f15e:EV-000022",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=22",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "580d03f0a3cef71e:7c33333c3a78:EV-000023",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=23",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "584176c2c949b297:6f05aa818e85:EV-000016",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=16",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "5b063d4a4513ea72:baf91c91b7c3:EV-000011",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=11",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "5f9ac137da3120f8:baf91c91b7c3:EV-000022",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=22",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "6505294e424fe57d:59ba3071d32a:EV-000004",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=3",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "67fc5cef92f8e575:6f05aa818e85:EV-000020",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=20",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "6a7dbedbc40b2c32:59ba3071d32a:EV-000002",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=1",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "6b9d7eb53961536f:6f05aa818e85:EV-000015",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=15",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "6d7414fce35d7b48:baf91c91b7c3:EV-000003",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=3",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "6dd1a22cedcc213f:2266c8e8f15e:EV-000008",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=8",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "6e7194a6d4e18590:2266c8e8f15e:EV-000009",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=9",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "7003e6a46589688f:7c33333c3a78:EV-000002",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=2",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "70e3da07de7a0505:7c33333c3a78:EV-000010",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=10",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "7303bca82311740a:2266c8e8f15e:EV-000003",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=3",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "7559f99f31653562:59ba3071d32a:EV-000022",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=21",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "755e881f0357c08e:7c33333c3a78:EV-000012",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=12",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "75680f98766e6f6f:baf91c91b7c3:EV-000004",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=4",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "768008a2c80e43a3:7c33333c3a78:EV-000005",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=5",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "78bdb97c7d743bbf:7c33333c3a78:EV-000017",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=17",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "7c9a7e94e60c64fa:baf91c91b7c3:EV-000013",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=13",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "7ebb4aa8bf0ed54e:baf91c91b7c3:EV-000010",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=10",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "804666f6372a7ed3:baf91c91b7c3:EV-000016",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=16",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "82b19c264cd0335f:59ba3071d32a:EV-000023",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=22",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "8a8b5bc29b60d845:7c33333c3a78:EV-000019",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=19",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "8fd7274a9bc0eb66:2266c8e8f15e:EV-000007",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=7",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "9090233aea5d909e:7c33333c3a78:EV-000001",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=1",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "91309e5eaa4baed9:7c33333c3a78:EV-000016",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=16",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "958f328beebc5cef:7c33333c3a78:EV-000021",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=21",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "9afda6ae023da88d:2266c8e8f15e:EV-000005",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=5",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "9bf6df3de41d7e27:59ba3071d32a:EV-000001",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=0",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "9d3ff3a0f3efe7a1:6f05aa818e85:EV-000025",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=25",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "9ed09299a4f933e4:59ba3071d32a:EV-000020",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=19",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "9f3eb095ed2570a9:baf91c91b7c3:EV-000006",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=6",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "9f8be83885338486:baf91c91b7c3:EV-000014",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=14",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "a0b9f3c778dbb46f:7c33333c3a78:EV-000018",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=18",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "a0fa793adee3a9a7:7c33333c3a78:EV-000022",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=22",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "a492fea485ba078a:59ba3071d32a:EV-000015",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=14",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "a5d87dce1bb65394:6f05aa818e85:EV-000019",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=19",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "a61d6f61d5f9dbdd:7c33333c3a78:EV-000015",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=15",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "a66d08e3d238a600:2266c8e8f15e:EV-000025",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=25",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "ab9ca1c0ee017de4:2266c8e8f15e:EV-000015",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=15",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "ae2a3189fe99b9d8:6f05aa818e85:EV-000022",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=22",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "b0a20d3c512a52f1:6f05aa818e85:EV-000004",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=4",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "b44747fb78def316:6f05aa818e85:EV-000014",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=14",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "b52692f474a2dcea:59ba3071d32a:EV-000019",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=18",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "b8d0e0b487a83cf4:2266c8e8f15e:EV-000021",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=21",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "b93ec328d85ea5fa:baf91c91b7c3:EV-000017",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=17",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "ba4c0011bd5349e8:59ba3071d32a:EV-000003",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=2",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "ba9eb5afe53aa1a3:2266c8e8f15e:EV-000014",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=14",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "bb1c63b73f4891c9:59ba3071d32a:EV-000009",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=8",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "be0c9f5598b0f9c4:2266c8e8f15e:EV-000011",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=11",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "c21f615c60b1f55a:7c33333c3a78:EV-000009",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=9",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "c3f2c477bbd45983:59ba3071d32a:EV-000017",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=16",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "c50b529b32a87c07:2266c8e8f15e:EV-000012",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=12",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "c7a7af63c44c7011:2266c8e8f15e:EV-000001",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=1",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "c8c9a17ff83e18e0:6f05aa818e85:EV-000001",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=1",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "c8d20053e7bbaaf0:baf91c91b7c3:EV-000005",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=5",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "cb407dc3007607f8:6f05aa818e85:EV-000011",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=11",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "cc695c1641f14e14:7c33333c3a78:EV-000004",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=4",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "d0bfca92a4f8ca79:baf91c91b7c3:EV-000009",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=9",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "d2dbd7b0352fda82:2266c8e8f15e:EV-000017",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=17",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "d5555896ebb6c1d6:59ba3071d32a:EV-000012",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=11",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "d9acb783d44dc0d6:2266c8e8f15e:EV-000004",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=4",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "da2274139cce83e2:7c33333c3a78:EV-000014",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=14",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "da3b0119721c191d:baf91c91b7c3:EV-000012",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=12",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "db1cec9285d1880a:baf91c91b7c3:EV-000020",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=20",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "dd0235a02bff3f8b:6f05aa818e85:EV-000013",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=13",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "dec560a1b8e448b0:7c33333c3a78:EV-000006",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_d7ed11_backup_scheduler.csv#row=6",
-        "evidence_id": "EVID-005",
-        "evidence_sha256": "7c33333c3a78f1d0b3aa6cb8f724e47fd31a334b85c9bc510a41823c63166627"
-      },
-      {
-        "event_id": "e1bb1c87c4ee4972:baf91c91b7c3:EV-000021",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=21",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "e2bb28e451756671:59ba3071d32a:EV-000018",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=17",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "e6538d6b905a4cf0:59ba3071d32a:EV-000014",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=13",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "ea9c7d49c7b1bf3f:2266c8e8f15e:EV-000020",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=20",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "ebc6f980eff651da:baf91c91b7c3:EV-000023",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=23",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "ed58876f20e96b7e:59ba3071d32a:EV-000013",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=12",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
-      },
-      {
-        "event_id": "ed92d54ac08d734e:6f05aa818e85:EV-000023",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=23",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "f20d3d9acdba709e:baf91c91b7c3:EV-000019",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=19",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "f703fa70c2548608:baf91c91b7c3:EV-000015",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_7bd558_vpn_authentication.csv#row=15",
-        "evidence_id": "EVID-004",
-        "evidence_sha256": "baf91c91b7c3ff25b9287d6852faf1836f337207696a1a57cbb4085de6701325"
-      },
-      {
-        "event_id": "fd4295de43cc4955:6f05aa818e85:EV-000008",
-        "role": "SUPPORTS",
-        "family": "browser_history",
-        "artifact_ref": "CASE-DEMO-IST_60e2f1_browser_history.csv#row=8",
-        "evidence_id": "EVID-002",
-        "evidence_sha256": "6f05aa818e85d82093e40878b27dff48ae161cb2a0caa23ccade296bc48e26bd"
-      },
-      {
-        "event_id": "fddba37608776689:2266c8e8f15e:EV-000002",
-        "role": "SUPPORTS",
-        "family": "system_log",
-        "artifact_ref": "CASE-DEMO-IST_176721_endpoint_system_log.csv#row=2",
-        "evidence_id": "EVID-001",
-        "evidence_sha256": "2266c8e8f15e9f647f11f11365610f8aa245dc87997328464991c28a52f52a37"
-      },
-      {
-        "event_id": "fe917a22e477c8d7:59ba3071d32a:EV-000010",
-        "role": "SUPPORTS",
-        "family": "chat_export",
-        "artifact_ref": "CASE-DEMO-IST_f6e13a_phone_chat.json#item=9",
-        "evidence_id": "EVID-003",
-        "evidence_sha256": "59ba3071d32ab303c13b3ac749fc02b9405b01f06e621d4c5b5bb2163ee55879"
       }
     ],
     "claims": []

@@ -1,7 +1,7 @@
 {
   "verified": true,
-  "persisted_ranking_hash": "aa71551da2b4a845f960475c9b2ceda7be8f9e91003f9a52fd160fb88a1a01b7",
-  "recomputed_ranking_hash": "aa71551da2b4a845f960475c9b2ceda7be8f9e91003f9a52fd160fb88a1a01b7",
+  "persisted_ranking_hash": "b07937c1bcbe3f490fd69eb8de1723fc75a58889776725b6b88795ba58ee3598",
+  "recomputed_ranking_hash": "b07937c1bcbe3f490fd69eb8de1723fc75a58889776725b6b88795ba58ee3598",
   "diverged": false,
   "divergence_details": [],
   "snapshot_available": true,
@@ -25,7 +25,7 @@
     "diverged": false,
     "events_identical": true,
     "templates_identical": true,
-    "current_ranking_hash": "aa71551da2b4a845f960475c9b2ceda7be8f9e91003f9a52fd160fb88a1a01b7",
+    "current_ranking_hash": "b07937c1bcbe3f490fd69eb8de1723fc75a58889776725b6b88795ba58ee3598",
     "divergence_reasons": [],
     "event_drift_detected": false,
     "event_drift_details": []
