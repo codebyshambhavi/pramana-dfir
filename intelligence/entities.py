@@ -97,6 +97,15 @@ def normalize_file_object(raw: str | None, action: str | None = None) -> str | N
     if _HEX_HASH_PATTERN.match(val):
         return val.lower()
 
+    # Check if a prose string contains a referenced filename pattern (e.g. "Discussed CASE-001.tar.gz")
+    file_match = re.search(
+        r"[\w.-]+\.(?:tar\.gz|tar|zip|gz|7z|rar|csv|json|pdf|txt|log|docx|xlsx|py|sh|pcap|pcapng|jpg|jpeg|png)",
+        val,
+        re.IGNORECASE,
+    )
+    if file_match and len(val.split()) > 1:
+        return file_match.group(0).lower()
+
     # Check for URL
     try:
         parsed = urlparse(val)

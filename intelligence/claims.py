@@ -25,7 +25,7 @@ from typing import Any, Mapping, Sequence
 from .anomalies import find_anomalies, _odd_status
 from .contradictions import find_contradictions
 from .correlate import CandidateRelationship, generate_candidates
-from .entities import normalize_actor, normalize_device
+from .entities import normalize_actor, normalize_device, normalize_file_object
 from .config import get_timezone
 from .timeline import SourceClock, event_interval, load_source_clocks, to_case_time, tz_label
 
@@ -365,6 +365,304 @@ def generate_location_conflict_claims(
     return specs
 
 
+# --- Contradiction gating helpers --------------------------------------------
+#
+# A contradiction claim is an accusation that two observations cannot both be
+# true.  It must therefore rest on (a) strong evidence that both observations
+# describe the SAME underlying instance/activity and (b) fully observed values
+# that are genuinely incompatible.  Filename equality is NOT instance identity
+# (independent archives routinely share names) and missing values are NOT
+# conflicting values.
+
+#: Values that denote an absent identity rather than an observed one.  They are
+#: compared after ``normalize_actor`` / ``normalize_device`` (case-folded,
+#: whitespace-collapsed).  Concrete tokens that merely *contain* such words
+#: (e.g. ``unknown.65``) are observed account strings and are kept.
+PLACEHOLDER_IDENTITIES = frozenset({
+    "", "unknown", "null", "none", "nil", "n/a", "na", "-", "--", "?",
+    "undefined", "anonymous", "unspecified", "<unknown>", "(null)", "<null>",
+})
+
+#: Raw-record keys accepted as an explicit, source-asserted session identifier.
+SESSION_ID_KEYS = ("session_id",)
+
+ARCHIVE_CREATION_ACTIONS = frozenset({"archive_create"})
+TRANSFER_ACTIONS = frozenset({"file_upload", "upload"})
+
+
+def observed_identity(raw: Any, normalizer: Any) -> str | None:
+    """Return a normalized identity, or ``None`` when the value is missing/placeholder."""
+    if not isinstance(raw, str):
+        return None
+    value = normalizer(raw)
+    if value is None or value in PLACEHOLDER_IDENTITIES:
+        return None
+    return value
+
+
+def explicit_session_id(event: Mapping[str, Any]) -> str | None:
+    """Source-asserted session identifier from the raw record, if present and non-placeholder."""
+    raw = event.get("raw")
+    if not isinstance(raw, Mapping):
+        return None
+    for key in SESSION_ID_KEYS:
+        value = raw.get(key)
+        if isinstance(value, str):
+            clean = value.strip()
+            if clean and clean.lower() not in PLACEHOLDER_IDENTITIES:
+                return clean
+    return None
+
+
+def _instance_keys(event: Mapping[str, Any], *, allow_session: bool) -> list[tuple[str, str]]:
+    """Strong instance identifiers for an event (never a bare filename)."""
+    from .entities import extract_content_hash
+
+    keys: list[tuple[str, str]] = []
+    content_hash = extract_content_hash(event)
+    if content_hash:
+        keys.append(("content_hash", content_hash))
+    if allow_session:
+        session = explicit_session_id(event)
+        if session:
+            keys.append(("session_id", session))
+    return keys
+
+
+def _record_fingerprint(event: Mapping[str, Any]) -> tuple[str, ...]:
+    """Content fingerprint used to collapse exact duplicate records of one observation."""
+    return (
+        str(event.get("source") or ""),
+        str(event.get("timestamp") or ""),
+        str(event.get("action") or ""),
+        str(normalize_actor(event.get("actor")) if isinstance(event.get("actor"), str) else ""),
+        str(normalize_device(event.get("device")) if isinstance(event.get("device"), str) else ""),
+        str(event.get("object") or ""),
+        str(event.get("ip") or ""),
+    )
+
+
+def _safe_interval(
+    event: Mapping[str, Any], clocks: Mapping[str, SourceClock]
+) -> Any:
+    """Effective (clock-corrected, uncertainty-widened) interval, or ``None`` if untimestamped."""
+    from .common import IntelligenceError, normalize_event
+
+    if event.get("timestamp") in (None, ""):
+        return None
+    try:
+        norm = normalize_event(event)
+    except (IntelligenceError, ValueError, TypeError):
+        return None
+    return event_interval(norm, clocks)
+
+
+def generate_attribution_conflict_claims(
+    events: Sequence[Mapping[str, Any]],
+    events_by_id: Mapping[str, Mapping[str, Any]],
+) -> list[ClaimSpec]:
+    """Emit LOCATION_CONFLICT claims for incompatible attribution of ONE archive instance.
+
+    Requirements (all must hold):
+
+    1. Both events are archive-creation records.
+    2. They are strongly matched to the same archive instance or session by an
+       exact content hash or an explicit source-asserted ``session_id``.  A
+       shared filename alone is never sufficient.
+    3. They are not duplicate records of the same observation.
+    4. At least one attribute (actor or device) is *observed in both* records
+       (non-missing, non-placeholder) and the observed values differ.  Missing
+       or placeholder values are never treated as a conflicting identity.
+
+    Each unordered pair of distinct observations yields at most one claim.
+    """
+    specs: list[ClaimSpec] = []
+    candidates = [
+        e for e in events
+        if e.get("action") in ARCHIVE_CREATION_ACTIONS and e.get("event_id")
+    ]
+
+    buckets: dict[tuple[str, str], list[Mapping[str, Any]]] = {}
+    for event in candidates:
+        for key in _instance_keys(event, allow_session=True):
+            buckets.setdefault(key, []).append(event)
+
+    # (fingerprint_a, fingerprint_b) -> (e1, e2, match bases)
+    pairs: dict[tuple[tuple[str, ...], tuple[str, ...]], dict[str, Any]] = {}
+    for (basis, value), group in sorted(buckets.items()):
+        ordered = sorted(group, key=lambda x: (str(x.get("timestamp")), str(x["event_id"])))
+        for i, e1 in enumerate(ordered):
+            for e2 in ordered[i + 1:]:
+                f1, f2 = _record_fingerprint(e1), _record_fingerprint(e2)
+                if f1 == f2:
+                    continue  # duplicate record of one observation
+                pair_key = (f1, f2) if f1 <= f2 else (f2, f1)
+                entry = pairs.setdefault(pair_key, {"e1": e1, "e2": e2, "match": {}})
+                entry["match"][basis] = value
+
+    for pair_key in sorted(pairs):
+        entry = pairs[pair_key]
+        e1, e2 = entry["e1"], entry["e2"]
+        a1 = observed_identity(e1.get("actor"), normalize_actor)
+        a2 = observed_identity(e2.get("actor"), normalize_actor)
+        d1 = observed_identity(e1.get("device"), normalize_device)
+        d2 = observed_identity(e2.get("device"), normalize_device)
+
+        conflicting_fields: list[str] = []
+        if a1 is not None and a2 is not None and a1 != a2:
+            conflicting_fields.append("actor")
+        if d1 is not None and d2 is not None and d1 != d2:
+            conflicting_fields.append("device")
+        if not conflicting_fields:
+            continue
+
+        edges = [
+            EdgeSpec(
+                ref_kind="event",
+                ref_id=e1["event_id"],
+                role="SUPPORTS",
+                weight=1.0,
+                reason_code="ATTRIBUTION_CONFLICT_PRIMARY",
+                family=derive_witness_family(e1),
+            ),
+            EdgeSpec(
+                ref_kind="event",
+                ref_id=e2["event_id"],
+                role="CONTRADICTS",
+                weight=1.0,
+                reason_code="ATTRIBUTION_CONFLICT_SECONDARY",
+                family=derive_witness_family(e2),
+            ),
+        ]
+        params = {
+            "object": normalize_file_object(e1.get("object"), action=e1.get("action")),
+            "conflict_type": "actor_device_attribution_conflict",
+            "instance_match": dict(sorted(entry["match"].items())),
+            "conflicting_fields": conflicting_fields,
+            "actor_1": a1,
+            "device_1": d1,
+            "actor_2": a2,
+            "device_2": d2,
+            "time_1": e1.get("timestamp"),
+            "time_2": e2.get("timestamp"),
+        }
+        specs.append(
+            ClaimSpec(
+                type="LOCATION_CONFLICT",
+                params=params,
+                status="CONTESTED",
+                grade="C",
+                rule_id="rule_attribution_conflict",
+                rule_version="2.0.0",
+                edges=edges,
+            )
+        )
+    return specs
+
+
+def generate_cross_source_temporal_conflict_claims(
+    events: Sequence[Mapping[str, Any]],
+    events_by_id: Mapping[str, Mapping[str, Any]],
+    *,
+    source_clocks: Mapping[str, SourceClock] | None = None,
+) -> list[ClaimSpec]:
+    """Emit LOCATION_CONFLICT claims only for a documented temporal invariant violation.
+
+    Documented invariant TC-1 (creation precedes transfer):
+        An object instance cannot be transferred before it exists.  If an
+        archive-creation record and a transfer (upload) record refer to the SAME
+        object instance - established by an exact content hash, never by
+        filename - and the transfer's effective interval is *definitely before*
+        the creation's effective interval, the two observations are temporally
+        incompatible.
+
+    Effective intervals come from the T2 timeline model (raw timestamp parsed
+    under the UTC-naive policy, source-clock offset removed, widened by source
+    uncertainty).  Only ``definitely_before`` (A.hi < B.lo) counts; overlapping
+    or uncertain intervals never produce a claim.  Events without a parseable
+    timestamp are ignored.
+
+    Not supported (missing prerequisite): the repository defines no invariant
+    relating ``session_refresh`` to uploads, nor any shared activity identifier
+    that would prove two cross-source records witness the same single activity.
+    Such pairs - including same-filename upload/session-refresh sequences - are
+    therefore never reported as contradictions.
+    """
+    clocks = source_clocks if source_clocks is not None else load_source_clocks()
+    specs: list[ClaimSpec] = []
+
+    creations: dict[str, list[Mapping[str, Any]]] = {}
+    transfers: dict[str, list[Mapping[str, Any]]] = {}
+    for event in events:
+        if not event.get("event_id"):
+            continue
+        action = event.get("action")
+        if action in ARCHIVE_CREATION_ACTIONS:
+            target = creations
+        elif action in TRANSFER_ACTIONS:
+            target = transfers
+        else:
+            continue
+        for basis, value in _instance_keys(event, allow_session=False):
+            if basis == "content_hash":
+                target.setdefault(value, []).append(event)
+
+    seen: set[tuple[tuple[str, ...], tuple[str, ...]]] = set()
+    for content_hash in sorted(set(creations) & set(transfers)):
+        for creation in sorted(creations[content_hash], key=lambda x: str(x["event_id"])):
+            c_iv = _safe_interval(creation, clocks)
+            if c_iv is None:
+                continue
+            for transfer in sorted(transfers[content_hash], key=lambda x: str(x["event_id"])):
+                t_iv = _safe_interval(transfer, clocks)
+                if t_iv is None or not t_iv.definitely_before(c_iv):
+                    continue
+                key = (_record_fingerprint(creation), _record_fingerprint(transfer))
+                if key in seen:
+                    continue
+                seen.add(key)
+                edges = [
+                    EdgeSpec(
+                        ref_kind="event",
+                        ref_id=creation["event_id"],
+                        role="SUPPORTS",
+                        weight=1.0,
+                        reason_code="TEMPORAL_CONFLICT_CREATION",
+                        family=derive_witness_family(creation),
+                    ),
+                    EdgeSpec(
+                        ref_kind="event",
+                        ref_id=transfer["event_id"],
+                        role="CONTRADICTS",
+                        weight=1.0,
+                        reason_code="TEMPORAL_CONFLICT_TRANSFER_BEFORE_CREATION",
+                        family=derive_witness_family(transfer),
+                    ),
+                ]
+                params = {
+                    "object": content_hash,
+                    "conflict_type": "cross_source_timestamp_disagreement",
+                    "invariant": "TC-1_creation_precedes_transfer",
+                    "creation_event_id": creation["event_id"],
+                    "transfer_event_id": transfer["event_id"],
+                    "creation_interval": [c_iv.lo.isoformat(), c_iv.hi.isoformat()],
+                    "transfer_interval": [t_iv.lo.isoformat(), t_iv.hi.isoformat()],
+                    "min_violation_seconds": round((c_iv.lo - t_iv.hi).total_seconds(), 3),
+                }
+                specs.append(
+                    ClaimSpec(
+                        type="LOCATION_CONFLICT",
+                        params=params,
+                        status="CONTESTED",
+                        grade="C",
+                        rule_id="rule_cross_source_temporal_conflict",
+                        rule_version="2.0.0",
+                        edges=edges,
+                    )
+                )
+    return specs
+
+
 def generate_actor_device_consistent_claims(
     events: Sequence[Mapping[str, Any]],
     events_by_id: Mapping[str, Mapping[str, Any]],
@@ -426,6 +724,7 @@ def generate_actor_device_consistent_claims(
             "device": dev,
             "supporting_families_count": family_count,
         }
+
         spec = ClaimSpec(
             type="ACTOR_DEVICE_CONSISTENT",
             params=params,
@@ -600,6 +899,10 @@ def generate_claims(
     if contradiction_findings is None:
         contradiction_findings = find_contradictions(list(events))
     location_claims = generate_location_conflict_claims(contradiction_findings, events_by_id)
+    attribution_claims = generate_attribution_conflict_claims(events, events_by_id)
+    temporal_claims = generate_cross_source_temporal_conflict_claims(
+        events, events_by_id, source_clocks=source_clocks
+    )
 
     # 4. Multi-source bindings -> ACTOR_DEVICE_CONSISTENT
     actor_device_claims = generate_actor_device_consistent_claims(events, events_by_id)
@@ -614,6 +917,8 @@ def generate_claims(
         same_object_claims
         + offhours_claims
         + location_claims
+        + attribution_claims
+        + temporal_claims
         + actor_device_claims
         + origin_claims
         + no_record_claims

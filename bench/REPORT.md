@@ -57,19 +57,19 @@ Controlled synthetic evidence only; these results are not real-world accuracy cl
 
 | Metric | Raw count (numerator / denominator) | Percentage |
 |---|---:|---:|
-| Link precision (strict artifact references) | 3 / 6 | 50.00% |
-| Link recall (strict artifact references) | 3 / 10 | 30.00% |
-| Link precision (duplicate-equivalence aware) | 3 / 3 | 100.00% |
-| Link recall (duplicate-equivalence aware) | 3 / 10 | 30.00% |
+| Link precision (strict artifact references) | 9 / 17 | 52.94% |
+| Link recall (strict artifact references) | 9 / 10 | 90.00% |
+| Link precision (duplicate-equivalence aware) | 9 / 9 | 100.00% |
+| Link recall (duplicate-equivalence aware) | 9 / 10 | 90.00% |
 | Decoy false-positive rate | 0 / 3 | 0.00% |
-| Top-hypothesis accuracy (includes correct UNDETERMINED) | 1 / 3 | 33.33% |
+| Top-hypothesis accuracy (includes correct UNDETERMINED) | 3 / 3 | 100.00% |
 | Correct UNDETERMINED rate | 1 / 1 | 100.00% |
 | Over-claim rate | 0 / 1 | 0.00% |
-| Selective accuracy (correct commitments / commitments) | 0 / 1 | 0.00% |
-| Abstention rate (UNDETERMINED on definite ground truth) | 1 / 2 | 50.00% |
+| Selective accuracy (correct commitments / commitments) | 2 / 2 | 100.00% |
+| Abstention rate (UNDETERMINED on definite ground truth) | 0 / 2 | 0.00% |
 | Contradiction recall | 0 / 6 | 0.00% |
-| MISSING vs UNOBSERVABLE accuracy | 1 / 3 | 33.33% |
-| Claim lineage resolution | 429 / 429 | 100.00% |
+| MISSING vs UNOBSERVABLE accuracy | 3 / 3 | 100.00% |
+| Claim lineage resolution | 452 / 452 | 100.00% |
 | Tamper invalidation accuracy (strict artifact references) | 0 / 3 | 0.00% |
 | Tamper invalidation accuracy (duplicate-equivalence aware) | 3 / 3 | 100.00% |
 
@@ -119,19 +119,19 @@ Controlled synthetic evidence only; these results are not real-world accuracy cl
 
 | Metric | Raw count (numerator / denominator) | Percentage |
 |---|---:|---:|
-| Link precision (strict artifact references) | 5 / 10 | 50.00% |
-| Link recall (strict artifact references) | 5 / 18 | 27.78% |
-| Link precision (duplicate-equivalence aware) | 5 / 5 | 100.00% |
-| Link recall (duplicate-equivalence aware) | 5 / 18 | 27.78% |
+| Link precision (strict artifact references) | 15 / 30 | 50.00% |
+| Link recall (strict artifact references) | 15 / 18 | 83.33% |
+| Link precision (duplicate-equivalence aware) | 15 / 16 | 93.75% |
+| Link recall (duplicate-equivalence aware) | 15 / 18 | 83.33% |
 | Decoy false-positive rate | 0 / 34 | 0.00% |
-| Top-hypothesis accuracy (includes correct UNDETERMINED) | 2 / 5 | 40.00% |
+| Top-hypothesis accuracy (includes correct UNDETERMINED) | 5 / 5 | 100.00% |
 | Correct UNDETERMINED rate | 1 / 1 | 100.00% |
 | Over-claim rate | 0 / 1 | 0.00% |
-| Selective accuracy (correct commitments / commitments) | 1 / 1 | 100.00% |
-| Abstention rate (UNDETERMINED on definite ground truth) | 3 / 4 | 75.00% |
+| Selective accuracy (correct commitments / commitments) | 4 / 4 | 100.00% |
+| Abstention rate (UNDETERMINED on definite ground truth) | 0 / 4 | 0.00% |
 | Contradiction recall | 0 / 10 | 0.00% |
-| MISSING vs UNOBSERVABLE accuracy | 1 / 5 | 20.00% |
-| Claim lineage resolution | 1116 / 1116 | 100.00% |
+| MISSING vs UNOBSERVABLE accuracy | 5 / 5 | 100.00% |
+| Claim lineage resolution | 1156 / 1156 | 100.00% |
 | Tamper invalidation accuracy (strict artifact references) | 0 / 5 | 0.00% |
 | Tamper invalidation accuracy (duplicate-equivalence aware) | 5 / 5 | 100.00% |
 

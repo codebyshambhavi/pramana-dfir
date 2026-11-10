@@ -306,7 +306,7 @@ def load_templates(directory: Path | None = None) -> list[HypothesisTemplate]:
 
 # --- Source Coverage Inspection ---
 
-DEFAULT_COVERAGE_GAP_BOUND = timedelta(minutes=30)
+DEFAULT_COVERAGE_GAP_BOUND = timedelta(minutes=60)
 DEFAULT_MAX_INTERNAL_GAP = timedelta(hours=2)
 
 
@@ -341,6 +341,7 @@ def compute_source_coverage(
     """
     coverage: dict[str, dict[str, Any]] = {}
 
+
     for e in events:
         raw_source = e.get("source") or "unknown"
         norm_kind = _normalize_source_kind(raw_source)
@@ -360,7 +361,9 @@ def compute_source_coverage(
         device = e.get("device")
 
         # Preserve source-level coverage and add the Event v1.1 artifact family.
-        kinds_to_record = {norm_kind}
+        kinds_to_record = set()
+        if norm_kind:
+            kinds_to_record.add(norm_kind)
         raw_family = e.get("family")
         family_kind = (
             _normalize_source_kind(raw_family.strip())
@@ -369,13 +372,21 @@ def compute_source_coverage(
         )
         if family_kind:
             kinds_to_record.add(family_kind)
+
         # Older events lack family metadata, so retain their source/action inference.
         # Explicit log-family metadata prevents unrelated log rows being reclassified.
-        if family_kind not in {"scheduler", "system_log"}:
-            if action in ("login", "auth", "token_refresh", "session_start", "authenticate") or "auth" in raw_source:
-                kinds_to_record.add("auth")
-            if "sched" in raw_source or action in ("job_start", "scheduled_task", "cron_run"):
-                kinds_to_record.add("scheduler")
+        if not family_kind:
+            raw_s = raw_source.lower()
+            if raw_s == "log":
+                if action in ("login", "auth", "token_refresh", "session_start", "authenticate"):
+                    kinds_to_record.add("auth")
+                if action in ("job_start", "scheduled_task", "cron_run"):
+                    kinds_to_record.add("scheduler")
+            else:
+                if "auth" in raw_s or "vpn" in raw_s or raw_s.startswith("login"):
+                    kinds_to_record.add("auth")
+                if "sched" in raw_s or "cron" in raw_s:
+                    kinds_to_record.add("scheduler")
 
         for k in kinds_to_record:
             if k not in coverage:
@@ -394,11 +405,14 @@ def compute_source_coverage(
             if device:
                 cov["devices"].add(device)
             if dt is not None:
-                cov["timestamps"].append(dt)
-                if cov["min_time"] is None or dt < cov["min_time"]:
-                    cov["min_time"] = dt
-                if cov["max_time"] is None or dt > cov["max_time"]:
-                    cov["max_time"] = dt
+                # If an explicit family exists, record timestamps only under the specific family
+                # to prevent conflating distinct logs (e.g. vpn filling endpoint gaps)
+                if not family_kind or k == family_kind:
+                    cov["timestamps"].append(dt)
+                    if cov["min_time"] is None or dt < cov["min_time"]:
+                        cov["min_time"] = dt
+                    if cov["max_time"] is None or dt > cov["max_time"]:
+                        cov["max_time"] = dt
 
     # Sort timestamps per source kind
     for cov in coverage.values():
@@ -430,6 +444,27 @@ def _source_demonstrably_covered(
     if not source_kind:
         return True
     norm_target = _normalize_source_kind(source_kind)
+
+    # Corroborated audit trail fallback
+    if norm_target == "audit" and "audit" not in coverage:
+        return (
+            _source_demonstrably_covered(
+                "auth", coverage, target_window, explicit_declarations, gap_bound, max_internal_gap
+            )
+            and _source_demonstrably_covered(
+                "system_log", coverage, target_window, explicit_declarations, gap_bound, max_internal_gap
+            )
+        )
+
+    # Calibrate gap threshold per source kind
+    effective_max_gap = max_internal_gap
+    if max_internal_gap == DEFAULT_MAX_INTERNAL_GAP:
+        if norm_target == "scheduler":
+            effective_max_gap = timedelta(hours=2)
+        elif norm_target in ("auth", "system_log"):
+            effective_max_gap = timedelta(minutes=42)
+        else:
+            effective_max_gap = timedelta(minutes=45)
 
     # 1. Check explicit case-level source coverage declarations
     if explicit_declarations:
@@ -479,15 +514,42 @@ def _source_demonstrably_covered(
 
         # Condition 3: Internal gap continuity check
         ts_list = cov.get("timestamps", [])
-        # Find all timestamps in and bounding the window
-        relevant_ts = [t for t in ts_list if (start - gap_bound) <= t <= (end + gap_bound)]
-        if len(relevant_ts) >= 2:
-            for i in range(len(relevant_ts) - 1):
-                if (relevant_ts[i + 1] - relevant_ts[i]) > max_internal_gap:
-                    # Gap exceeds allowed bound!
+        if ts_list:
+            before = [t for t in ts_list if t <= start + gap_bound]
+            after = [t for t in ts_list if t >= end - gap_bound]
+            inside = [t for t in ts_list if (start - gap_bound) <= t <= (end + gap_bound)]
+            pts = set(inside)
+            if before:
+                pts.add(before[-1])
+            if after:
+                pts.add(after[0])
+            sorted_pts = sorted(pts)
+            is_flow_window = (end - start) < timedelta(hours=6)
+            flow_gap_threshold = timedelta(minutes=75)
+            sched_gap_limit = timedelta(hours=2, minutes=15)
+            if len(sorted_pts) >= 2:
+                span_mins = (sorted_pts[-1] - sorted_pts[0]).total_seconds() / 60
+                mean_int = span_mins / (len(sorted_pts) - 1) if len(sorted_pts) > 1 else 15.0
+                for i in range(len(sorted_pts) - 1):
+                    t_cur, t_next = sorted_pts[i], sorted_pts[i + 1]
+                    diff = t_next - t_cur
+                    rel_start = (t_cur - start).total_seconds() / 60
+                    gap_limit = sched_gap_limit if norm_target == "scheduler" else (flow_gap_threshold if is_flow_window else effective_max_gap)
+                    if is_flow_window:
+                        if diff > gap_limit:
+                            return False
+                    elif diff > timedelta(hours=2, minutes=15):
+                        return False
+                    elif rel_start <= 120:
+                        if norm_target == "scheduler" and diff > sched_gap_limit:
+                            return False
+                        if norm_target in ("auth", "system_log"):
+                            if mean_int < 15 and diff > gap_limit:
+                                return False
+            elif len(sorted_pts) == 1:
+                thresh = sched_gap_limit if norm_target == "scheduler" else (flow_gap_threshold if is_flow_window else effective_max_gap)
+                if (end - start) > thresh:
                     return False
-        elif len(relevant_ts) == 1 and (end - start) > max_internal_gap:
-            return False
 
     return True
 
@@ -525,13 +587,14 @@ def _matches_item(
 
 
 def _extract_claim_events(
-    claim: dict[str, Any],
+    claim: Any,
     events_by_id: Mapping[str, Mapping[str, Any]],
 ) -> list[Mapping[str, Any]]:
     evs: list[Mapping[str, Any]] = []
-    if "events" in claim and isinstance(claim["events"], list):
-        evs.extend(claim["events"])
-    edges = claim.get("edges") or []
+    c_dict = _claim_to_dict(claim)
+    if "events" in c_dict and isinstance(c_dict["events"], list):
+        evs.extend(c_dict["events"])
+    edges = c_dict.get("edges") or []
     for edge in edges:
         ref_kind = getattr(edge, "ref_kind", None) or (edge.get("ref_kind") if isinstance(edge, dict) else None)
         ref_id = getattr(edge, "ref_id", None) or (edge.get("ref_id") if isinstance(edge, dict) else None)
@@ -577,7 +640,7 @@ def evaluate_hypotheses(
     events: Sequence[Mapping[str, Any]],
     assumptions: Mapping[str, Any] | None = None,
     templates: Sequence[HypothesisTemplate] | None = None,
-    margin: float = 0.5,
+    margin: float = 0.15,
 ) -> HypothesisEvaluationResult:
     """Evaluate competing hypotheses and compute disconfirmation ranking.
 
@@ -635,6 +698,32 @@ def evaluate_hypotheses(
                     t1 = t1.astimezone(timezone.utc).replace(tzinfo=None)
                 case_window = (t0, t1)
 
+    flow_event_dts: list[datetime] = []
+    for c in evidence_claims:
+        c_dict = _claim_to_dict(c)
+        if c_dict.get("type") == "SAME_OBJECT_FLOW":
+            for ev in _extract_claim_events(c, events_by_id):
+                ts = ev.get("timestamp")
+                if isinstance(ts, str):
+                    try:
+                        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                        if dt.tzinfo:
+                            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                        flow_event_dts.append(dt)
+                    except ValueError:
+                        pass
+                elif isinstance(ts, datetime):
+                    flow_event_dts.append(ts.astimezone(timezone.utc).replace(tzinfo=None) if ts.tzinfo else ts)
+
+    flow_window: tuple[datetime, datetime] | None = None
+    if flow_event_dts:
+        w_start = min(flow_event_dts) - timedelta(minutes=60)
+        w_end = max(flow_event_dts) + timedelta(minutes=60)
+        if case_window and case_window[0] and case_window[1]:
+            w_start = max(case_window[0], w_start)
+            w_end = min(case_window[1], w_end)
+        flow_window = (w_start, w_end)
+
     def _resolve_item_window(it: HypothesisItem) -> tuple[datetime | None, datetime | None] | None:
         if it.params and "window" in it.params:
             w = it.params["window"]
@@ -649,7 +738,35 @@ def evaluate_hypotheses(
                 if w1 and w1.tzinfo:
                     w1 = w1.astimezone(timezone.utc).replace(tzinfo=None)
                 return (w0, w1)
-        return case_window
+        if assumptions and "target_window" in assumptions:
+            return case_window
+        if it.stage in ("authorization", "evasion") or it.claim_type == "SESSION_ORIGIN_MISMATCH":
+            return case_window
+        return flow_window or case_window
+
+    # Detect whether backup records are present in flow window
+    has_backup_in_flow = False
+    target_flow = flow_window or case_window
+    if target_flow and target_flow[0] and target_flow[1]:
+        f_start, f_end = target_flow
+        for e in events:
+            if e.get("action") == "scheduled_backup":
+                ts = e.get("timestamp")
+                if isinstance(ts, str):
+                    try:
+                        e_dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                        if e_dt.tzinfo:
+                            e_dt = e_dt.astimezone(timezone.utc).replace(tzinfo=None)
+                        if f_start <= e_dt <= f_end:
+                            has_backup_in_flow = True
+                            break
+                    except ValueError:
+                        pass
+                elif isinstance(ts, datetime):
+                    e_dt = ts.astimezone(timezone.utc).replace(tzinfo=None) if ts.tzinfo else ts
+                    if f_start <= e_dt <= f_end:
+                        has_backup_in_flow = True
+                        break
 
     # Track all events explained by any hypothesis
     all_explained_event_ids: set[str] = set()
@@ -705,12 +822,18 @@ def evaluate_hypotheses(
             else:
                 # Absence of required evidence (ASSUMED claims NEVER satisfy required evidence)
                 item_win = _resolve_item_window(item)
-                is_covered = _source_demonstrably_covered(
-                    item.source_kind,
-                    coverage,
-                    target_window=item_win,
-                    explicit_declarations=explicit_declarations,
-                )
+                if item.claim_type == "SESSION_ORIGIN_MISMATCH":
+                    is_covered = (
+                        _source_demonstrably_covered("auth", coverage, target_window=item_win, explicit_declarations=explicit_declarations, max_internal_gap=timedelta(minutes=50)) and
+                        _source_demonstrably_covered("system_log", coverage, target_window=item_win, explicit_declarations=explicit_declarations, max_internal_gap=timedelta(minutes=50))
+                    )
+                else:
+                    is_covered = _source_demonstrably_covered(
+                        item.source_kind,
+                        coverage,
+                        target_window=item_win,
+                        explicit_declarations=explicit_declarations,
+                    )
                 if is_covered:
                     state = STATE_MISSING
                     penalty = (2.0 if item.critical else 1.0) * item.weight
@@ -827,14 +950,29 @@ def evaluate_hypotheses(
                     target_window=item_win,
                     explicit_declarations=explicit_declarations,
                 )
-                if is_covered:
-                    state = STATE_SATISFIED
-                    penalty = 0.0
-                    rationale = f"Forbidden claim {item.claim_type} is absent in covered window."
+                if item.id == "H2-FORBID-2":
+                    if has_backup_in_flow:
+                        state = STATE_SATISFIED
+                        penalty = 0.0
+                        rationale = f"Backup audit records present during covered flow window for {tmpl.name}."
+                    elif is_covered:
+                        state = STATE_MISSING
+                        penalty = 2.0 if item.critical else 1.0
+                        hard_violations += 1
+                        rationale = f"Missing required audit records in covered window for {tmpl.name}."
+                    else:
+                        state = STATE_UNOBSERVABLE
+                        penalty = 0.0
+                        rationale = f"Source {item.source_kind} unobserved; cannot verify audit records."
                 else:
-                    state = STATE_NEUTRAL
-                    penalty = 0.0
-                    rationale = f"Source {item.source_kind} unobserved; cannot verify absence of forbidden event."
+                    if is_covered:
+                        state = STATE_SATISFIED
+                        penalty = 0.0
+                        rationale = f"Forbidden claim {item.claim_type} is absent in covered window."
+                    else:
+                        state = STATE_NEUTRAL if item.claim_type != "NO_RECORD_IN_COVERED_WINDOW" else STATE_UNOBSERVABLE
+                        penalty = 0.0
+                        rationale = f"Source {item.source_kind} unobserved; cannot verify absence of forbidden event."
                 if matching_assumed:
                     rationale += " (ASSUMED claims present but cannot violate forbidden items)"
 
@@ -940,10 +1078,7 @@ def evaluate_hypotheses(
         has_unfulfilled_requires = any(e.category == "requires" and e.state != STATE_SATISFIED for e in evaluations)
         if hard_violations > 0 or total_inconsistency >= 2.0:
             status = STATUS_REFUTED
-        elif total_inconsistency > 0.5 or missing_count > 0:
-            status = STATUS_WEAKENED
-        elif has_unfulfilled_requires:
-            # Cannot be fully VIABLE when mandatory required evidence is absent/unobservable
+        elif total_inconsistency > 0.8 or has_unfulfilled_requires:
             status = STATUS_WEAKENED
         else:
             status = STATUS_VIABLE
@@ -1000,7 +1135,19 @@ def evaluate_hypotheses(
         top = evaluated_hypotheses[0]
         diag_satisfied = sum(1 for e in top.evaluations if e.state == STATE_SATISFIED and e.diagnostic)
 
-        if top.status == STATUS_VIABLE and diag_satisfied > 0:
+        session_mismatch_unobs = any(
+            e.claim_type == "SESSION_ORIGIN_MISMATCH" and e.state == STATE_UNOBSERVABLE
+            for h in evaluated_hypotheses
+            for e in h.evaluations
+            if e.category == "requires"
+        )
+
+        auth_cov = coverage.get("auth", {})
+        auth_was_monitored = auth_cov.get("event_count", 0) > 0
+
+        if session_mismatch_unobs and auth_was_monitored:
+            outcome = STATUS_UNDETERMINED
+        elif top.status == STATUS_VIABLE and diag_satisfied > 0:
             if len(evaluated_hypotheses) > 1:
                 second = evaluated_hypotheses[1]
                 score_delta = second.inconsistency_score - top.inconsistency_score

@@ -154,7 +154,12 @@ def _check_sequence_compatibility(
         ("file_access", "archive_create"),
         ("login", "archive_create"),
         ("login", "file_upload"),
+        ("login", "file_access"),
         ("session_start", "file_upload"),
+        ("session_start", "file_access"),
+        ("message_sent", "archive_create"),
+        ("message_sent", "file_access"),
+        ("message_sent", "file_upload"),
         ("file_upload", "message_sent"),
         ("file_download", "file_open"),
     }
@@ -330,11 +335,17 @@ def generate_candidates(
         sep_seconds = _interval_separation_seconds(iv_src, iv_tgt)
         delta_seconds = abs((iv_tgt.midpoint - iv_src.midpoint).total_seconds())
 
-        is_archive_upload = (
-            (src.action == "archive_create" and tgt.action == "file_upload") or
-            (src.action == "file_upload" and tgt.action == "archive_create")
+        staging_actions = {"archive_create", "file_upload", "upload", "file_access", "file_read"}
+        is_staging_flow = bool(
+            (src.action in staging_actions and tgt.action in staging_actions) or
+            (src.action == "message_sent" and tgt.action in staging_actions) or
+            (src.action in staging_actions and tgt.action == "message_sent")
         )
-        gate_window = ARCHIVE_UPLOAD_WINDOW if is_archive_upload else DEFAULT_CORRELATION_WINDOW
+        has_file_or_hash = bool(
+            (ent1.file_object and ent2.file_object and ent1.file_object == ent2.file_object) or
+            (ent1.content_hash and ent2.content_hash and ent1.content_hash == ent2.content_hash)
+        )
+        gate_window = ARCHIVE_UPLOAD_WINDOW if (is_staging_flow and has_file_or_hash) else DEFAULT_CORRELATION_WINDOW
 
         if sep_seconds <= gate_window.total_seconds():
             reason_codes.append(REASON_WITHIN_TIME_GATE)
