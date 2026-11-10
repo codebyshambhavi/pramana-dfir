@@ -27,7 +27,7 @@ function useLineage(finding: Finding, index: CaseIndex, sourceKind: EvidenceSour
     status: "loading"
   });
   useEffect(() => {
-    if (sourceKind === "demo") {
+    if (sourceKind !== "api") {
       setState({ status: "ready", data: lineageFromIndex(finding, index) });
       return undefined;
     }

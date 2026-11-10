@@ -27,7 +27,7 @@ import { GLASS, Panel, PanelLink, SectionGate } from "../features/dashboard/comp
 import { Stamp, storedTime } from "../lib/time";
 import SourceBanner from "../features/dashboard/components/SourceBanner";
 import { readyData, useDashboardData, type Section } from "../features/dashboard/dashboardData";
-import { DEFAULT_CASE_ID, resolveSourceKind } from "../features/vault/evidenceSource";
+import { DEFAULT_CASE_ID, RECORDED_CASE_ID, resolveSourceKind } from "../features/vault/evidenceSource";
 import { fileKind, isParsedKind } from "../features/vault/model";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
@@ -94,7 +94,7 @@ function buildAlerts(
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const sourceKind = resolveSourceKind(searchParams.get("source"));
-  const caseId = DEFAULT_CASE_ID;
+  const caseId = sourceKind === "recorded" ? RECORDED_CASE_ID : DEFAULT_CASE_ID;
   const toPath = useSourceLink();
   const { data, reload } = useDashboardData(sourceKind, caseId);
 
@@ -141,7 +141,7 @@ export default function Dashboard() {
               </div>
               <div
                 className={`mt-3.5 rounded-lg border px-3 py-2.5 text-[12.5px] ${
-                  sourceKind === "demo"
+                  sourceKind !== "api"
                     ? "border-amber-300/30 bg-amber-300/[0.06] text-amber-100/90"
                     : errors > 0
                       ? "border-alert/35 bg-alert/[0.07] text-soft"
@@ -151,13 +151,13 @@ export default function Dashboard() {
                 <p className="flex items-center gap-2 font-semibold tracking-[0.08em] uppercase">
                   <span
                     className={`size-1.5 rounded-full ${
-                      sourceKind === "demo" ? "bg-amber-300" : errors > 0 ? "bg-alert" : "bg-teal-300 shadow-[0_0_6px_#5eead4]"
+                      sourceKind === "demo" ? "bg-amber-300" : sourceKind === "recorded" ? "bg-sky-300" : errors > 0 ? "bg-alert" : "bg-teal-300 shadow-[0_0_6px_#5eead4]"
                     }`}
                   />
-                  {sourceKind === "demo" ? "Demo data" : "Live API"}
+                  {sourceKind === "demo" ? "Demo data" : sourceKind === "recorded" ? "Recorded data" : "Live API"}
                 </p>
                 <p className="mt-1 text-[12px] opacity-80">
-                  {sourceKind === "demo" ? "Synthetic records, not from the backend" : errors > 0 ? `Unreachable · ${API_URL}` : API_URL}
+                  {sourceKind === "demo" ? "Synthetic records, not from the backend" : sourceKind === "recorded" ? "Bundled CASE-DEMO-IST snapshot · read-only" : errors > 0 ? `Unreachable · ${API_URL}` : API_URL}
                 </p>
               </div>
               <dl className="mt-4 grid gap-3 text-[13px] sm:grid-cols-2 xl:grid-cols-1">

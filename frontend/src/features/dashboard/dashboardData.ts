@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { getGraph, listEvents, listFindings } from "../../api/client";
 import type { CaseEvent, CaseGraph, EvidenceItem, Finding } from "../../api/types";
-import { RECORDED_CASE_DEMO_IST } from "../../api/recorded/case-demo-ist";
+import { loadRecording } from "../../api/recorded/loadRecording";
 import { getEvidenceSource, type EvidenceSourceKind } from "../vault/evidenceSource";
 import { DEMO_EVENTS, DEMO_FINDINGS } from "./demoAnalysis";
 import { graphFromEvents } from "./graph";
@@ -30,13 +30,25 @@ const delay = <T,>(value: T, ms = 380) =>
 
 function loaders(kind: EvidenceSourceKind, caseId: string, signal: AbortSignal) {
   if (kind === "recorded") {
-    const events = RECORDED_CASE_DEMO_IST.events;
-
     return {
-      evidence: getEvidenceSource("recorded").list("CASE-DEMO-IST", signal),
-      events: delay(events),
-      findings: delay([] as Finding[]),
-      graph: delay(graphFromEvents(events))
+      evidence: getEvidenceSource("recorded").list(caseId, signal),
+      events: loadRecording().then(recording => delay(recording.events)),
+      findings: loadRecording().then(recording =>
+        delay(
+          recording.runA.claims.map(claim => ({
+            finding_id: claim.claim_id,
+            case_id: recording.caseId,
+            type: "hypothesis" as const,
+            claim: `${claim.type} (${claim.status})`,
+            confidence: claim.grade === "A" ? 1 : claim.grade === "B" ? 0.75 : 0.5,
+            evidence_event_ids: (recording.runALineage[claim.claim_id]?.events ?? []).map(event => event.event_id),
+            reasoning: `Recorded claim from ${recording.runA.run_id}; grade ${claim.grade}.`,
+            needs_human_review: false,
+            status: "pending" as const
+          }))
+        )
+      ),
+      graph: loadRecording().then(recording => delay(graphFromEvents(recording.events)))
     };
   }
 
