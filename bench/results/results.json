@@ -203,15 +203,15 @@
             "unavailable_reason": null
           },
           "claim_lineage_resolution_rate": {
-            "denominator": 470,
-            "numerator": 470,
+            "denominator": 452,
+            "numerator": 452,
             "percentage": 100.0,
             "unavailable_reason": null
           },
           "contradiction_recall": {
             "denominator": 6,
-            "numerator": 6,
-            "percentage": 100.0,
+            "numerator": 0,
+            "percentage": 0.0,
             "unavailable_reason": null
           },
           "correct_undetermined_rate": {
@@ -493,15 +493,15 @@
             "unavailable_reason": null
           },
           "claim_lineage_resolution_rate": {
-            "denominator": 1186,
-            "numerator": 1186,
+            "denominator": 1156,
+            "numerator": 1156,
             "percentage": 100.0,
             "unavailable_reason": null
           },
           "contradiction_recall": {
             "denominator": 10,
-            "numerator": 10,
-            "percentage": 100.0,
+            "numerator": 0,
+            "percentage": 0.0,
             "unavailable_reason": null
           },
           "correct_undetermined_rate": {
@@ -4634,15 +4634,15 @@
           "unavailable_reason": null
         },
         "claim_lineage_resolution_rate": {
-          "denominator": 140,
-          "numerator": 140,
+          "denominator": 134,
+          "numerator": 134,
           "percentage": 100.0,
           "unavailable_reason": null
         },
         "contradiction_recall": {
           "denominator": 2,
-          "numerator": 2,
-          "percentage": 100.0,
+          "numerator": 0,
+          "percentage": 0.0,
           "unavailable_reason": null
         },
         "correct_undetermined_rate": {
@@ -4697,10 +4697,10 @@
           "absence_classifications_expected": 1,
           "absence_correct": 1,
           "abstained_on_definite_truth": false,
-          "claim_lineage_resolved": 140,
-          "claim_lineage_total": 140,
+          "claim_lineage_resolved": 134,
+          "claim_lineage_total": 134,
           "contradictions_expected": 2,
-          "contradictions_found": 2,
+          "contradictions_found": 0,
           "correct_links": 4,
           "correct_undetermined": false,
           "decoy_events": 0,
@@ -4753,31 +4753,12 @@
           "H2-FORBID-2": "MISSING",
           "H3-REQ-1": "MISSING"
         },
-        "claim_count": 12,
+        "claim_count": 9,
         "claim_lineage": {
-          "resolved": 140,
-          "total": 140
+          "resolved": 134,
+          "total": 134
         },
-        "contradictions": [
-          {
-            "event_refs": [
-              "browser_history.csv#row=24",
-              "vpn_authentication.csv#row=20"
-            ]
-          },
-          {
-            "event_refs": [
-              "endpoint_system_log.csv#row=22",
-              "endpoint_system_log.csv#row=23"
-            ]
-          },
-          {
-            "event_refs": [
-              "browser_history.csv#row=23",
-              "vpn_authentication.csv#row=20"
-            ]
-          }
-        ],
+        "contradictions": [],
         "invalidated_descendants": [
           [
             "browser_history.csv#row=23",
@@ -14320,15 +14301,15 @@
           "unavailable_reason": null
         },
         "claim_lineage_resolution_rate": {
-          "denominator": 157,
-          "numerator": 157,
+          "denominator": 151,
+          "numerator": 151,
           "percentage": 100.0,
           "unavailable_reason": null
         },
         "contradiction_recall": {
           "denominator": 2,
-          "numerator": 2,
-          "percentage": 100.0,
+          "numerator": 0,
+          "percentage": 0.0,
           "unavailable_reason": null
         },
         "correct_undetermined_rate": {
@@ -14383,10 +14364,10 @@
           "absence_classifications_expected": 1,
           "absence_correct": 1,
           "abstained_on_definite_truth": false,
-          "claim_lineage_resolved": 157,
-          "claim_lineage_total": 157,
+          "claim_lineage_resolved": 151,
+          "claim_lineage_total": 151,
           "contradictions_expected": 2,
-          "contradictions_found": 2,
+          "contradictions_found": 0,
           "correct_links": 3,
           "correct_undetermined": false,
           "decoy_events": 0,
@@ -14440,31 +14421,12 @@
           "H3-EXP-1": "MISSING",
           "H3-REQ-1": "MISSING"
         },
-        "claim_count": 10,
+        "claim_count": 7,
         "claim_lineage": {
-          "resolved": 157,
-          "total": 157
+          "resolved": 151,
+          "total": 151
         },
-        "contradictions": [
-          {
-            "event_refs": [
-              "endpoint_system_log.csv#row=30",
-              "endpoint_system_log.csv#row=31"
-            ]
-          },
-          {
-            "event_refs": [
-              "vpn_authentication.csv#row=33",
-              "browser_history.csv#row=30"
-            ]
-          },
-          {
-            "event_refs": [
-              "vpn_authentication.csv#row=33",
-              "browser_history.csv#row=31"
-            ]
-          }
-        ],
+        "contradictions": [],
         "invalidated_descendants": [
           [
             "browser_history.csv#row=30",
@@ -30551,15 +30513,15 @@
           "unavailable_reason": "no definite ground-truth hypothesis with a system prediction"
         },
         "claim_lineage_resolution_rate": {
-          "denominator": 173,
-          "numerator": 173,
+          "denominator": 167,
+          "numerator": 167,
           "percentage": 100.0,
           "unavailable_reason": null
         },
         "contradiction_recall": {
           "denominator": 2,
-          "numerator": 2,
-          "percentage": 100.0,
+          "numerator": 0,
+          "percentage": 0.0,
           "unavailable_reason": null
         },
         "correct_undetermined_rate": {
@@ -30614,10 +30576,10 @@
           "absence_classifications_expected": 1,
           "absence_correct": 1,
           "abstained_on_definite_truth": false,
-          "claim_lineage_resolved": 173,
-          "claim_lineage_total": 173,
+          "claim_lineage_resolved": 167,
+          "claim_lineage_total": 167,
           "contradictions_expected": 2,
-          "contradictions_found": 2,
+          "contradictions_found": 0,
           "correct_links": 2,
           "correct_undetermined": true,
           "decoy_events": 3,
@@ -30672,31 +30634,12 @@
           "H3-EXP-1": "MISSING",
           "H3-REQ-1": "UNOBSERVABLE"
         },
-        "claim_count": 8,
+        "claim_count": 5,
         "claim_lineage": {
-          "resolved": 173,
-          "total": 173
+          "resolved": 167,
+          "total": 167
         },
-        "contradictions": [
-          {
-            "event_refs": [
-              "endpoint_system_log.csv#row=37",
-              "endpoint_system_log.csv#row=39"
-            ]
-          },
-          {
-            "event_refs": [
-              "vpn_authentication.csv#row=35",
-              "browser_history.csv#row=35"
-            ]
-          },
-          {
-            "event_refs": [
-              "vpn_authentication.csv#row=35",
-              "browser_history.csv#row=36"
-            ]
-          }
-        ],
+        "contradictions": [],
         "invalidated_descendants": [
           [
             "browser_history.csv#row=35",
@@ -44096,15 +44039,15 @@
           "unavailable_reason": null
         },
         "claim_lineage_resolution_rate": {
-          "denominator": 193,
-          "numerator": 193,
+          "denominator": 187,
+          "numerator": 187,
           "percentage": 100.0,
           "unavailable_reason": null
         },
         "contradiction_recall": {
           "denominator": 2,
-          "numerator": 2,
-          "percentage": 100.0,
+          "numerator": 0,
+          "percentage": 0.0,
           "unavailable_reason": null
         },
         "correct_undetermined_rate": {
@@ -44159,10 +44102,10 @@
           "absence_classifications_expected": 1,
           "absence_correct": 1,
           "abstained_on_definite_truth": false,
-          "claim_lineage_resolved": 193,
-          "claim_lineage_total": 193,
+          "claim_lineage_resolved": 187,
+          "claim_lineage_total": 187,
           "contradictions_expected": 2,
-          "contradictions_found": 2,
+          "contradictions_found": 0,
           "correct_links": 2,
           "correct_undetermined": false,
           "decoy_events": 2,
@@ -44217,31 +44160,12 @@
           "H3-EXP-1": "MISSING",
           "H3-REQ-1": "MISSING"
         },
-        "claim_count": 8,
+        "claim_count": 5,
         "claim_lineage": {
-          "resolved": 193,
-          "total": 193
+          "resolved": 187,
+          "total": 187
         },
-        "contradictions": [
-          {
-            "event_refs": [
-              "browser_history.csv#row=40",
-              "vpn_authentication.csv#row=39"
-            ]
-          },
-          {
-            "event_refs": [
-              "endpoint_system_log.csv#row=37",
-              "endpoint_system_log.csv#row=38"
-            ]
-          },
-          {
-            "event_refs": [
-              "browser_history.csv#row=41",
-              "vpn_authentication.csv#row=39"
-            ]
-          }
-        ],
+        "contradictions": [],
         "invalidated_descendants": [
           [
             "browser_history.csv#row=40",
@@ -60428,15 +60352,15 @@
           "unavailable_reason": null
         },
         "claim_lineage_resolution_rate": {
-          "denominator": 219,
-          "numerator": 219,
+          "denominator": 213,
+          "numerator": 213,
           "percentage": 100.0,
           "unavailable_reason": null
         },
         "contradiction_recall": {
           "denominator": 2,
-          "numerator": 2,
-          "percentage": 100.0,
+          "numerator": 0,
+          "percentage": 0.0,
           "unavailable_reason": null
         },
         "correct_undetermined_rate": {
@@ -60491,10 +60415,10 @@
           "absence_classifications_expected": 1,
           "absence_correct": 1,
           "abstained_on_definite_truth": false,
-          "claim_lineage_resolved": 219,
-          "claim_lineage_total": 219,
+          "claim_lineage_resolved": 213,
+          "claim_lineage_total": 213,
           "contradictions_expected": 2,
-          "contradictions_found": 2,
+          "contradictions_found": 0,
           "correct_links": 4,
           "correct_undetermined": false,
           "decoy_events": 5,
@@ -60549,31 +60473,12 @@
           "H3-EXP-1": "MISSING",
           "H3-REQ-1": "MISSING"
         },
-        "claim_count": 11,
+        "claim_count": 8,
         "claim_lineage": {
-          "resolved": 219,
-          "total": 219
+          "resolved": 213,
+          "total": 213
         },
-        "contradictions": [
-          {
-            "event_refs": [
-              "endpoint_system_log.csv#row=38",
-              "endpoint_system_log.csv#row=39"
-            ]
-          },
-          {
-            "event_refs": [
-              "browser_history.csv#row=38",
-              "vpn_authentication.csv#row=35"
-            ]
-          },
-          {
-            "event_refs": [
-              "browser_history.csv#row=39",
-              "vpn_authentication.csv#row=35"
-            ]
-          }
-        ],
+        "contradictions": [],
         "invalidated_descendants": [
           [
             "browser_history.csv#row=38",
@@ -78837,15 +78742,15 @@
           "unavailable_reason": null
         },
         "claim_lineage_resolution_rate": {
-          "denominator": 233,
-          "numerator": 233,
+          "denominator": 227,
+          "numerator": 227,
           "percentage": 100.0,
           "unavailable_reason": null
         },
         "contradiction_recall": {
           "denominator": 2,
-          "numerator": 2,
-          "percentage": 100.0,
+          "numerator": 0,
+          "percentage": 0.0,
           "unavailable_reason": null
         },
         "correct_undetermined_rate": {
@@ -78900,10 +78805,10 @@
           "absence_classifications_expected": 1,
           "absence_correct": 1,
           "abstained_on_definite_truth": false,
-          "claim_lineage_resolved": 233,
-          "claim_lineage_total": 233,
+          "claim_lineage_resolved": 227,
+          "claim_lineage_total": 227,
           "contradictions_expected": 2,
-          "contradictions_found": 2,
+          "contradictions_found": 0,
           "correct_links": 2,
           "correct_undetermined": false,
           "decoy_events": 6,
@@ -78957,31 +78862,12 @@
           "H3-EXP-1": "MISSING",
           "H3-REQ-1": "MISSING"
         },
-        "claim_count": 8,
+        "claim_count": 5,
         "claim_lineage": {
-          "resolved": 233,
-          "total": 233
+          "resolved": 227,
+          "total": 227
         },
-        "contradictions": [
-          {
-            "event_refs": [
-              "browser_history.csv#row=46",
-              "vpn_authentication.csv#row=45"
-            ]
-          },
-          {
-            "event_refs": [
-              "browser_history.csv#row=47",
-              "vpn_authentication.csv#row=45"
-            ]
-          },
-          {
-            "event_refs": [
-              "endpoint_system_log.csv#row=48",
-              "endpoint_system_log.csv#row=50"
-            ]
-          }
-        ],
+        "contradictions": [],
         "invalidated_descendants": [
           [
             "browser_history.csv#row=46",
@@ -108574,15 +108460,15 @@
           "unavailable_reason": "no definite ground-truth hypothesis with a system prediction"
         },
         "claim_lineage_resolution_rate": {
-          "denominator": 261,
-          "numerator": 261,
+          "denominator": 255,
+          "numerator": 255,
           "percentage": 100.0,
           "unavailable_reason": null
         },
         "contradiction_recall": {
           "denominator": 2,
-          "numerator": 2,
-          "percentage": 100.0,
+          "numerator": 0,
+          "percentage": 0.0,
           "unavailable_reason": null
         },
         "correct_undetermined_rate": {
@@ -108637,10 +108523,10 @@
           "absence_classifications_expected": 1,
           "absence_correct": 1,
           "abstained_on_definite_truth": false,
-          "claim_lineage_resolved": 261,
-          "claim_lineage_total": 261,
+          "claim_lineage_resolved": 255,
+          "claim_lineage_total": 255,
           "contradictions_expected": 2,
-          "contradictions_found": 2,
+          "contradictions_found": 0,
           "correct_links": 3,
           "correct_undetermined": true,
           "decoy_events": 10,
@@ -108695,31 +108581,12 @@
           "H3-EXP-1": "MISSING",
           "H3-REQ-1": "UNOBSERVABLE"
         },
-        "claim_count": 12,
+        "claim_count": 9,
         "claim_lineage": {
-          "resolved": 261,
-          "total": 261
+          "resolved": 255,
+          "total": 255
         },
-        "contradictions": [
-          {
-            "event_refs": [
-              "vpn_authentication.csv#row=39",
-              "browser_history.csv#row=46"
-            ]
-          },
-          {
-            "event_refs": [
-              "vpn_authentication.csv#row=39",
-              "browser_history.csv#row=45"
-            ]
-          },
-          {
-            "event_refs": [
-              "endpoint_system_log.csv#row=38",
-              "endpoint_system_log.csv#row=39"
-            ]
-          }
-        ],
+        "contradictions": [],
         "invalidated_descendants": [
           [
             "browser_history.csv#row=45",
@@ -133573,15 +133440,15 @@
           "unavailable_reason": null
         },
         "claim_lineage_resolution_rate": {
-          "denominator": 280,
-          "numerator": 280,
+          "denominator": 274,
+          "numerator": 274,
           "percentage": 100.0,
           "unavailable_reason": null
         },
         "contradiction_recall": {
           "denominator": 2,
-          "numerator": 2,
-          "percentage": 100.0,
+          "numerator": 0,
+          "percentage": 0.0,
           "unavailable_reason": null
         },
         "correct_undetermined_rate": {
@@ -133636,10 +133503,10 @@
           "absence_classifications_expected": 1,
           "absence_correct": 1,
           "abstained_on_definite_truth": false,
-          "claim_lineage_resolved": 280,
-          "claim_lineage_total": 280,
+          "claim_lineage_resolved": 274,
+          "claim_lineage_total": 274,
           "contradictions_expected": 2,
-          "contradictions_found": 2,
+          "contradictions_found": 0,
           "correct_links": 4,
           "correct_undetermined": false,
           "decoy_events": 11,
@@ -133692,31 +133559,12 @@
           "H2-FORBID-2": "MISSING",
           "H3-REQ-1": "MISSING"
         },
-        "claim_count": 12,
+        "claim_count": 9,
         "claim_lineage": {
-          "resolved": 280,
-          "total": 280
+          "resolved": 274,
+          "total": 274
         },
-        "contradictions": [
-          {
-            "event_refs": [
-              "browser_history.csv#row=48",
-              "vpn_authentication.csv#row=45"
-            ]
-          },
-          {
-            "event_refs": [
-              "browser_history.csv#row=49",
-              "vpn_authentication.csv#row=45"
-            ]
-          },
-          {
-            "event_refs": [
-              "endpoint_system_log.csv#row=44",
-              "endpoint_system_log.csv#row=45"
-            ]
-          }
-        ],
+        "contradictions": [],
         "invalidated_descendants": [
           [
             "browser_history.csv#row=48",

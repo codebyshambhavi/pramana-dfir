@@ -67,9 +67,9 @@ Controlled synthetic evidence only; these results are not real-world accuracy cl
 | Over-claim rate | 0 / 1 | 0.00% |
 | Selective accuracy (correct commitments / commitments) | 2 / 2 | 100.00% |
 | Abstention rate (UNDETERMINED on definite ground truth) | 0 / 2 | 0.00% |
-| Contradiction recall | 6 / 6 | 100.00% |
+| Contradiction recall | 0 / 6 | 0.00% |
 | MISSING vs UNOBSERVABLE accuracy | 3 / 3 | 100.00% |
-| Claim lineage resolution | 470 / 470 | 100.00% |
+| Claim lineage resolution | 452 / 452 | 100.00% |
 | Tamper invalidation accuracy (strict artifact references) | 0 / 3 | 0.00% |
 | Tamper invalidation accuracy (duplicate-equivalence aware) | 3 / 3 | 100.00% |
 
@@ -129,9 +129,9 @@ Controlled synthetic evidence only; these results are not real-world accuracy cl
 | Over-claim rate | 0 / 1 | 0.00% |
 | Selective accuracy (correct commitments / commitments) | 4 / 4 | 100.00% |
 | Abstention rate (UNDETERMINED on definite ground truth) | 0 / 4 | 0.00% |
-| Contradiction recall | 10 / 10 | 100.00% |
+| Contradiction recall | 0 / 10 | 0.00% |
 | MISSING vs UNOBSERVABLE accuracy | 5 / 5 | 100.00% |
-| Claim lineage resolution | 1186 / 1186 | 100.00% |
+| Claim lineage resolution | 1156 / 1156 | 100.00% |
 | Tamper invalidation accuracy (strict artifact references) | 0 / 5 | 0.00% |
 | Tamper invalidation accuracy (duplicate-equivalence aware) | 5 / 5 | 100.00% |
 
