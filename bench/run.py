@@ -311,22 +311,27 @@ def _write_report(
         "- Development scenarios: 3",
         "- Held-out scenarios: 5",
         "- Reproducibility: scenario YAML seeds; use `make bench` or `python3 bench/run.py --seed N`.",
-        "- `make bench` does not run tests. Validation performed for this deliverable: 11 benchmark tests passed; the existing evidence-engine suite reported 95 passed and 1 unrelated failure (`test_sample_case_events_are_valid_and_contain_three_planted_items`, which expects a generated event ID in the untouched sample ground-truth markdown); 0 skipped.",
+        "- `make bench` does not run tests. Run `python -m pytest bench/tests` separately; test results are intentionally not embedded in generated benchmark reports.",
         "",
         "## Results by split",
         "",
     ]
     metric_names = (
-        ("link_precision", "Link precision"),
-        ("link_recall", "Link recall"),
+        ("link_precision", "Link precision (strict artifact references)"),
+        ("link_recall", "Link recall (strict artifact references)"),
+        ("link_precision_equivalence_aware", "Link precision (duplicate-equivalence aware)"),
+        ("link_recall_equivalence_aware", "Link recall (duplicate-equivalence aware)"),
         ("decoy_false_positive_rate", "Decoy false-positive rate"),
-        ("top_hypothesis_accuracy", "Top-hypothesis accuracy"),
+        ("top_hypothesis_accuracy", "Top-hypothesis accuracy (includes correct UNDETERMINED)"),
         ("correct_undetermined_rate", "Correct UNDETERMINED rate"),
         ("over_claim_rate", "Over-claim rate"),
+        ("selective_accuracy", "Selective accuracy (correct commitments / commitments)"),
+        ("abstention_rate", "Abstention rate (UNDETERMINED on definite ground truth)"),
         ("contradiction_recall", "Contradiction recall"),
         ("missing_unobservable_accuracy", "MISSING vs UNOBSERVABLE accuracy"),
         ("claim_lineage_resolution_rate", "Claim lineage resolution"),
-        ("tamper_invalidation_accuracy", "Tamper invalidation accuracy"),
+        ("tamper_invalidation_accuracy", "Tamper invalidation accuracy (strict artifact references)"),
+        ("tamper_invalidation_equivalence_aware_accuracy", "Tamper invalidation accuracy (duplicate-equivalence aware)"),
     )
     for split in ("dev", "held-out"):
         content.extend((f"### {split}", ""))
@@ -347,11 +352,16 @@ def _write_report(
                 content.append(f"| {label} | {raw} | {percentage} |")
             content.append("")
     content.extend((
+        "## Metric interpretation",
+        "",
+        "- Strict link and tamper metrics compare exact artifact references. Equivalence-aware variants additionally normalize duplicate rows using the simulator's explicit `duplicate_rows` original-to-duplicate mapping; they are reported alongside, never instead of, strict scores.",
+        "- Selective accuracy scores only non-UNDETERMINED commitments against defined ground truth. Abstention rate separately measures UNDETERMINED outputs on cases with a definite ground-truth hypothesis.",
+        "",
         "## Known limitations",
         "",
         "- The scenarios are controlled synthetic fixtures and do not establish real-world forensic accuracy.",
         "- B1/B2 only predict event links; they do not produce hypothesis, contradiction, absence, lineage, or tamper predictions. Those metrics are reported as unavailable where no output exists.",
-        "- Tamper invalidation is exercised only against disposable generated evidence by calling the existing T4 verification service and T8 run-diff service; the benchmark does not implement the demo tamper endpoint or quarantine behavior.",
+        "- The main scenario runner exercises T4 verification and T8 run-diff services directly on disposable generated evidence. The separate ROLE 2 integration test also exercises the public demo tamper endpoint, verification quarantine, Run A invalidation, and child-run diff through the API.",
         "- The T8 runner is database-backed and is invoked through the existing `execute_analysis_run` service in an isolated in-memory SQLite database. Missing T7/T8 dependencies cause the run to fail explicitly.",
         "- T7 source coverage currently uses normalized Event `source` values. Several CSV evidence families share `source=log`; family-specific scheduler/auth coverage may therefore not be distinguishable without a change outside T9/T10.",
         "- Ground truth is authored by the simulator independently of intelligence output. Scoring uses event artifact references, not generated claim IDs.",
@@ -461,14 +471,19 @@ def run_benchmark(
     metric_names = (
         "link_precision",
         "link_recall",
+        "link_precision_equivalence_aware",
+        "link_recall_equivalence_aware",
         "decoy_false_positive_rate",
         "top_hypothesis_accuracy",
         "correct_undetermined_rate",
         "over_claim_rate",
+        "selective_accuracy",
+        "abstention_rate",
         "contradiction_recall",
         "missing_unobservable_accuracy",
         "claim_lineage_resolution_rate",
         "tamper_invalidation_accuracy",
+        "tamper_invalidation_equivalence_aware_accuracy",
     )
     with csv_path.open("w", encoding="utf-8", newline="") as stream:
         columns = ["scenario_id", "split", "scenario_type", "system", "event_count"]

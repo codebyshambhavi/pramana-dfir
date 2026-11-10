@@ -40,7 +40,7 @@ def correlate_time_window(
     for first, second in combinations(ordered, 2):
         delta = (_time(second) - _time(first)).total_seconds() / 60
         if delta > window_minutes:
-            break
+            continue
         if first.get("evidence_id") == second.get("evidence_id"):
             continue
         if require_shared_identifier and not _shared_identifier(first, second):
