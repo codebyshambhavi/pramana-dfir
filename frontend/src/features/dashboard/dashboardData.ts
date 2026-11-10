@@ -1,14 +1,15 @@
-// Role 4: data for the Investigation Dashboard. Each section loads on its own, so one missing endpoint shows as
-// "unavailable" in its panel without blanking the rest. Live mode uses the four documented GET endpoints; demo mode
-// uses the same in-memory demo evidence as the Evidence Vault plus the synthetic events and findings.
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { getGraph, listEvents, listFindings } from "../../api/client";
 import type { CaseEvent, CaseGraph, EvidenceItem, Finding } from "../../api/types";
+import { RECORDED_CASE_DEMO_IST } from "../../api/recorded/case-demo-ist";
 import { getEvidenceSource, type EvidenceSourceKind } from "../vault/evidenceSource";
 import { DEMO_EVENTS, DEMO_FINDINGS } from "./demoAnalysis";
 import { graphFromEvents } from "./graph";
 
-export type Section<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
+export type Section<T> =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; data: T };
 
 export interface DashboardData {
   evidence: Section<EvidenceItem[]>;
@@ -24,9 +25,21 @@ const LOADING: DashboardData = {
   graph: { status: "loading" }
 };
 
-const delay = <T,>(value: T, ms = 380) => new Promise<T>(resolve => setTimeout(() => resolve(value), ms));
+const delay = <T,>(value: T, ms = 380) =>
+  new Promise<T>(resolve => setTimeout(() => resolve(value), ms));
 
 function loaders(kind: EvidenceSourceKind, caseId: string, signal: AbortSignal) {
+  if (kind === "recorded") {
+    const events = RECORDED_CASE_DEMO_IST.events;
+
+    return {
+      evidence: getEvidenceSource("recorded").list("CASE-DEMO-IST", signal),
+      events: delay(events),
+      findings: delay([] as Finding[]),
+      graph: delay(graphFromEvents(events))
+    };
+  }
+
   if (kind === "demo") {
     return {
       evidence: getEvidenceSource("demo").list(caseId, signal),
@@ -35,6 +48,7 @@ function loaders(kind: EvidenceSourceKind, caseId: string, signal: AbortSignal) 
       graph: delay(graphFromEvents(DEMO_EVENTS))
     };
   }
+
   return {
     evidence: getEvidenceSource("api").list(caseId, signal),
     events: listEvents(caseId, {}, signal),
@@ -50,19 +64,40 @@ export function useDashboardData(kind: EvidenceSourceKind, caseId: string) {
   useEffect(() => {
     const controller = new AbortController();
     setData(LOADING);
-    const settle = <K extends keyof DashboardData>(key: K, promise: Promise<unknown>) =>
+
+    const settle = <K extends keyof DashboardData>(
+      key: K,
+      promise: Promise<unknown>
+    ) =>
       promise
-        .then(value => !controller.signal.aborted && setData(prev => ({ ...prev, [key]: { status: "ready", data: value } })))
+        .then(value =>
+          !controller.signal.aborted &&
+          setData(prev => ({
+            ...prev,
+            [key]: { status: "ready", data: value }
+          }))
+        )
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
-          setData(prev => ({ ...prev, [key]: { status: "error", message: error instanceof Error ? error.message : "Unavailable" } }));
+          setData(prev => ({
+            ...prev,
+            [key]: {
+              status: "error",
+              message: error instanceof Error ? error.message : "Unavailable"
+            }
+          }));
         });
+
     const load = loaders(kind, caseId, controller.signal);
-    (Object.keys(load) as (keyof DashboardData)[]).forEach(key => settle(key, load[key]));
+    (Object.keys(load) as (keyof DashboardData)[]).forEach(key =>
+      settle(key, load[key])
+    );
+
     return () => controller.abort();
   }, [kind, caseId, version]);
 
   return { data, reload: () => setVersion(v => v + 1) };
 }
 
-export const readyData = <T,>(section: Section<T>) => (section.status === "ready" ? section.data : null);
+export const readyData = <T,>(section: Section<T>) =>
+  section.status === "ready" ? section.data : null;

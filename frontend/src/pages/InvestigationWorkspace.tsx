@@ -1,6 +1,6 @@
-// Role 4: Investigation Workspace. Findings, Hypotheses, Timeline, Graph and Report as tabs over the same case data
+﻿// Role 4: Investigation Workspace. Findings, Hypotheses, Timeline, Graph and Report as tabs over the same case data
 // (GET evidence/events/findings/graph, or the labelled demo set). The Hypotheses tab reads an analysis run instead
-// (see features/hypotheses/runSource.ts). URL state: ?tab=…&finding=…&type=…&hyp=…&source=demo.
+// (see features/hypotheses/runSource.ts). URL state: ?tab=â€¦&finding=â€¦&type=â€¦&hyp=â€¦&source=demo.
 import { Suspense, lazy, useCallback, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import ConsoleShell, { GUTTER } from "../components/console/ConsoleShell";
@@ -26,7 +26,7 @@ import NewRunButton from "../features/rundiff/components/NewRunButton";
 import { useRunDiff } from "../features/rundiff/runDiffSource";
 import { useReconstruction } from "../features/reconstruction/reconstructionSource";
 import { buildIndex } from "../features/investigation/findingModel";
-import { DEFAULT_CASE_ID, resolveSourceKind, type EvidenceSourceKind } from "../features/vault/evidenceSource";
+import { DEFAULT_CASE_ID, RECORDED_CASE_ID, resolveSourceKind, type EvidenceSourceKind } from "../features/vault/evidenceSource";
 import Report from "./Report";
 import Timeline from "./Timeline";
 import { formatTimestamp, useDisplayZone } from "../lib/time";
@@ -88,7 +88,7 @@ function RunTab({
   return (
     <Pane
       title={view === "hypotheses" ? "Hypotheses" : "Claim inspector"}
-      note={sourceKind === "demo" ? "recorded CASE-DEMO-IST run (real backend output, not the synthetic demo case)" : `latest run for ${caseId}`}
+      note={(sourceKind === "demo" || sourceKind === "recorded") ? "recorded CASE-DEMO-IST run (real backend output)" : `latest run for ${caseId}`}
       className="mt-5"
     >
       <SectionGate
@@ -121,7 +121,7 @@ function ReconstructionTab({ sourceKind, caseId, runId }: { sourceKind: Evidence
   return (
     <Pane
       title="Reconstruction"
-      note={sourceKind === "demo" ? "recorded CASE-DEMO-IST run (real backend output, not the synthetic demo case)" : `latest run for ${caseId}`}
+      note={(sourceKind === "demo" || sourceKind === "recorded") ? "recorded CASE-DEMO-IST run (real backend output)" : `latest run for ${caseId}`}
       className="mt-5"
     >
       <SectionGate
@@ -169,7 +169,7 @@ function RunDiffTab({
   return (
     <Pane
       title="Run diff"
-      note={sourceKind === "demo" ? "recorded CASE-DEMO-IST runs (real backend output, not the synthetic demo case)" : `runs of ${caseId}`}
+      note={(sourceKind === "demo" || sourceKind === "recorded") ? "recorded CASE-DEMO-IST runs (real backend output)" : `runs of ${caseId}`}
       className="mt-5"
     >
       <SectionGate
@@ -204,7 +204,7 @@ function RunDiffTab({
                         {result.runs.map(r => (
                           <option key={r.run_id} value={r.run_id}>
                             {r.run_id}
-                            {r.created_at ? ` · ${formatTimestamp(r.created_at, zone)}` : ""}
+                            {r.created_at ? ` Â· ${formatTimestamp(r.created_at, zone)}` : ""}
                           </option>
                         ))}
                       </select>
@@ -224,7 +224,7 @@ function RunDiffTab({
 export default function InvestigationWorkspace() {
   const [params, setParams] = useSearchParams();
   const sourceKind = resolveSourceKind(params.get("source"));
-  const caseId = DEFAULT_CASE_ID;
+  const caseId = sourceKind === "recorded" ? RECORDED_CASE_ID : DEFAULT_CASE_ID;
   const toPath = useSourceLink();
   const { data, reload } = useDashboardData(sourceKind, caseId);
   const [overrides, setOverrides] = useState<Map<string, Finding["status"]>>(new Map());
