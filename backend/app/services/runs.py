@@ -5,6 +5,7 @@ reproducible retrieval, and semantic run diffing matching claims by claim_key.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
@@ -219,6 +220,18 @@ def execute_analysis_run(
 
     case_assumptions = assumptions or {"case_timezone": "UTC"}
 
+    case_tz = None
+    if case_assumptions.get("case_timezone"):
+        tz_name = str(case_assumptions["case_timezone"]).strip()
+        if tz_name.upper() == "UTC":
+            case_tz = timezone.utc
+        else:
+            try:
+                from zoneinfo import ZoneInfo
+                case_tz = ZoneInfo(tz_name)
+            except Exception:
+                case_tz = None
+
     # 1. Manifest ACTIVE evidence
     manifest = manifest_evidence(db, case_id)
     if not manifest:
@@ -235,7 +248,7 @@ def execute_analysis_run(
     events_payload = [e.to_dict() for e in events]
 
     # 3. Generate T5 candidate relationships and T6 claims
-    claim_specs = generate_claims(events_payload)
+    claim_specs = generate_claims(events_payload, case_timezone=case_tz)
 
     # 4. Generate run_id and pre-build claim rows so every claim has its real content-addressed claim_id
     from app.db.runs import new_run_id, compute_assumptions_hash
@@ -434,7 +447,21 @@ def get_run_details(db: Session, run_id: str, verify: bool = False) -> dict[str,
                 assumptions=run.manifest.get("assumptions", {}),
                 templates=pres_templates,
             )
-            ranking_hash_verified = (replay_res.ranking_hash == run.ranking_hash)
+            snap_ranked = snapshot_data.get("ranked_hypotheses", [])
+            snap_ranking_summary = [
+                {"id": h.get("id"), "status": h.get("status"), "score": h.get("inconsistency_score"), "rank": h.get("rank")}
+                for h in snap_ranked
+            ]
+            snap_ranking_hash = hashlib.sha256(
+                json.dumps(snap_ranking_summary, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest() if snap_ranked else None
+            snap_hash_field = snapshot_data.get("ranking_hash")
+
+            ranking_hash_verified = (
+                replay_res.ranking_hash == run.ranking_hash
+                and (snap_ranking_hash == run.ranking_hash if snap_ranking_hash else True)
+                and (snap_hash_field == run.ranking_hash if snap_hash_field else True)
+            )
         except Exception as exc:
             logger.warning(f"Failed to verify ranking hash via replay for run '{run_id}': {exc}")
             ranking_hash_verified = False

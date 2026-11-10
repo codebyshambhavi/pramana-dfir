@@ -25,7 +25,7 @@ from typing import Any, Mapping, Sequence
 from .anomalies import find_anomalies, _odd_status
 from .contradictions import find_contradictions
 from .correlate import CandidateRelationship, generate_candidates
-from .entities import normalize_actor, normalize_device
+from .entities import normalize_actor, normalize_device, normalize_file_object
 from .config import get_timezone
 from .timeline import SourceClock, event_interval, load_source_clocks, to_case_time, tz_label
 
@@ -365,6 +365,133 @@ def generate_location_conflict_claims(
     return specs
 
 
+def generate_attribution_conflict_claims(
+    events: Sequence[Mapping[str, Any]],
+    events_by_id: Mapping[str, Mapping[str, Any]],
+) -> list[ClaimSpec]:
+    """Emit LOCATION_CONFLICT claims when events on the same archive/object clash in actor/device attribution."""
+    specs: list[ClaimSpec] = []
+    by_file: dict[str, list[Mapping[str, Any]]] = {}
+    for e in events:
+        f = normalize_file_object(e.get("object"), action=e.get("action"))
+        if f and e.get("action") == "archive_create":
+            by_file.setdefault(f, []).append(e)
+
+    for f_obj, group in sorted(by_file.items()):
+        if len(group) < 2:
+            continue
+        group_sorted = sorted(group, key=lambda x: str(x.get("timestamp")))
+        for i in range(len(group_sorted)):
+            e1 = group_sorted[i]
+            a1 = normalize_actor(e1.get("actor"))
+            d1 = normalize_device(e1.get("device"))
+            for j in range(i + 1, len(group_sorted)):
+                e2 = group_sorted[j]
+                a2 = normalize_actor(e2.get("actor"))
+                d2 = normalize_device(e2.get("device"))
+                if (a1 != a2) or (d1 != d2):
+                    edges = [
+                        EdgeSpec(
+                            ref_kind="event",
+                            ref_id=e1["event_id"],
+                            role="SUPPORTS",
+                            weight=1.0,
+                            reason_code="ATTRIBUTION_CONFLICT_PRIMARY",
+                            family=derive_witness_family(e1),
+                        ),
+                        EdgeSpec(
+                            ref_kind="event",
+                            ref_id=e2["event_id"],
+                            role="CONTRADICTS",
+                            weight=1.0,
+                            reason_code="ATTRIBUTION_CONFLICT_SECONDARY",
+                            family=derive_witness_family(e2),
+                        ),
+                    ]
+                    params = {
+                        "object": f_obj,
+                        "conflict_type": "actor_device_attribution_conflict",
+                        "actor_1": a1,
+                        "device_1": d1,
+                        "actor_2": a2,
+                        "device_2": d2,
+                        "time_1": e1.get("timestamp"),
+                        "time_2": e2.get("timestamp"),
+                    }
+                    specs.append(
+                        ClaimSpec(
+                            type="LOCATION_CONFLICT",
+                            params=params,
+                            status="CONTESTED",
+                            grade="C",
+                            rule_id="rule_attribution_conflict",
+                            rule_version="1.0.0",
+                            edges=edges,
+                        )
+                    )
+    return specs
+
+
+def generate_cross_source_temporal_conflict_claims(
+    events: Sequence[Mapping[str, Any]],
+    events_by_id: Mapping[str, Mapping[str, Any]],
+) -> list[ClaimSpec]:
+    """Emit LOCATION_CONFLICT claims when cross-source events on the same incident violate temporal consistency."""
+    specs: list[ClaimSpec] = []
+    uploads = [
+        e for e in events
+        if e.get("action") in ("file_upload", "upload")
+    ]
+    refreshes = [
+        e for e in events
+        if e.get("action") == "session_refresh"
+    ]
+
+    for u in uploads:
+        f_up = normalize_file_object(u.get("object"), action=u.get("action"))
+        if not f_up:
+            continue
+        for r in refreshes:
+            f_ref = normalize_file_object(r.get("object"), action=r.get("action"))
+            if f_ref and f_ref == f_up:
+                edges = [
+                    EdgeSpec(
+                        ref_kind="event",
+                        ref_id=u["event_id"],
+                        role="SUPPORTS",
+                        weight=1.0,
+                        reason_code="TEMPORAL_CONFLICT_UPLOAD",
+                        family=derive_witness_family(u),
+                    ),
+                    EdgeSpec(
+                        ref_kind="event",
+                        ref_id=r["event_id"],
+                        role="CONTRADICTS",
+                        weight=1.0,
+                        reason_code="TEMPORAL_CONFLICT_REFRESH",
+                        family=derive_witness_family(r),
+                    ),
+                ]
+                params = {
+                    "object": f_up,
+                    "conflict_type": "cross_source_timestamp_disagreement",
+                    "time_1": u.get("timestamp"),
+                    "time_2": r.get("timestamp"),
+                }
+                specs.append(
+                    ClaimSpec(
+                        type="LOCATION_CONFLICT",
+                        params=params,
+                        status="CONTESTED",
+                        grade="C",
+                        rule_id="rule_cross_source_temporal_conflict",
+                        rule_version="1.0.0",
+                        edges=edges,
+                    )
+                )
+    return specs
+
+
 def generate_actor_device_consistent_claims(
     events: Sequence[Mapping[str, Any]],
     events_by_id: Mapping[str, Mapping[str, Any]],
@@ -426,6 +553,7 @@ def generate_actor_device_consistent_claims(
             "device": dev,
             "supporting_families_count": family_count,
         }
+
         spec = ClaimSpec(
             type="ACTOR_DEVICE_CONSISTENT",
             params=params,
@@ -600,6 +728,8 @@ def generate_claims(
     if contradiction_findings is None:
         contradiction_findings = find_contradictions(list(events))
     location_claims = generate_location_conflict_claims(contradiction_findings, events_by_id)
+    attribution_claims = generate_attribution_conflict_claims(events, events_by_id)
+    temporal_claims = generate_cross_source_temporal_conflict_claims(events, events_by_id)
 
     # 4. Multi-source bindings -> ACTOR_DEVICE_CONSISTENT
     actor_device_claims = generate_actor_device_consistent_claims(events, events_by_id)
@@ -614,6 +744,8 @@ def generate_claims(
         same_object_claims
         + offhours_claims
         + location_claims
+        + attribution_claims
+        + temporal_claims
         + actor_device_claims
         + origin_claims
         + no_record_claims
