@@ -1,3 +1,4 @@
+
 // Role 4: Evidence Vault. Lists a case's evidence with hashes and custody, uploads new files, and opens a
 // detail panel per item. Data comes from an EvidenceSource: the live API by default, or labelled demo data.
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -16,7 +17,7 @@ import VaultToolbar, { type VaultFilters } from "../features/vault/components/Va
 import IntegrityStrip from "../features/vault/components/IntegrityStrip";
 import NetworkBackdrop from "../features/dashboard/components/NetworkBackdrop";
 import { Eyebrow, PANEL } from "../features/vault/components/ui";
-import { DEFAULT_CASE_ID, getEvidenceSource, resolveSourceKind } from "../features/vault/evidenceSource";
+import { DEFAULT_CASE_ID, RECORDED_CASE_ID, getEvidenceSource, resolveSourceKind } from "../features/vault/evidenceSource";
 import { useCopy, useEvidenceList } from "../features/vault/hooks";
 import { fileKind, isParsedKind, matchesQuery, type FileKind } from "../features/vault/model";
 import { storedTime } from "../lib/time";
@@ -41,9 +42,10 @@ const primaryButton =
   "inline-flex items-center gap-2 rounded-lg bg-alert px-4 py-2.5 text-[14px] font-medium text-white shadow-[0_0_22px_rgba(239,43,60,0.3)] transition hover:bg-[#ff3a4a]";
 
 export default function EvidenceVault() {
-  const { caseId = DEFAULT_CASE_ID } = useParams();
+  const routeParams = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const sourceKind = resolveSourceKind(searchParams.get("source"));
+  const caseId = sourceKind === "recorded" ? RECORDED_CASE_ID : routeParams.caseId ?? DEFAULT_CASE_ID;
   const toPath = useSourceLink();
   const source = useMemo(() => getEvidenceSource(sourceKind), [sourceKind]);
   const { state, reload, refresh } = useEvidenceList(source, caseId);
@@ -219,10 +221,12 @@ export default function EvidenceVault() {
               <div className="min-w-0 flex-1">
                 <VaultToolbar filters={filters} kinds={kinds} onChange={setFilters} />
               </div>
-              <button type="button" onClick={() => setUploadOpen(true)} className={`${primaryButton} h-11 justify-center`}>
-                <Upload size={17} />
-                Upload evidence
-              </button>
+              {sourceKind !== "recorded" && (
+                <button type="button" onClick={() => setUploadOpen(true)} className={`${primaryButton} h-11 justify-center`}>
+                  <Upload size={17} />
+                  Upload evidence
+                </button>
+              )}
             </div>
 
             <section aria-label="Evidence list" className={`relative mt-4 overflow-hidden ${PANEL}`}>
@@ -264,10 +268,12 @@ export default function EvidenceVault() {
                   title="No evidence in this case yet"
                   body={`Upload the first file to ${caseId}. It is hashed on intake and gets an evidence ID.`}
                 >
-                  <button type="button" onClick={() => setUploadOpen(true)} className={primaryButton}>
-                    <Upload size={16} />
-                    Upload evidence
-                  </button>
+                  {sourceKind !== "recorded" && (
+                    <button type="button" onClick={() => setUploadOpen(true)} className={primaryButton}>
+                      <Upload size={16} />
+                      Upload evidence
+                    </button>
+                  )}
                 </StateMessage>
               ) : state.status === "ready" && visible.length === 0 ? (
                 <StateMessage icon={<Filter size={26} />} title="No evidence matches" body="Try a different search or clear the filters.">
@@ -306,7 +312,7 @@ export default function EvidenceVault() {
 
             <p className="mt-4 flex flex-wrap items-center gap-x-2 text-[12.5px] text-muted">
               <span>
-                {sourceKind === "api" ? `Live API · ${API_URL} · case ${caseId}` : `Demo data · case ${caseId}`}
+                {sourceKind === "api" ? `Live API · ${API_URL} · case ${caseId}` : `${sourceKind === "recorded" ? "Recorded case" : "Demo data"} · case ${caseId}`}
               </span>
               {filtersActive && state.status === "ready" && <span>· {visible.length} of {items.length} shown</span>}
               {sourceKind === "api" && state.status !== "error" && (
@@ -326,6 +332,7 @@ export default function EvidenceVault() {
                 <EvidenceDetailDrawer
                   item={active}
                   isDemo={sourceKind === "demo"}
+                  isRecorded={sourceKind === "recorded"}
                   localCheck={localChecks.get(active.evidence_id)}
                   onClose={() => setActiveId(null)}
                   onChanged={sourceKind === "api" ? refresh : undefined}
@@ -336,7 +343,7 @@ export default function EvidenceVault() {
         </div>
       </div>
 
-      {uploadOpen && (
+      {uploadOpen && sourceKind !== "recorded" && (
         <UploadEvidenceModal
           source={source}
           caseId={caseId}

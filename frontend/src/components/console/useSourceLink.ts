@@ -5,14 +5,16 @@ import { useSearchParams } from "react-router-dom";
 
 export function useSourceLink() {
   const [params] = useSearchParams();
-  const demo = params.get("source") === "demo";
+  const source = params.get("source");
   return useCallback(
     (path: string, extra: Record<string, string> = {}) => {
       const query = new URLSearchParams(extra);
-      if (demo) query.set("source", "demo");
+      if (source === "demo" || source === "recorded") {
+        query.set("source", source);
+      }
       const qs = query.toString();
       return qs ? `${path}?${qs}` : path;
     },
-    [demo]
+    [source]
   );
 }

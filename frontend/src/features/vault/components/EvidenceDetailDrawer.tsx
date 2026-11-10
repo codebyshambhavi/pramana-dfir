@@ -102,12 +102,14 @@ function CustodyTimeline({ entries }: { entries: CustodyView[] }) {
 export default function EvidenceDetailDrawer({
   item,
   isDemo,
+  isRecorded = false,
   localCheck,
   onClose,
   onChanged
 }: {
   item: EvidenceItem;
   isDemo: boolean;
+  isRecorded?: boolean;
   localCheck?: LocalHashCheck;
   onClose: () => void;
   /** Live API only: reload the evidence list after a verify or tamper. */
@@ -185,6 +187,11 @@ export default function EvidenceDetailDrawer({
         aria-labelledby={`tab-${tab}`}
         className="relative flex-1 space-y-6 overflow-y-auto px-5 py-5"
       >
+        {isRecorded && (
+          <p className="rounded-lg border border-sky-300/25 bg-sky-300/[0.06] px-3 py-2 text-[12.5px] text-sky-100/90">
+            Recorded evidence from CASE-DEMO-IST. This view is read-only; integrity actions are unavailable.
+          </p>
+        )}
         {isDemo && (
           <p className="rounded-lg border border-amber-300/25 bg-amber-300/[0.06] px-3 py-2 text-[12.5px] text-amber-100/90">
             {localCheck
@@ -250,7 +257,7 @@ export default function EvidenceDetailDrawer({
                 </p>
               </div>
             </div>
-          ) : !isDemo && onChanged ? (
+          ) : !isDemo && !isRecorded && onChanged ? (
             <IntegrityPanel item={item} onChanged={onChanged} />
           ) : (
             <div className="mt-3 flex gap-3 rounded-lg border border-trace/20 bg-trace/[0.05] p-3.5">
