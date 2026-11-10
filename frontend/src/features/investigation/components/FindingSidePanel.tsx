@@ -37,9 +37,9 @@ export function CaseContext({ caseId, sourceKind, counts }: { caseId: string; so
   return (
     <Card title="Case context" icon={<Folder size={18} />}>
       <p className="text-[18px] font-semibold tracking-[-0.01em]">{caseId}</p>
-      <p className={`mt-1 flex items-center gap-1.5 text-[12px] ${sourceKind === "demo" ? "text-amber-200" : "text-teal-200"}`}>
+      <p className={`mt-1 flex items-center gap-1.5 text-[12px] ${sourceKind !== "api" ? "text-amber-200" : "text-teal-200"}`}>
         <Database size={13} />
-        {sourceKind === "demo" ? "Demo data · synthetic" : `Live API · ${API_URL}`}
+        {sourceKind === "demo" ? "Demo data · synthetic" : sourceKind === "recorded" ? "Recorded data · read-only" : `Live API · ${API_URL}`}
       </p>
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[13px]">
         {(
@@ -77,7 +77,7 @@ export function FindingSummary({
   const [save, setSave] = useState<Save>({ state: "idle" });
   useEffect(() => setSave({ state: "idle" }), [finding.finding_id]);
   const evidence = evidenceIdsFor(finding, index);
-  const demo = sourceKind === "demo";
+  const readOnly = sourceKind !== "api";
 
   const decide = async (status: "approved" | "rejected") => {
     setSave({ state: "saving", status });
@@ -134,7 +134,7 @@ export function FindingSummary({
         <div className="grid grid-cols-2 gap-2.5">
           <button
             type="button"
-            disabled={demo || save.state === "saving" || statusOf(finding) === "approved"}
+            disabled={readOnly || save.state === "saving" || statusOf(finding) === "approved"}
             onClick={() => decide("approved")}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-teal-400/45 bg-teal-400/10 px-3 py-2.5 text-[13.5px] text-teal-100 transition hover:bg-teal-400/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -143,7 +143,7 @@ export function FindingSummary({
           </button>
           <button
             type="button"
-            disabled={demo || save.state === "saving" || statusOf(finding) === "rejected"}
+            disabled={readOnly || save.state === "saving" || statusOf(finding) === "rejected"}
             onClick={() => decide("rejected")}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-alert/45 bg-alert/10 px-3 py-2.5 text-[13.5px] text-alert-soft transition hover:bg-alert/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -152,8 +152,10 @@ export function FindingSummary({
           </button>
         </div>
         <p role="status" className="mt-3 text-[12px] leading-relaxed text-soft/70">
-          {demo
-            ? "Demo data has no backend, so decisions can't be saved. In live mode these buttons call PATCH /findings/{id}."
+          {readOnly
+            ? sourceKind === "recorded"
+              ? "Recorded investigations are read-only, so review decisions cannot be saved."
+              : "Demo data has no backend, so decisions can't be saved. In live mode these buttons call PATCH /findings/{id}."
             : save.state === "saved"
               ? `Saved: the server recorded "${save.status}".`
               : save.state === "error"

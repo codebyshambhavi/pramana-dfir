@@ -1,6 +1,6 @@
 ﻿import { listEvidence, uploadEvidence } from "../../api/client";
 import type { EvidenceItem, EvidenceUploadResult } from "../../api/types";
-import { RECORDED_CASE_DEMO_IST } from "../../api/recorded/case-demo-ist";
+import { loadRecording } from "../../api/recorded/loadRecording";
 import { DEMO_EVIDENCE } from "./demoEvidence";
 import { sha256OfFile } from "./model";
 
@@ -59,7 +59,9 @@ const recordedSource: EvidenceSource = {
   kind: "recorded",
   async list(_caseId, signal) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-    return RECORDED_CASE_DEMO_IST.evidenceBefore.map(item => ({
+    const recording = await loadRecording();
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    return recording.evidenceBefore.map(item => ({
       ...item,
       custody: [...item.custody]
     }));
