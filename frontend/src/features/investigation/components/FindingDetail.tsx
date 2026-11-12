@@ -47,7 +47,7 @@ function useLineage(finding: Finding, index: CaseIndex, sourceKind: EvidenceSour
 function EvidenceTab({ finding, index, sourceKind }: { finding: Finding; index: CaseIndex; sourceKind: EvidenceSourceKind }) {
   const lineage = useLineage(finding, index, sourceKind);
   const toPath = useSourceLink();
-  if (lineage.status === "loading") return <div className="h-40 animate-pulse rounded-xl bg-white/[0.04]" aria-label="Loading lineage" />;
+  if (lineage.status === "loading") return <div className="h-40 animate-pulse rounded-xl bg-white/4" aria-label="Loading lineage" />;
   if (lineage.status === "error")
     return (
       <Empty>
@@ -65,7 +65,7 @@ function EvidenceTab({ finding, index, sourceKind }: { finding: Finding; index: 
             key={ev.evidence_id}
             className="group relative flex flex-col overflow-hidden rounded-xl border border-trace/30 bg-[linear-gradient(160deg,rgba(16,28,52,0.85),rgba(7,11,20,0.9))] p-4 shadow-[0_0_22px_-12px_rgba(59,140,255,0.7)] transition hover:border-trace/60"
           >
-            <span aria-hidden="true" className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-trace-soft/70 to-transparent" />
+            <span aria-hidden="true" className="absolute inset-x-5 top-0 h-px bg-linear-to-r from-transparent via-trace-soft/70 to-transparent" />
             <div className="flex items-center justify-between gap-2">
               <span className="text-[13px] font-semibold text-white">{ev.evidence_id}</span>
               <FileKindBadge kind={fileKind(ev.filename)} />
@@ -79,7 +79,7 @@ function EvidenceTab({ finding, index, sourceKind }: { finding: Finding; index: 
               </code>
               <CopyButton text={ev.sha256} label={`Copy SHA-256 of ${ev.evidence_id}`} />
             </span>
-            <ul className="mt-3 space-y-1.5 border-t border-white/[0.06] pt-3">
+            <ul className="mt-3 space-y-1.5 border-t border-white/6 pt-3">
               {events.map(e => {
                 const full = index.eventById.get(e.event_id);
                 return (
@@ -128,10 +128,10 @@ function AnalysisTab({ finding, index }: { finding: Finding; index: CaseIndex })
       <div>
         <p className="text-[13px] font-semibold text-white">Cited events ({cited.length})</p>
         <ol className="relative mt-3 space-y-3 pl-6">
-          <span aria-hidden="true" className="absolute top-1.5 bottom-1.5 left-[5px] w-px bg-trace/40" />
+          <span aria-hidden="true" className="absolute top-1.5 bottom-1.5 left-1.25 w-px bg-trace/40" />
           {cited.map(({ id, event }) => (
             <li key={id} className="relative text-[13px]">
-              <span aria-hidden="true" className="absolute top-1.5 -left-6 size-[11px] rounded-full border-2 border-trace bg-ink shadow-[0_0_8px_rgba(59,140,255,0.8)]" />
+              <span aria-hidden="true" className="absolute top-1.5 -left-6 size-2.75 rounded-full border-2 border-trace bg-ink shadow-[0_0_8px_rgba(59,140,255,0.8)]" />
               {event ? (
                 <>
                   <span className="text-soft/60 tabular-nums">
@@ -155,8 +155,8 @@ function AlternativesTab({ finding }: { finding: Finding }) {
   return (
     <ul className="space-y-3">
       {finding.alternatives.map(alt => (
-        <li key={alt.claim} className="rounded-xl border border-violet-400/25 bg-violet-500/[0.05] p-4">
-          <p className="text-[14px] text-white">{alt.claim}</p>
+        <li key={alt.claim} className="rounded-xl border border-violet-400/25 bg-violet-500/5 p-4">
+          <p className="wrap-break-word text-[14px] text-white">{alt.claim}</p>
           {alt.needed_evidence && alt.needed_evidence.length > 0 && (
             <p className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12px] text-soft/70">
               Would be settled by:
@@ -196,11 +196,11 @@ export default function FindingDetail({ finding, index, sourceKind }: { finding:
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[13px] text-soft/65 tabular-nums">{finding.finding_id}</span>
+            <span className="min-w-0 max-w-full break-all text-[13px] text-soft/65 tabular-nums" title={finding.finding_id}>{finding.finding_id}</span>
             <span className={`rounded-md border px-1.5 py-px text-[11.5px] ${TYPE_CHIP[finding.type] ?? TYPE_CHIP.hypothesis}`}>{TYPE_LABEL[finding.type]}</span>
             <StatusChip finding={finding} />
           </div>
-          <h2 className="mt-1.5 text-[20px] leading-snug font-semibold tracking-[-0.01em] text-white">{finding.claim}</h2>
+          <h2 className="mt-1.5 wrap-break-word text-[20px] leading-snug font-semibold tracking-[-0.01em] text-white">{finding.claim}</h2>
         </div>
       </header>
 
@@ -214,7 +214,7 @@ export default function FindingDetail({ finding, index, sourceKind }: { finding:
             onClick={() => setTab(key)}
             className={`relative shrink-0 pb-2.5 text-[13.5px] transition-colors ${
               tab === key
-                ? "text-white after:absolute after:inset-x-0 after:bottom-[-1px] after:h-[2px] after:bg-alert after:shadow-[0_0_10px_rgba(239,43,60,0.8)]"
+                ? "text-white after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-alert after:shadow-[0_0_10px_rgba(239,43,60,0.8)]"
                 : "text-soft/65 hover:text-white"
             }`}
           >
@@ -228,7 +228,7 @@ export default function FindingDetail({ finding, index, sourceKind }: { finding:
         {tab === "analysis" && <AnalysisTab finding={finding} index={index} />}
         {tab === "alternatives" && <AlternativesTab finding={finding} />}
         {tab === "notes" && (
-          <div className="flex gap-3 rounded-xl border border-trace/20 bg-trace/[0.04] p-4 text-[13px] text-soft/80">
+          <div className="flex gap-3 rounded-xl border border-trace/20 bg-trace/4 p-4 text-[13px] text-soft/80">
             <Info size={18} className="mt-px shrink-0 text-trace-soft" />
             <p>
               Analysis notes aren't part of the finding contract yet, and no endpoint stores them, so there's nowhere to save a note. Record

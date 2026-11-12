@@ -363,6 +363,8 @@ paths:
               $ref: '#/components/schemas/FindingStatusUpdatePayload'
             example:
               status: "approved"
+              reviewer_label: "Investigator A"
+              rationale: "Reviewed cited events and supporting evidence."
       responses:
         "200":
           description: Finding status successfully updated
@@ -373,6 +375,14 @@ paths:
               example:
                 finding_id: "F-0021"
                 status: "approved"
+                review:
+                  review_id: "REV-EXAMPLE"
+                  finding_id: "F-0021"
+                  decision: "approved"
+                  reviewer_label: "Investigator A"
+                  reviewer_identity_type: "self_declared"
+                  rationale: "Reviewed cited events and supporting evidence."
+                  decided_at: "2026-11-12T03:00:00+00:00"
         "404":
           description: Finding not found
           content:
@@ -387,6 +397,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+
+  /findings/{id}/reviews:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Unique identifier of the finding
+        schema:
+          type: string
+        example: "F-0021"
+    get:
+      summary: Retrieve append-only finding review history
+      operationId: listFindingReviews
+      tags:
+        - findings
+      responses:
+        "200":
+          description: Chronological review decisions; reviewer identity is self-declared
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FindingReviewDecision'
+        "404":
+          description: Finding not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /findings/{id}/lineage:
     parameters:
@@ -1294,8 +1334,17 @@ components:
         findings_created:
           type: integer
           example: 3
+        run_id:
+          type: string
+          nullable: true
+          example: "RUN-EXAMPLE"
+        claims_created:
+          type: integer
+          example: 4
       required:
         - findings_created
+        - run_id
+        - claims_created
 
     FindingAlternative:
       type: object
@@ -1373,10 +1422,23 @@ components:
       properties:
         status:
           type: string
-          enum: [approved, rejected, pending]
+          enum: [approved, rejected]
           example: "approved"
+        reviewer_label:
+          type: string
+          minLength: 2
+          maxLength: 120
+          description: Self-declared reviewer label; not authenticated identity.
+          example: "Investigator A"
+        rationale:
+          type: string
+          minLength: 5
+          maxLength: 4000
+          example: "Reviewed cited events and supporting evidence."
       required:
         - status
+        - reviewer_label
+        - rationale
 
     FindingStatusUpdate:
       type: object
@@ -1386,11 +1448,43 @@ components:
           example: "F-0021"
         status:
           type: string
-          enum: [approved, rejected, pending]
+          enum: [approved, rejected]
           example: "approved"
+        review:
+          $ref: '#/components/schemas/FindingReviewDecision'
       required:
         - finding_id
         - status
+        - review
+
+    FindingReviewDecision:
+      type: object
+      properties:
+        review_id:
+          type: string
+        finding_id:
+          type: string
+        decision:
+          type: string
+          enum: [approved, rejected]
+        reviewer_label:
+          type: string
+        reviewer_identity_type:
+          type: string
+          enum: [self_declared]
+        rationale:
+          type: string
+        decided_at:
+          type: string
+          format: date-time
+      required:
+        - review_id
+        - finding_id
+        - decision
+        - reviewer_label
+        - reviewer_identity_type
+        - rationale
+        - decided_at
 
     LineageEvent:
       type: object

@@ -28,7 +28,7 @@ const EMPTY_FILTERS: VaultFilters = { query: "", kind: "all", support: "all" };
 function StateMessage({ icon, title, body, children }: { icon: ReactNode; title: string; body: string; children?: ReactNode }) {
   return (
     <div className="flex flex-col items-center px-6 py-16 text-center">
-      <span className="flex size-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-soft/80">{icon}</span>
+      <span className="flex size-14 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-soft/80">{icon}</span>
       <p className="mt-4 text-[16px] font-semibold">{title}</p>
       <p className="mt-1.5 max-w-md text-[14px] text-soft/75">{body}</p>
       {children && <div className="mt-5 flex flex-wrap justify-center gap-2.5">{children}</div>}
@@ -176,7 +176,7 @@ export default function EvidenceVault() {
         </nav>
 
         {sourceKind === "demo" && (
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-amber-300/25 bg-amber-300/[0.06] px-4 py-2.5 text-[13px] text-amber-100/90">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-amber-300/25 bg-amber-300/6 px-4 py-2.5 text-[13px] text-amber-100/90">
             <Database size={16} className="text-amber-300" />
             <span>
               <strong className="font-semibold">Demo data.</strong> Synthetic records for UI development; none of it came from the backend.
@@ -190,8 +190,8 @@ export default function EvidenceVault() {
         <div className={`mt-6 grid gap-6 ${active ? "xl:grid-cols-[minmax(0,1fr)_400px]" : ""}`}>
           <div className="relative min-w-0">
             <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-              <div className="absolute top-[30%] left-[-4%] h-[360px] w-[45%] rounded-full bg-trace/[0.08] blur-[100px]" />
-              <div className="absolute top-[45%] right-[-2%] h-[320px] w-[35%] rounded-full bg-alert/[0.06] blur-[100px]" />
+              <div className="absolute top-[30%] left-[-4%] h-90 w-[45%] rounded-full bg-trace/8 blur-[100px]" />
+              <div className="absolute top-[45%] right-[-2%] h-80 w-[35%] rounded-full bg-alert/6 blur-[100px]" />
             </div>
             <header className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               {/* Red/blue particle network behind the hero, kept clear of the heading. */}
@@ -203,16 +203,16 @@ export default function EvidenceVault() {
               </div>
               <div className="relative [text-shadow:0_2px_18px_rgba(5,7,12,0.9)]">
                 <Eyebrow>
-                  EVIDENCE VAULT <span className="ml-1.5 inline-block size-[5px] -translate-y-0.5 rounded-full bg-alert align-middle" />
+                  EVIDENCE VAULT <span className="ml-1.5 inline-block size-1.25 -translate-y-0.5 rounded-full bg-alert align-middle" />
                 </Eyebrow>
-                <h1 className="mt-3 text-[clamp(2.3rem,4vw,3.75rem)] leading-[1.04] font-bold tracking-[-0.025em]">
+                <h1 className="mt-3 text-[clamp(2.3rem,4vw,3.75rem)] leading-[1.04] font-bold tracking-tight">
                   Secure. <span className="text-alert drop-shadow-[0_0_20px_rgba(239,43,60,0.45)]">Verify.</span> Trace.
                 </h1>
-                <p className="mt-3.5 max-w-[560px] text-[16.5px] leading-relaxed text-soft/85">
+                <p className="mt-3.5 max-w-140 text-[16.5px] leading-relaxed text-soft/85">
                   Every file is hashed at intake and carries its chain of custody, so each finding can be traced back to the original bytes.
                 </p>
               </div>
-              <div className="relative w-full lg:w-[460px] xl:w-[500px]">
+              <div className="relative w-full lg:w-115 xl:w-125">
                 <SummaryCards counts={state.status === "error" ? null : counts} />
               </div>
             </header>
@@ -230,9 +230,9 @@ export default function EvidenceVault() {
             </div>
 
             <section aria-label="Evidence list" className={`relative mt-4 overflow-hidden ${PANEL}`}>
-              <span aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 z-10 h-px bg-gradient-to-r from-transparent via-trace-soft/60 to-transparent" />
+              <span aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 z-10 h-px bg-linear-to-r from-transparent via-trace-soft/60 to-transparent" />
               {selected.size > 0 && (
-                <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.07] bg-trace/[0.06] px-4 py-2.5 text-[13.5px] sm:px-5">
+                <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.07] bg-trace/6 px-4 py-2.5 text-[13.5px] sm:px-5">
                   <span>
                     {selected.size} selected
                   </span>
@@ -295,7 +295,7 @@ export default function EvidenceVault() {
                     onOpen={setActiveId}
                   />
                   {state.status === "ready" && (
-                    <div className="border-t border-white/[0.06]">
+                    <div className="border-t border-white/6">
                       <Pagination
                         page={current}
                         pages={pages}
@@ -328,7 +328,7 @@ export default function EvidenceVault() {
           {active && (
             <>
               <div className="fixed inset-0 z-40 bg-black/60 xl:hidden" onClick={() => setActiveId(null)} aria-hidden="true" />
-              <div className="fixed inset-y-0 right-0 z-40 w-full max-w-[440px] xl:sticky xl:top-5 xl:z-auto xl:h-[calc(100vh-108px)] xl:max-w-none">
+              <div className="fixed inset-y-0 right-0 z-40 w-full max-w-110 xl:sticky xl:top-5 xl:z-auto xl:h-[calc(100vh-108px)] xl:max-w-none">
                 <EvidenceDetailDrawer
                   item={active}
                   isDemo={sourceKind === "demo"}

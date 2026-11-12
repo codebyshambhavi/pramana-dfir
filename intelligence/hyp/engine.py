@@ -575,9 +575,21 @@ def _claim_to_dict(c: Any) -> dict[str, Any]:
 def _matches_item(
     item: TemplateItem,
     claim: dict[str, Any],
+    events_by_id: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> bool:
     if claim.get("type") != item.claim_type:
         return False
+    if item.source_kind and events_by_id is not None:
+        expected_source_kind = _normalize_source_kind(item.source_kind)
+        claim_events = _extract_claim_events(claim, events_by_id)
+        provenance_kinds = {
+            _normalize_source_kind(str(value))
+            for event in claim_events
+            for value in (event.get("source"), event.get("family"))
+            if isinstance(value, str) and value.strip()
+        }
+        if expected_source_kind not in provenance_kinds:
+            return False
     if item.params:
         c_params = claim.get("params") or {}
         for k, v in item.params.items():
@@ -790,7 +802,7 @@ def evaluate_hypotheses(
 
         # 1. Evaluate REQUIRES
         for item in tmpl.requires:
-            matching_ev = [c for c in evidence_claims if _matches_item(item, c)]
+            matching_ev = [c for c in evidence_claims if _matches_item(item, c, events_by_id)]
             matching_assumed = [c for c in assumed_claims if _matches_item(item, c)]
             family = _derive_witness_family(
                 item,
@@ -866,7 +878,7 @@ def evaluate_hypotheses(
 
         # 2. Evaluate EXPECTS
         for item in tmpl.expects:
-            matching_ev = [c for c in evidence_claims if _matches_item(item, c)]
+            matching_ev = [c for c in evidence_claims if _matches_item(item, c, events_by_id)]
             matching_assumed = [c for c in assumed_claims if _matches_item(item, c)]
             family = _derive_witness_family(
                 item,
@@ -1151,8 +1163,21 @@ def evaluate_hypotheses(
             if len(evaluated_hypotheses) > 1:
                 second = evaluated_hypotheses[1]
                 score_delta = second.inconsistency_score - top.inconsistency_score
-                # Top leads if second is REFUTED or WEAKENED or top beats second by margin
-                if second.status in (STATUS_REFUTED, STATUS_WEAKENED) or score_delta >= margin:
+                second_diag_satisfied = sum(
+                    1 for e in second.evaluations
+                    if e.state == STATE_SATISFIED and e.diagnostic
+                )
+                # A unique diagnostic item breaks an otherwise equal score tie.
+                # Equal diagnostic support remains undetermined.
+                diagnostic_delta_breaks_tie = (
+                    score_delta == 0
+                    and diag_satisfied > second_diag_satisfied
+                )
+                if (
+                    second.status in (STATUS_REFUTED, STATUS_WEAKENED)
+                    or score_delta >= margin
+                    or diagnostic_delta_breaks_tie
+                ):
                     top.status = STATUS_LEADING
                     outcome = STATUS_LEADING
                 else:

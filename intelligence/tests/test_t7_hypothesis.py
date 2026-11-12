@@ -122,7 +122,9 @@ def test_golden_case_h1_insider_exfiltration_plausible():
     h2 = next(h for h in result.ranked_hypotheses if h.id == "H2")
     assert h2.status != STATUS_REFUTED
     assert h2.hard_violations_count == 0
-    assert h2.inconsistency_score == 0.0
+    # The chat event is not evidence for C1/C2, so H2's chat-specific
+    # expectation is MISSING rather than satisfied by unrelated case evidence.
+    assert h2.inconsistency_score == 0.25
 
     # H3 lacks session origin mismatch
     h3 = next(h for h in result.ranked_hypotheses if h.id == "H3")
@@ -150,7 +152,8 @@ def test_golden_case_h2_sanctioned_backup_leading():
     result = evaluate_hypotheses(claims, events)
 
     h2 = next(h for h in result.ranked_hypotheses if h.id == "H2")
-    assert h2.inconsistency_score == 0.0
+    # No chat-backed claim exists, so H2's chat-specific expectation is MISSING.
+    assert h2.inconsistency_score == 0.25
     assert h2.hard_violations_count == 0
 
     # H1 expects off-hours session. Since system_log covers this window, it is MISSING -> penalized

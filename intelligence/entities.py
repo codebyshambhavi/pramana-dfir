@@ -18,7 +18,10 @@ from typing import Any, Mapping
 from urllib.parse import unquote, urlparse
 
 _HEX_HASH_PATTERN = re.compile(r"^[0-9a-fA-F]{32}$|^[0-9a-fA-F]{40}$|^[0-9a-fA-F]{64}$")
+_PERCEPTUAL_HASH_PATTERN = re.compile(r"^[0-9a-fA-F]{16}$")
+_SHORT_HEX_IDENTIFIER_PATTERN = re.compile(r"^[0-9a-fA-F]{1,31}$")
 _MULTI_WS = re.compile(r"\s+")
+_PLACEHOLDER_IDENTIFIERS = frozenset({"unknown", "none", "null", "n/a"})
 
 
 def normalize_actor(raw: str | None) -> str | None:
@@ -93,9 +96,17 @@ def normalize_file_object(raw: str | None, action: str | None = None) -> str | N
     if not val:
         return None
 
-    # Check for direct cryptographic / perceptual hash
-    if _HEX_HASH_PATTERN.match(val):
+    # A complete cryptographic digest is an exact file identifier.  Short
+    # hexadecimal values are neither cryptographic content hashes nor safe
+    # object keys: notably, a 16-character value has perceptual-hash shape.
+    if _HEX_HASH_PATTERN.fullmatch(val):
         return val.lower()
+    if (
+        val.lower() in _PLACEHOLDER_IDENTIFIERS
+        or _PERCEPTUAL_HASH_PATTERN.fullmatch(val)
+        or _SHORT_HEX_IDENTIFIER_PATTERN.fullmatch(val)
+    ):
+        return None
 
     # Check if a prose string contains a referenced filename pattern (e.g. "Discussed CASE-001.tar.gz")
     file_match = re.search(
@@ -139,8 +150,11 @@ def extract_content_hash(event: Mapping[str, Any]) -> str | None:
     """Extract content hash from an event's object or raw metadata.
 
     Inspects:
-    1. event.object (if 64-char hex or 32-char hex)
-    2. event.raw.content_hash, event.raw.sha256, or event.raw.perceptual_hash
+    1. event.object (if 32-, 40-, or 64-character hex)
+    2. event.raw.content_hash, event.raw.file_sha256, or event.raw.sha256
+    Perceptual hashes are intentionally excluded: they describe visual similarity,
+    not byte-identical file content or a shared file/object identifier. They must
+    be handled by a dedicated image-similarity signal, never SAME_OBJECT_FLOW.
     Note: Does NOT return event.sha256 (the evidence source file hash).
     """
     obj = event.get("object")
@@ -149,11 +163,11 @@ def extract_content_hash(event: Mapping[str, Any]) -> str | None:
 
     raw = event.get("raw")
     if isinstance(raw, dict):
-        for key in ("content_hash", "file_sha256", "sha256", "perceptual_hash"):
+        for key in ("content_hash", "file_sha256", "sha256"):
             val = raw.get(key)
             if isinstance(val, str) and val.strip():
                 clean = val.strip().lower()
-                if _HEX_HASH_PATTERN.match(clean) or len(clean) >= 8:
+                if _HEX_HASH_PATTERN.fullmatch(clean):
                     return clean
 
     return None

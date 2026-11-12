@@ -118,10 +118,11 @@ def find_anomalies(
             confidence = _CONFIDENCE_BOUNDARY
 
         reasoning = (
-            f"Event {event.event_id} ({event.source}:{event.action}) has raw timestamp "
-            f"{event.timestamp.isoformat()}Z (UTC), which is {raw_local:%Y-%m-%d %H:%M:%S} {zone} "
-            f"local time. The odd-hours rule applies only to login/session events and is "
-            f"evaluated in the case timezone ({zone}), window {window}.{clock_note}"
+            f"A {event.action or 'login/session'} activity from {event.source or 'an unknown source'} "
+            f"was recorded at {event.timestamp.isoformat()} UTC, which is "
+            f"{raw_local:%Y-%m-%d %H:%M:%S} {zone} local time. The odd-hours "
+            f"rule applies only to login/session events and is evaluated in "
+            f"the case timezone ({zone}), window {window}.{clock_note}"
         )
 
         findings.append(

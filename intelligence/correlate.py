@@ -582,16 +582,30 @@ def correlate(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             rule_id = "same_object_within_10m"
             window_spec = 10
 
+        action_labels = {
+            "archive_create": "archive creation",
+            "file_upload": "file upload",
+            "login": "login",
+            "session_start": "session start",
+        }
+        raw_action1 = str(e1.get("action") or "activity")
+        raw_action2 = str(e2.get("action") or "activity")
+        action1 = action_labels.get(raw_action1, raw_action1.replace("_", " "))
+        action2 = action_labels.get(raw_action2, raw_action2.replace("_", " "))
+        source1 = str(e1.get("source") or "source")
+        source2 = str(e2.get("source") or "source")
+        delta_minutes = cand.temporal_delta / 60.0
         claim = (
-            f"Two events refer to the same object ({display_obj!r}) "
-            f"and occurred within {window_spec} minutes."
+            f"The file '{display_obj}' appears in {action1} ({source1}) "
+            f"and {action2} ({source2}) {delta_minutes:.1f} minutes apart."
         )
         reasoning = (
-            f"Event {e1['event_id']} ({e1.get('source')}:{e1.get('action')}) and "
-            f"Event {e2['event_id']} ({e2.get('source')}:{e2.get('action')}) both reference "
-            f"object {display_obj!r} (event objects: {e1.get('object')!r} and {e2.get('object')!r}). "
-            f"Their timestamps differ by {cand.temporal_delta / 60.0:.1f} minutes, "
-            f"which is within the {window_spec}-minute correlation window."
+            f"Both events reference the same object, '{display_obj}'. The first "
+            f"was recorded by {source1} ({action1}); the second by {source2} "
+            f"({action2}). Their timestamps are {delta_minutes:.1f} minutes "
+            f"apart, within the {window_spec}-minute correlation window. "
+            f"This establishes a temporal/object correlation, not by itself "
+            f"that the activity was unauthorized."
         )
 
         finding = common.make_finding(
