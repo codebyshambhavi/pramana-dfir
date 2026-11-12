@@ -9,12 +9,13 @@ Endpoints:
 from __future__ import annotations
 
 import os
+import uuid
 from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.db.models import Case, EventModel, FindingModel
+from app.db.models import Case, EventModel, FindingModel, FindingReviewDecision
 from app.db.runs import create_analysis_run, manifest_evidence
 from app.db.session import get_db
 from app.reports.lineage import get_finding_lineage
@@ -26,7 +27,9 @@ router = APIRouter(tags=["findings"])
 
 
 class FindingStatusUpdatePayload(BaseModel):
-    status: Literal["approved", "rejected", "pending"] = Field(..., examples=["approved"])
+    status: Literal["approved", "rejected"] = Field(..., examples=["approved"])
+    reviewer_label: str = Field(..., min_length=2, max_length=120)
+    rationale: str = Field(..., min_length=5, max_length=4000)
 
 
 @router.post(
@@ -114,26 +117,48 @@ def list_case_findings(id: str, db: Session = Depends(get_db)) -> list[dict[str,
 
 @router.patch(
     "/findings/{id}",
-    summary="Investigator approves or rejects a finding",
+    summary="Append an investigator review decision",
 )
 def update_finding_status(
     id: str,
     payload: FindingStatusUpdatePayload,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Update human review status of a finding (pending, approved, or rejected)."""
+    """Append a review decision. Reviewer labels are self-declared, not authenticated identities."""
     finding = db.query(FindingModel).filter(FindingModel.finding_id == id).first()
     if not finding:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Finding '{id}' not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Finding '{id}' not found")
 
+    reviewer = payload.reviewer_label.strip()
+    rationale = payload.rationale.strip()
+    if len(reviewer) < 2 or len(rationale) < 5:
+        raise HTTPException(status_code=422, detail="Reviewer label and rationale must contain meaningful text")
+
+    decision = FindingReviewDecision(
+        review_id=f"REV-{uuid.uuid4().hex.upper()}",
+        finding_id=id,
+        decision=payload.status,
+        reviewer_label=reviewer,
+        reviewer_identity_type="self_declared",
+        rationale=rationale,
+    )
+    db.add(decision)
     finding.status = payload.status
     db.commit()
-    db.refresh(finding)
+    db.refresh(decision)
+    return {"finding_id": finding.finding_id, "status": finding.status, "review": decision.to_dict()}
 
-    return {"finding_id": finding.finding_id, "status": finding.status}
+
+@router.get("/findings/{id}/reviews", summary="Append-only review decision history")
+def list_finding_reviews(id: str, db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    finding = db.query(FindingModel).filter(FindingModel.finding_id == id).first()
+    if not finding:
+        raise HTTPException(status_code=404, detail=f"Finding '{id}' not found")
+    rows = (db.query(FindingReviewDecision)
+            .filter(FindingReviewDecision.finding_id == id)
+            .order_by(FindingReviewDecision.decided_at.asc(), FindingReviewDecision.review_id.asc())
+            .all())
+    return [row.to_dict() for row in rows]
 
 
 @router.get(

@@ -18,6 +18,7 @@ Multiple events from the same family count ONCE toward independence.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
@@ -66,6 +67,35 @@ CLAIM_TYPES = (
 CLAIM_STATUSES = ("ASSERTED", "CORROBORATED", "CONTESTED", "REFUTED", "ASSUMED")
 CLAIM_GRADES = ("A", "B", "C")
 EDGE_ROLES = ("SUPPORTS", "CONTRADICTS")
+_PLACEHOLDER_IDENTIFIERS = frozenset({"unknown", "none", "null", "n/a"})
+_CRYPTOGRAPHIC_HASH_PATTERN = re.compile(r"^[0-9a-fA-F]{32}$|^[0-9a-fA-F]{40}$|^[0-9a-fA-F]{64}$")
+_SHORT_HEX_IDENTIFIER_PATTERN = re.compile(r"^[0-9a-fA-F]{1,31}$")
+
+
+def _valid_shared_object(value: Any) -> str | None:
+    """Return an exact object identifier safe for SAME_OBJECT_FLOW.
+
+    Promoted links normally contain values from ``normalize_file_object``, but
+    claims are also generated from persisted/imported link records.  Reject
+    placeholders and short hexadecimal values here as a second provenance
+    boundary so they cannot become object-flow evidence.
+    """
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if not normalized or normalized.lower() in _PLACEHOLDER_IDENTIFIERS:
+        return None
+    if _SHORT_HEX_IDENTIFIER_PATTERN.fullmatch(normalized):
+        return None
+    return normalized
+
+
+def _valid_shared_content_hash(value: Any) -> str | None:
+    """Return a canonical cryptographic content hash, excluding perceptual hashes."""
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().lower()
+    return normalized if _CRYPTOGRAPHIC_HASH_PATTERN.fullmatch(normalized) else None
 
 
 def derive_witness_family(event: Mapping[str, Any]) -> str:
@@ -144,6 +174,14 @@ def generate_same_object_flow_claims(
     specs: list[ClaimSpec] = []
 
     for link in promoted_links:
+        # Object-flow claims require a strong, exact shared identifier.
+        if link.candidate_type != "SAME_OBJECT_FLOW":
+            continue
+        shared_obj = _valid_shared_object(link.canonical_entities.get("shared_object"))
+        shared_hash = _valid_shared_content_hash(link.canonical_entities.get("shared_content_hash"))
+        exact_identifier = shared_obj or shared_hash
+        if exact_identifier is None:
+            continue
         e1 = events_by_id.get(link.source_event_id)
         e2 = events_by_id.get(link.target_event_id)
         if not e1 or not e2:
@@ -152,10 +190,7 @@ def generate_same_object_flow_claims(
         fam1 = derive_witness_family(e1)
         fam2 = derive_witness_family(e2)
 
-        has_exact = bool(
-            link.canonical_entities.get("shared_object")
-            or link.canonical_entities.get("shared_content_hash")
-        )
+        has_exact = exact_identifier is not None
         has_contradiction = len(link.contradiction_signals) > 0
 
         edges = [
@@ -181,14 +216,8 @@ def generate_same_object_flow_claims(
         status = determine_claim_status(fam_count, has_contradiction)
         grade = determine_claim_grade(status, fam_count, has_exact)
 
-        shared_obj = (
-            link.canonical_entities.get("shared_object")
-            or link.canonical_entities.get("shared_content_hash")
-            or "unknown"
-        )
-
         params = {
-            "object": shared_obj,
+            "object": exact_identifier,
             "source_action": e1.get("action"),
             "target_action": e2.get("action"),
             "source_event_id": e1["event_id"],

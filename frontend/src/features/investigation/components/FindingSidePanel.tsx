@@ -4,8 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Check, Close, Database, Folder, Shield } from "../../../components/console/icons";
 import { useSourceLink } from "../../../components/console/useSourceLink";
-import { API_URL, updateFindingStatus } from "../../../api/client";
-import type { Finding } from "../../../api/types";
+import { API_URL, listFindingReviews, updateFindingStatus } from "../../../api/client";
+import type { Finding, FindingReviewDecision } from "../../../api/types";
 import { StatusChip, statusOf } from "../../dashboard/components/FindingsPanel";
 import { GLASS } from "../../dashboard/components/ui";
 import type { EvidenceSourceKind } from "../../vault/evidenceSource";
@@ -36,7 +36,7 @@ const count = (n: number | null) => (n === null ? "—" : n);
 export function CaseContext({ caseId, sourceKind, counts }: { caseId: string; sourceKind: EvidenceSourceKind; counts: CaseCounts }) {
   return (
     <Card title="Case context" icon={<Folder size={18} />}>
-      <p className="text-[18px] font-semibold tracking-[-0.01em]">{caseId}</p>
+      <p className="min-w-0 max-w-full break-all text-[18px] font-semibold tracking-[-0.01em]" title={caseId}>{caseId}</p>
       <p className={`mt-1 flex items-center gap-1.5 text-[12px] ${sourceKind !== "api" ? "text-amber-200" : "text-teal-200"}`}>
         <Database size={13} />
         {sourceKind === "demo" ? "Demo data · synthetic" : sourceKind === "recorded" ? "Recorded data · read-only" : `Live API · ${API_URL}`}
@@ -75,17 +75,41 @@ export function FindingSummary({
 }) {
   const toPath = useSourceLink();
   const [save, setSave] = useState<Save>({ state: "idle" });
-  useEffect(() => setSave({ state: "idle" }), [finding.finding_id]);
+  const [reviewerLabel, setReviewerLabel] = useState("");
+  const [rationale, setRationale] = useState("");
+  const [reviews, setReviews] = useState<FindingReviewDecision[]>([]);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  useEffect(() => {
+    setSave({ state: "idle" });
+    setRationale("");
+    setReviews([]);
+    setReviewsError(null);
+    if (sourceKind !== "api") return undefined;
+    const controller = new AbortController();
+    listFindingReviews(finding.finding_id, controller.signal)
+      .then(setReviews)
+      .catch(error => {
+        if (!controller.signal.aborted) setReviewsError(error instanceof Error ? error.message : "Review history unavailable");
+      });
+    return () => controller.abort();
+  }, [finding.finding_id, sourceKind]);
   const evidence = evidenceIdsFor(finding, index);
   const readOnly = sourceKind !== "api";
 
   const decide = async (status: "approved" | "rejected") => {
     setSave({ state: "saving", status });
     try {
-      const result = await updateFindingStatus(finding.finding_id, status);
+      const result = await updateFindingStatus(finding.finding_id, status, reviewerLabel.trim(), rationale.trim());
       // Show what the server says it stored; the mock may echo a different example ID, so key on ours.
       onStatus(finding.finding_id, result.status ?? status);
       setSave({ state: "saved", status: result.status ?? status });
+      try {
+        const history = await listFindingReviews(finding.finding_id);
+        setReviews(history);
+        setReviewsError(null);
+      } catch (historyError) {
+        setReviewsError(historyError instanceof Error ? historyError.message : "Review history refresh failed");
+      }
     } catch (error) {
       setSave({ state: "error", message: error instanceof Error ? error.message : "The decision was not saved." });
     }
@@ -131,10 +155,14 @@ export function FindingSummary({
       </Card>
 
       <Card title="Review" icon={<Check size={18} />}>
+        <label className="mb-2 block text-[12px] text-soft/75" htmlFor="reviewer-label">Reviewer name (self-declared)</label>
+        <input id="reviewer-label" value={reviewerLabel} onChange={event => setReviewerLabel(event.target.value)} maxLength={120} placeholder="Name of reviewing investigator" disabled={readOnly || save.state === "saving"} className="mb-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[13px] text-white placeholder:text-soft/40" />
+        <label className="mb-2 block text-[12px] text-soft/75" htmlFor="review-rationale">Review rationale</label>
+        <textarea id="review-rationale" value={rationale} onChange={event => setRationale(event.target.value)} maxLength={4000} rows={3} placeholder="Explain the basis for this decision" disabled={readOnly || save.state === "saving"} className="mb-3 w-full resize-y rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[13px] text-white placeholder:text-soft/40" />
         <div className="grid grid-cols-2 gap-2.5">
           <button
             type="button"
-            disabled={readOnly || save.state === "saving" || statusOf(finding) === "approved"}
+            disabled={readOnly || save.state === "saving" || statusOf(finding) === "approved" || reviewerLabel.trim().length < 2 || rationale.trim().length < 5}
             onClick={() => decide("approved")}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-teal-400/45 bg-teal-400/10 px-3 py-2.5 text-[13.5px] text-teal-100 transition hover:bg-teal-400/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -143,7 +171,7 @@ export function FindingSummary({
           </button>
           <button
             type="button"
-            disabled={readOnly || save.state === "saving" || statusOf(finding) === "rejected"}
+            disabled={readOnly || save.state === "saving" || statusOf(finding) === "rejected" || reviewerLabel.trim().length < 2 || rationale.trim().length < 5}
             onClick={() => decide("rejected")}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-alert/45 bg-alert/10 px-3 py-2.5 text-[13.5px] text-alert-soft transition hover:bg-alert/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -160,8 +188,27 @@ export function FindingSummary({
               ? `Saved: the server recorded "${save.status}".`
               : save.state === "error"
                 ? <span className="text-alert-soft">{save.message}</span>
-                : "Decisions are sent to PATCH /findings/{id} and shown once the server confirms them."}
+                : "Decisions are recorded in append-only review history. Reviewer names are self-declared; authentication is not yet implemented."}
         </p>
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <h3 className="text-[12px] font-semibold uppercase tracking-wide text-soft/75">Decision history</h3>
+          {reviewsError ? <p className="mt-2 text-[12px] text-alert-soft">{reviewsError}</p> : reviews.length === 0 ? (
+            <p className="mt-2 text-[12px] text-soft/55">No review decisions recorded.</p>
+          ) : (
+            <ol className="mt-2 space-y-3">
+              {reviews.map(review => (
+                <li key={review.review_id} className="rounded-lg border border-white/10 bg-black/15 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className={`text-[12px] font-semibold ${review.decision === "approved" ? "text-teal-200" : "text-alert-soft"}`}>{review.decision.toUpperCase()}</span>
+                    <time className="text-[11px] text-soft/55" dateTime={review.decided_at}>{new Date(review.decided_at).toLocaleString()}</time>
+                  </div>
+                  <p className="mt-1 text-[12px] text-white">{review.reviewer_label} <span className="text-soft/55">· self-declared</span></p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-[12px] leading-relaxed text-soft/75">{review.rationale}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       </Card>
     </>
   );

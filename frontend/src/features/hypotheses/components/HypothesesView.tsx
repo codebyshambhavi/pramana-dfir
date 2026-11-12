@@ -84,10 +84,10 @@ function RunHeader({ loaded }: { loaded: LoadedRun }) {
         <span className="rounded-md border border-violet-400/35 bg-violet-400/10 px-2 py-0.5 text-[12px] text-violet-200">Recorded real run</span>
       )}
       <span>
-        Case <span className="text-white">{run.case_id}</span>
+        Case <span className="break-all text-white" title={run.case_id}>{run.case_id}</span>
       </span>
       <span>
-        Run <span className="text-white tabular-nums">{run.run_id}</span>
+        Run <span className="break-all text-white tabular-nums" title={run.run_id}>{run.run_id}</span>
       </span>
       {run.created_at && <Stamp iso={run.created_at} />}
       <span>
@@ -132,8 +132,8 @@ function RankedList({ hypotheses, selectedId, onSelect }: { hypotheses: RankedHy
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2">
-                  <span className="text-[14.5px] font-semibold text-white">{h.name}</span>
-                  <span className="text-[12px] text-soft/55 tabular-nums">{h.id}</span>
+                  <span className="break-words text-[14.5px] font-semibold text-white">{h.name}</span>
+                  <span className="break-all text-[12px] text-soft/55 tabular-nums" title={h.id}>{h.id}</span>
                   <HypothesisChip status={h.status} />
                 </span>
                 <span className="mt-1 block text-[12.5px] leading-snug text-soft/75">{h.description}</span>

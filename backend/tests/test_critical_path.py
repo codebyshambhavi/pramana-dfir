@@ -15,8 +15,9 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
-from app.db.models import CustodyEntry
+from app.db.models import CustodyEntry, FindingReviewDecision
 from app.db.session import verify_custody_log
 
 
@@ -116,12 +117,49 @@ def test_critical_path_end_to_end(client: TestClient, db_session: Session):
     assert target_finding["status"] == "pending"
 
     # 9. Review and Approve Finding
-    res_patch = client.patch(f"/findings/{finding_id}", json={"status": "approved"})
+    res_patch = client.patch(f"/findings/{finding_id}", json={
+        "status": "approved", "reviewer_label": "Test Investigator", "rationale": "Reviewed cited events and supporting evidence."
+    })
     assert res_patch.status_code == 200
-    assert res_patch.json() == {"finding_id": finding_id, "status": "approved"}
+    patch_data = res_patch.json()
+    assert patch_data["finding_id"] == finding_id and patch_data["status"] == "approved"
+    assert patch_data["review"]["reviewer_identity_type"] == "self_declared"
+    assert patch_data["review"]["decided_at"].endswith("+00:00")
+    history = client.get(f"/findings/{finding_id}/reviews")
+    assert history.status_code == 200 and len(history.json()) == 1
+    assert history.json()[0]["rationale"] == "Reviewed cited events and supporting evidence."
+
+    # A later reversal is a new immutable decision, not an overwrite.
+    res_reversal = client.patch(f"/findings/{finding_id}", json={
+        "status": "rejected", "reviewer_label": "Test Investigator", "rationale": "Re-review found the initial interpretation unsupported."
+    })
+    assert res_reversal.status_code == 200
+    history = client.get(f"/findings/{finding_id}/reviews")
+    assert history.status_code == 200 and len(history.json()) == 2
+    assert [item["decision"] for item in history.json()] == ["approved", "rejected"]
+    assert history.json()[0]["review_id"] != history.json()[1]["review_id"]
+
+    res_reapprove = client.patch(f"/findings/{finding_id}", json={
+        "status": "approved", "reviewer_label": "Test Investigator", "rationale": "Final review confirms the evidence linkage."
+    })
+    assert res_reapprove.status_code == 200
+    history = client.get(f"/findings/{finding_id}/reviews").json()
+    assert [item["decision"] for item in history] == ["approved", "rejected", "approved"]
+
+    # Review decisions are protected by database-level append-only triggers.
+    review_row = db_session.query(FindingReviewDecision).filter_by(finding_id=finding_id).first()
+    review_row.rationale = "tampered rationale"
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+    review_row = db_session.query(FindingReviewDecision).filter_by(finding_id=finding_id).first()
+    db_session.delete(review_row)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
 
     # Invalid status returns 422
-    res_bad_patch = client.patch(f"/findings/{finding_id}", json={"status": "invalid_status"})
+    res_bad_patch = client.patch(f"/findings/{finding_id}", json={"status": "invalid_status", "reviewer_label": "Test Investigator", "rationale": "Invalid status test rationale."})
     assert res_bad_patch.status_code == 422
 
     # 10. Check Lineage (Finding -> Events -> Evidence -> SHA-256)
@@ -141,6 +179,15 @@ def test_critical_path_end_to_end(client: TestClient, db_session: Session):
     assert res_report.content.startswith(b"%PDF")
     assert len(res_report.content) > 1000
     assert "attachment" in res_report.headers.get("content-disposition", "")
+    from pdfminer.high_level import extract_text
+    report_text = extract_text(io.BytesIO(res_report.content))
+    assert "Investigator-Approved Findings" in report_text
+    assert "Finding Review Decision History" in report_text
+    assert "Test Investigator" in report_text
+    normalized_report = " ".join(report_text.split())
+    assert "Re-review found the initial interpretation unsupported." in normalized_report
+    assert "Final review confirms the evidence linkage." in normalized_report
+    assert "pending or rejected finding(s) omitted" in normalized_report
 
     # Unsupported format returns 400
     assert client.get(f"/cases/{case_id}/report?format=docx").status_code == 400

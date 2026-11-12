@@ -31,6 +31,24 @@ def _distance_km(
     )
 
 
+def _event_label(event: common.NormalizedEvent) -> str:
+    """Return a concise human-readable event label without opaque identifiers."""
+    action = (event.action or "event").replace("_", " ").strip().capitalize()
+    target = event.object or event.device or event.actor
+    return f"{action} ({target})" if target else action
+
+
+def _duration_text(seconds: float) -> str:
+    if seconds == 0:
+        return "the same recorded time"
+    minutes = seconds / 60.0
+    if minutes < 1:
+        return f"{seconds:.0f} seconds"
+    if minutes < 60:
+        return f"{minutes:.1f} minutes"
+    return f"{minutes / 60.0:.1f} hours"
+
+
 def find_contradictions(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return deterministic contradiction Findings for implausible travel speed.
 
@@ -81,21 +99,27 @@ def find_contradictions(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     if speed_kmh == float("inf")
                     else f"{speed_kmh:.1f}"
                 )
+                first_label = _event_label(first)
+                second_label = _event_label(second)
                 claim = (
-                    f"Events {first.event_id} and {second.event_id} imply "
-                    f"travel of approximately {speed_text} km/h, exceeding "
-                    f"the configured maximum plausible speed of "
-                    f"{MAX_PLAUSIBLE_SPEED_KMH:.1f} km/h."
+                    f"Location metadata places {first_label} at "
+                    f"{first.location[0]:.2f}, {first.location[1]:.2f} and "
+                    f"{second_label} at {second.location[0]:.2f}, "
+                    f"{second.location[1]:.2f}. These locations are "
+                    f"approximately {distance_km:.1f} km apart within "
+                    f"{_duration_text(delta_seconds)}, implying travel at "
+                    f"{speed_text} km/h — above the configured "
+                    f"{MAX_PLAUSIBLE_SPEED_KMH:.1f} km/h threshold."
                 )
                 reasoning = (
-                    f"Event {first.event_id} occurred at "
-                    f"{first.timestamp.isoformat()} at location "
-                    f"{first.location}; event {second.event_id} occurred "
-                    f"at {second.timestamp.isoformat()} at location "
-                    f"{second.location}. The locations are approximately "
-                    f"{distance_km:.1f} km apart over {delta_seconds:.1f} "
-                    f"seconds, implying about {speed_text} km/h. This "
-                    f"exceeds the configured threshold and requires "
+                    f"The first location-bearing event was recorded at "
+                    f"{first.timestamp.isoformat()} UTC ({first_label}); "
+                    f"the second was recorded at {second.timestamp.isoformat()} "
+                    f"UTC ({second_label}). The coordinates are "
+                    f"{distance_km:.1f} km apart and the elapsed time is "
+                    f"{_duration_text(delta_seconds)}. The implied speed is "
+                    f"{speed_text} km/h, above the configured threshold. "
+                    f"This is a location/time inconsistency requiring "
                     f"investigation; it does not by itself establish fraud."
                 )
 

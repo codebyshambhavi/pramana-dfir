@@ -71,7 +71,8 @@ def test_image_without_exif_timestamp_is_rejected_via_api(client: TestClient):
 
 
 def test_test_run_does_not_write_into_the_repo_tree():
-    backend = Path(__file__).resolve().parents[1]
-    assert not (backend / "data").exists()
-    assert not (backend / "pramana.db").exists()
+    test_root = Path(os.environ["UPLOAD_DIR"]).parent
+    assert test_root.is_dir()
+    assert not (test_root / "data").exists()
+    assert not (test_root / "pramana.db").exists()
     assert "pramana-tests-" in os.environ["UPLOAD_DIR"]

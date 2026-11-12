@@ -98,6 +98,16 @@ def _sqlite_statements() -> list[tuple[str, str]]:
         ("trg_custody_no_delete",
          f"CREATE TRIGGER trg_custody_no_delete BEFORE DELETE ON custody_entries BEGIN "
          f"{abort('custody entries are never deleted')} END"),
+        ("trg_finding_review_no_update",
+         f"CREATE TRIGGER trg_finding_review_no_update BEFORE UPDATE ON finding_review_decisions BEGIN "
+         f"{abort('finding review decisions are append-only')} END"),
+        ("trg_finding_review_no_delete",
+         f"CREATE TRIGGER trg_finding_review_no_delete BEFORE DELETE ON finding_review_decisions BEGIN "
+         f"{abort('finding review decisions are append-only')} END"),
+        ("trg_finding_review_validate",
+         f"CREATE TRIGGER trg_finding_review_validate BEFORE INSERT ON finding_review_decisions "
+         f"WHEN NEW.decision NOT IN ('approved', 'rejected') OR NEW.reviewer_identity_type <> 'self_declared' "
+         f"BEGIN {abort('invalid finding review decision')} END"),
     ]
     for table in RUN_TABLES:
         t.append((f"trg_{table}_no_update",
@@ -215,6 +225,13 @@ def _pg_triggers() -> list[str]:
         f"FOR EACH ROW {reject('custody entries are never deleted')}",
         f"CREATE OR REPLACE TRIGGER trg_custody_no_truncate BEFORE TRUNCATE ON custody_entries "
         f"FOR EACH STATEMENT {reject('custody entries are never deleted')}",
+        f"CREATE OR REPLACE TRIGGER trg_finding_review_no_change BEFORE UPDATE OR DELETE ON finding_review_decisions "
+        f"FOR EACH ROW {reject('finding review decisions are append-only')}",
+        f"CREATE OR REPLACE TRIGGER trg_finding_review_no_truncate BEFORE TRUNCATE ON finding_review_decisions "
+        f"FOR EACH STATEMENT {reject('finding review decisions are append-only')}",
+        f"CREATE OR REPLACE TRIGGER trg_finding_review_validate BEFORE INSERT ON finding_review_decisions "
+        f"FOR EACH ROW WHEN (NEW.decision NOT IN ('approved', 'rejected') OR NEW.reviewer_identity_type <> 'self_declared') "
+        f"EXECUTE FUNCTION pramana_reject('invalid finding review decision')",
     ]
     for table in RUN_TABLES:
         t.append(f"CREATE OR REPLACE TRIGGER trg_{table}_no_change BEFORE UPDATE OR DELETE ON {table} "

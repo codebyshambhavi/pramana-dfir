@@ -83,7 +83,7 @@ export default function Timeline({
                     </span>
                     <Link
                       to={toPath("/app/evidence", { open: event.evidence_id })}
-                      className={`grid gap-x-4 gap-y-1 rounded-xl border px-4 py-3 transition sm:grid-cols-[96px_minmax(0,1fr)_auto] ${
+                      className={`grid min-w-0 gap-x-4 gap-y-1 rounded-xl border px-4 py-3 transition sm:grid-cols-[96px_minmax(0,1fr)_minmax(0,160px)] ${
                         hot ? "border-alert/40 bg-alert/[0.06]" : "border-transparent hover:border-trace/25 hover:bg-trace/[0.04]"
                       }`}
                     >
@@ -94,12 +94,12 @@ export default function Timeline({
                         <span className="block truncate text-[14px] text-white">{describe(event)}</span>
                         <span className="mt-0.5 block truncate text-[12px] text-soft/60">
                           {[event.actor, event.device].filter(Boolean).join(" on ") || event.source}
-                          <span className="ml-2 font-mono text-[11.5px] text-soft/45">{event.artifact_ref}</span>
+                          <span className="ml-2 break-all font-mono text-[11.5px] text-soft/45" title={event.artifact_ref}>{event.artifact_ref}</span>
                         </span>
                       </span>
-                      <span className="text-[12.5px] text-trace-soft/85 tabular-nums sm:text-right">
-                        {event.evidence_id}
-                        <span className="block text-[11.5px] text-soft/45">{event.event_id}</span>
+                      <span className="min-w-0 break-all text-[12.5px] text-trace-soft/85 tabular-nums sm:text-right">
+                        <span className="block" title={event.evidence_id}>{event.evidence_id}</span>
+                        <span className="block text-[11.5px] text-soft/45" title={event.event_id}>{event.event_id}</span>
                       </span>
                     </Link>
                   </li>

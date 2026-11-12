@@ -34,17 +34,17 @@ function EventRow({ event }: { event: Record<string, unknown> }) {
   const ts = str(event.timestamp);
   return (
     <li className="relative text-[12.5px]">
-      <span aria-hidden="true" className="absolute top-1.5 -left-[19px] size-[7px] rounded-full bg-trace/70" />
+      <span aria-hidden="true" className="absolute top-1.5 -left-4.75 size-1.75 rounded-full bg-trace/70" />
       <span className="text-soft/60 tabular-nums">{ts ? <Stamp iso={ts} /> : "no timestamp"}</span>
-      <span className="ml-2 text-white">
+      <span className="ml-2 wrap-break-word text-white">
         {action ? humanize(action) : "Unknown action"}
         {target && <span className="text-soft/80"> — {target}</span>}
       </span>
-      <span className="block text-[11.5px] text-soft/50">
-        <span title={id}>{eventLabel(id)}</span>
+      <span className="block min-w-0 wrap-break-word text-[11.5px] text-soft/50">
+        <span className="break-all" title={id}>{eventLabel(id)}</span>
         {str(event.actor) && ` · ${str(event.actor)}`}
         {str(event.source) && ` · ${str(event.source)}`}
-        {str(event.artifact_ref) && <span className="font-mono"> · {str(event.artifact_ref)}</span>}
+        {str(event.artifact_ref) && <span className="break-all font-mono" title={str(event.artifact_ref) ?? undefined}> · {str(event.artifact_ref)}</span>}
       </span>
     </li>
   );
@@ -76,7 +76,7 @@ function Stage({ stage, index, runId }: { stage: StageReconstruction; index: num
       </p>
       <article
         aria-label={`Stage ${stage.stage_name}`}
-        className={`rounded-xl border p-4 ${gap ? "border-dashed border-amber-400/35 bg-amber-400/[0.03]" : "border-trace/30 bg-[linear-gradient(160deg,rgba(16,28,52,0.85),rgba(7,11,20,0.9))]"}`}
+        className={`rounded-xl border p-4 ${gap ? "border-dashed border-amber-400/35 bg-amber-400/3" : "border-trace/30 bg-[linear-gradient(160deg,rgba(16,28,52,0.85),rgba(7,11,20,0.9))]"}`}
       >
         <header className="flex flex-wrap items-center gap-2">
           <h3 className="text-[15px] font-semibold text-white">{humanize(stage.stage_name)}</h3>
@@ -120,13 +120,13 @@ function Stage({ stage, index, runId }: { stage: StageReconstruction; index: num
                 )
               )}
             </div>
-            <div className="mt-3 border-t border-white/[0.06] pt-3">
+            <div className="mt-3 border-t border-white/6 pt-3">
               <p className="mb-2 text-[12px] text-soft/55">
                 {events.length} event{events.length === 1 ? "" : "s"}
               </p>
               {events.length > 0 && (
                 <ol className="relative space-y-2 pl-5">
-                  <span aria-hidden="true" className="absolute top-1 bottom-1 left-[2px] w-px bg-trace/30" />
+                  <span aria-hidden="true" className="absolute top-1 bottom-1 left-0.5 w-px bg-trace/30" />
                   {shown.map((e, i) => (
                     <EventRow key={str(e.event_id) ?? i} event={e} />
                   ))}
@@ -175,12 +175,12 @@ export default function ReconstructionView({ loaded, reconstruction }: { loaded:
           <span className="rounded-md border border-violet-400/35 bg-violet-400/10 px-2 py-0.5 text-[12px] text-violet-200">Recorded real run</span>
         )}
         <span>
-          Run <span className="text-white tabular-nums">{run.run_id}</span>
+          Run <span className="break-all text-white tabular-nums" title={run.run_id}>{run.run_id}</span>
         </span>
         <span className="flex items-center gap-2">
           Reconstructs
           <Link to={toPath("/app/investigation", { tab: "hypotheses", hyp: reconstruction.hypothesis_id, run: run.run_id })} className="text-white hover:text-trace-soft">
-            {reconstruction.hypothesis_name} ({reconstruction.hypothesis_id})
+            <span className="wrap-break-word">{reconstruction.hypothesis_name}</span> <span className="break-all" title={reconstruction.hypothesis_id}>({reconstruction.hypothesis_id})</span>
           </Link>
           <HypothesisChip status={reconstruction.status as HypothesisStatus} />
         </span>
@@ -189,7 +189,7 @@ export default function ReconstructionView({ loaded, reconstruction }: { loaded:
         </span>
       </div>
 
-      <p className="flex items-start gap-2 rounded-xl border border-trace/20 bg-trace/[0.04] px-4 py-3 text-[12.5px] text-soft/85">
+      <p className="flex items-start gap-2 rounded-xl border border-trace/20 bg-trace/4 px-4 py-3 text-[12.5px] text-soft/85">
         <Info size={15} className="mt-px shrink-0 text-trace-soft" />
         <span>
           <span className="text-white">Backend summary: </span>
@@ -201,7 +201,7 @@ export default function ReconstructionView({ loaded, reconstruction }: { loaded:
       </p>
 
       <ol className="relative space-y-5" aria-label="Reconstruction stages">
-        <span aria-hidden="true" className="absolute top-4 bottom-4 left-4 w-px bg-gradient-to-b from-trace/50 via-trace/25 to-transparent" />
+        <span aria-hidden="true" className="absolute top-4 bottom-4 left-4 w-px bg-linear-to-b from-trace/50 via-trace/25 to-transparent" />
         {reconstruction.stages.map((s, i) => (
           <Stage key={`${s.stage_name}:${i}`} stage={s} index={i} runId={run.run_id} />
         ))}

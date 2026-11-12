@@ -75,6 +75,13 @@ export interface EvidenceUploadResult {
   events_created: number;
 }
 
+/** 200 response of POST /cases/{id}/analyze. */
+export interface AnalyzeResponse {
+  findings_created: number;
+  run_id: string | null;
+  claims_created: number;
+}
+
 /** One item of GET /cases/{id}/events; fields from contracts/event.schema.json. */
 export interface CaseEvent {
   event_id: string;
@@ -132,10 +139,30 @@ export interface FindingLineage {
   evidence: { evidence_id: string; filename: string; sha256: string }[];
 }
 
+/** GET /findings/{id}/reviews: append-only investigator decision history. */
+export interface FindingReviewDecision {
+  review_id: string;
+  finding_id: string;
+  decision: "approved" | "rejected";
+  reviewer_label: string;
+  reviewer_identity_type: "self_declared";
+  rationale: string;
+  decided_at: string;
+}
+
 /** 200 response of PATCH /findings/{id}. */
 export interface FindingStatusUpdate {
   finding_id: string;
-  status: "pending" | "approved" | "rejected";
+  status: "approved" | "rejected";
+  review: {
+    review_id: string;
+    finding_id: string;
+    decision: "approved" | "rejected";
+    reviewer_label: string;
+    reviewer_identity_type: "self_declared";
+    rationale: string;
+    decided_at: string;
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------

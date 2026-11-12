@@ -1,4 +1,4 @@
-﻿// Role 4: Investigation Workspace. Findings, Hypotheses, Timeline, Graph and Report as tabs over the same case data
+// Role 4: Investigation Workspace. Findings, Hypotheses, Timeline, Graph and Report as tabs over the same case data
 // (GET evidence/events/findings/graph, or the labelled demo set). The Hypotheses tab reads an analysis run instead
 // (see features/hypotheses/runSource.ts). URL state: ?tab=â€¦&finding=â€¦&type=â€¦&hyp=â€¦&source=demo.
 import { Suspense, lazy, useCallback, useMemo, useState, type ReactNode } from "react";
@@ -6,6 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import ConsoleShell, { GUTTER } from "../components/console/ConsoleShell";
 import { Activity, Alert, Braces, CircleCheck, Clock, Refresh, GraphIcon, ReportIcon, ScanSearch, Timeline as TimelineIcon } from "../components/console/icons";
 import { useSourceLink } from "../components/console/useSourceLink";
+import { analyzeCase } from "../api/client";
 import type { Finding } from "../api/types";
 import { statusOf } from "../features/dashboard/components/FindingsPanel";
 import KpiCard, { type KpiValue } from "../features/dashboard/components/KpiCard";
@@ -229,6 +230,9 @@ export default function InvestigationWorkspace() {
   const { data, reload } = useDashboardData(sourceKind, caseId);
   const [overrides, setOverrides] = useState<Map<string, Finding["status"]>>(new Map());
   const [query, setQuery] = useState("");
+  const [analysisBusy, setAnalysisBusy] = useState(false);
+  const [analysisMessage, setAnalysisMessage] = useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const tab: WorkspaceTab = isTab(params.get("tab")) ? (params.get("tab") as WorkspaceTab) : "findings";
   const type: TypeFilter = isType(params.get("type")) ? (params.get("type") as Finding["type"]) : "all";
@@ -279,6 +283,25 @@ export default function InvestigationWorkspace() {
   };
   const errors = Object.values(data).filter(s => s.status === "error").length;
   const contradictions = (d: Finding[]) => d.filter(f => f.type === "contradiction");
+
+  const runAnalysis = async () => {
+    if (sourceKind !== "api" || analysisBusy) return;
+    setAnalysisBusy(true);
+    setAnalysisMessage(null);
+    setAnalysisError(null);
+    try {
+      const result = await analyzeCase(caseId);
+      setAnalysisMessage(
+        `Analysis completed: ${result.findings_created} new findings, ${result.claims_created} claims${result.run_id ? ` · run ${result.run_id}` : ""}.`
+      );
+      setOverrides(new Map());
+      reload();
+    } catch (error) {
+      setAnalysisError(error instanceof Error ? error.message : "Analysis could not be completed.");
+    } finally {
+      setAnalysisBusy(false);
+    }
+  };
 
   return (
     <ConsoleShell>
@@ -380,6 +403,26 @@ export default function InvestigationWorkspace() {
 
             <div className="mt-5 grid gap-5 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_300px]">
               <Pane title="Findings" note={findings ? `${visible.length} of ${findings.length}` : undefined}>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="max-w-[420px] text-[12.5px] leading-relaxed text-soft/70">
+                    Run the intelligence pipeline against the case's current events. Each run is recorded by the backend; existing findings are retained.
+                  </p>
+                  {sourceKind === "api" ? (
+                    <button
+                      type="button"
+                      onClick={runAnalysis}
+                      disabled={analysisBusy || data.events.status !== "ready" || data.events.data.length === 0}
+                      className="inline-flex shrink-0 items-center justify-center rounded-lg border border-trace/45 bg-trace/10 px-3.5 py-2 text-[12.5px] font-semibold text-trace-soft transition hover:border-trace/70 hover:bg-trace/15 disabled:cursor-not-allowed disabled:opacity-45"
+                      title={data.events.status === "ready" && data.events.data.length === 0 ? "Ingest and parse evidence before running analysis." : "Run analysis for the current case"}
+                    >
+                      {analysisBusy ? "Running analysis…" : "Run analysis"}
+                    </button>
+                  ) : (
+                    <span className="rounded-lg border border-white/10 px-3 py-2 text-[12px] text-soft/55">Analysis is read-only in this source</span>
+                  )}
+                </div>
+                {analysisMessage && <p role="status" className="mb-3 break-words text-[12px] text-trace-soft">{analysisMessage}</p>}
+                {analysisError && <p role="alert" className="mb-3 break-words text-[12px] text-alert-soft">{analysisError}</p>}
                 <SectionGate section={data.findings} isEmpty={d => d.length === 0} empty="No findings yet. Run the analysis to generate them." rows={5}>
                   {() => (
                     <FindingsList

@@ -27,6 +27,7 @@ from typing import Any
 from sqlalchemy import (
     Boolean,
     Column,
+    CheckConstraint,
     DateTime,
     Enum,
     Float,
@@ -245,6 +246,39 @@ class FindingModel(Base):
         if self.alternatives is not None:
             data["alternatives"] = self.alternatives
         return data
+
+
+class FindingReviewDecision(Base):
+    """Append-only record of a human review decision; reviewer is self-declared until auth exists."""
+
+    __tablename__ = "finding_review_decisions"
+    __table_args__ = (
+        CheckConstraint("decision IN ('approved', 'rejected')", name="ck_review_decision"),
+        CheckConstraint("reviewer_identity_type = 'self_declared'", name="ck_review_identity_type"),
+    )
+
+    review_id = Column(String(64), primary_key=True)
+    finding_id = Column(String(64), ForeignKey("findings.finding_id"), nullable=False, index=True)
+    decision = Column(String(16), nullable=False)  # approved or rejected
+    reviewer_label = Column(String(120), nullable=False)
+    reviewer_identity_type = Column(String(32), nullable=False, default="self_declared", server_default="self_declared")
+    rationale = Column(Text, nullable=False)
+    decided_at = Column(DateTime, default=utc_now, nullable=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "review_id": self.review_id,
+            "finding_id": self.finding_id,
+            "decision": self.decision,
+            "reviewer_label": self.reviewer_label,
+            "reviewer_identity_type": self.reviewer_identity_type,
+            "rationale": self.rationale,
+            "decided_at": (
+                self.decided_at.replace(tzinfo=timezone.utc).isoformat()
+                if self.decided_at is not None and self.decided_at.tzinfo is None
+                else _iso(self.decided_at)
+            ),
+        }
 
 
 class CustodyEntry(Base):
