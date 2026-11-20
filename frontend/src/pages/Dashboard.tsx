@@ -27,7 +27,9 @@ import { GLASS, Panel, PanelLink, SectionGate } from "../features/dashboard/comp
 import { Stamp, storedTime } from "../lib/time";
 import SourceBanner from "../features/dashboard/components/SourceBanner";
 import { readyData, useDashboardData, type Section } from "../features/dashboard/dashboardData";
-import { DEFAULT_CASE_ID, RECORDED_CASE_ID, resolveSourceKind } from "../features/vault/evidenceSource";
+import { resolveSourceKind } from "../features/vault/evidenceSource";
+import { useActiveCaseId } from "../features/cases/activeCase";
+import { useCaseMeta } from "../features/cases/useCaseMeta";
 import { fileKind, isParsedKind } from "../features/vault/model";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
@@ -94,7 +96,9 @@ function buildAlerts(
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const sourceKind = resolveSourceKind(searchParams.get("source"));
-  const caseId = sourceKind === "recorded" ? RECORDED_CASE_ID : DEFAULT_CASE_ID;
+  const caseId = useActiveCaseId();
+  const caseMeta = useCaseMeta(caseId, sourceKind);
+  const caseInfo = caseMeta.status === "ready" ? caseMeta.data : null;
   const toPath = useSourceLink();
   const { data, reload } = useDashboardData(sourceKind, caseId);
 
@@ -135,10 +139,25 @@ export default function Dashboard() {
           {/* Case rail */}
           <aside className="order-2 flex flex-col gap-5 xl:order-none">
             <section aria-label="Case" className={`${GLASS} p-5`}>
-              <div className="flex items-center gap-3">
-                <Folder size={22} className="text-soft" />
-                <h2 className="text-[18px] font-semibold tracking-[-0.01em]">{caseId}</h2>
+              <div className="flex items-start gap-3">
+                <Folder size={22} className="mt-0.5 shrink-0 text-soft" />
+                <div className="min-w-0">
+                  <h2 className="text-[18px] leading-snug font-semibold tracking-[-0.01em] break-words">{caseInfo?.name ?? caseId}</h2>
+                  {caseInfo && <p className="mt-0.5 font-mono text-[12px] text-soft/70">{caseId}</p>}
+                </div>
               </div>
+              {caseInfo && (
+                <p className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px] text-soft/80">
+                  <span
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-[0.08em] ${
+                      caseInfo.status === "CLOSED" ? "border-white/15 text-soft/70" : "border-teal-400/40 bg-teal-400/[0.1] text-teal-200"
+                    }`}
+                  >
+                    {caseInfo.status.replace(/_/g, " ")}
+                  </span>
+                  {caseInfo.owner && <span className="min-w-0 truncate">Owner: {caseInfo.owner}</span>}
+                </p>
+              )}
               <div
                 className={`mt-3.5 rounded-lg border px-3 py-2.5 text-[12.5px] ${
                   sourceKind !== "api"
@@ -188,9 +207,18 @@ export default function Dashboard() {
                   </dd>
                 </div>
               </dl>
-              <p className="mt-4 border-t border-white/[0.06] pt-3 text-[11.5px] leading-relaxed text-muted">
-                Case name, status and owner aren't in the API contract yet, so they aren't shown.
-              </p>
+              <div className="mt-4 border-t border-white/[0.06] pt-3 text-[12px] leading-relaxed text-muted">
+                {sourceKind === "api" ? (
+                  <>
+                    {caseMeta.status === "unavailable" && <p className="mb-1.5">Case details could not be loaded{caseMeta.message ? `: ${caseMeta.message}` : "."}</p>}
+                    <Link to="/app/cases" className="inline-flex items-center gap-1 text-trace-soft hover:text-white">
+                      Switch or create case
+                    </Link>
+                  </>
+                ) : (
+                  <p>Case title, status and owner come from the live API, so they aren't shown for {sourceKind} data.</p>
+                )}
+              </div>
             </section>
 
             <nav aria-label="Case sections" className={`${GLASS} hidden overflow-hidden py-2 xl:block`}>

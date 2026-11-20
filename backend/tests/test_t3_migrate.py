@@ -93,6 +93,9 @@ def test_migrate_pre_t3_adds_columns_tables_and_guards(legacy_engine):
     assert set(added) == {
         "evidence.status", "evidence.verified_at", "evidence.verify_state",
         "events.parser_version", "events.tz_assumption", "events.family",
+        # Role 3 case workflow metadata
+        "cases.description", "cases.scope", "cases.tags", "cases.owner", "cases.status",
+        "cases.updated_at", "cases.closed_at",
     }
     assert NEW_TABLES <= _tables(legacy_engine)
     assert {"trg_evidence_no_delete", "trg_custody_no_delete", "trg_analysis_run_validate",

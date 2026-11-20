@@ -27,7 +27,8 @@ import NewRunButton from "../features/rundiff/components/NewRunButton";
 import { useRunDiff } from "../features/rundiff/runDiffSource";
 import { useReconstruction } from "../features/reconstruction/reconstructionSource";
 import { buildIndex } from "../features/investigation/findingModel";
-import { DEFAULT_CASE_ID, RECORDED_CASE_ID, resolveSourceKind, type EvidenceSourceKind } from "../features/vault/evidenceSource";
+import { resolveSourceKind, type EvidenceSourceKind } from "../features/vault/evidenceSource";
+import { useActiveCaseId } from "../features/cases/activeCase";
 import Report from "./Report";
 import Timeline from "./Timeline";
 import { formatTimestamp, useDisplayZone } from "../lib/time";
@@ -225,7 +226,7 @@ function RunDiffTab({
 export default function InvestigationWorkspace() {
   const [params, setParams] = useSearchParams();
   const sourceKind = resolveSourceKind(params.get("source"));
-  const caseId = sourceKind === "recorded" ? RECORDED_CASE_ID : DEFAULT_CASE_ID;
+  const caseId = useActiveCaseId();
   const toPath = useSourceLink();
   const { data, reload } = useDashboardData(sourceKind, caseId);
   const [overrides, setOverrides] = useState<Map<string, Finding["status"]>>(new Map());

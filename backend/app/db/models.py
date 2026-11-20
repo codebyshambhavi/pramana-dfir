@@ -59,6 +59,27 @@ VERIFY_MISSING = "MISSING"
 VERIFY_CUSTODY_BROKEN = "CUSTODY_BROKEN"
 VERIFY_STATES = (VERIFY_MATCH, VERIFY_MISMATCH, VERIFY_MISSING, VERIFY_CUSTODY_BROKEN)
 
+# Case workflow status (Role 3 plan, section 6.3). A workflow summary, not proof of a forensic conclusion.
+# Only OPEN and CLOSED are set by the API today; the remaining states are reserved for the automatic
+# transitions (evidence collected, analysis, report, review) that follow.
+CASE_STATUS_DRAFT = "DRAFT"
+CASE_STATUS_OPEN = "OPEN"
+CASE_STATUS_CLOSED = "CLOSED"
+CASE_STATUSES = (
+    CASE_STATUS_DRAFT,
+    CASE_STATUS_OPEN,
+    "EVIDENCE_COLLECTED",
+    "ANALYSIS_IN_PROGRESS",
+    "ANALYSIS_COMPLETE",
+    "REPORT_GENERATED",
+    "REVIEWED",
+    CASE_STATUS_CLOSED,
+    "INGESTION_FAILED",
+    "ANALYSIS_FAILED",
+    "REPORT_FAILED",
+    "REOPENED",
+)
+
 class ImmutableRecordError(RuntimeError):
     """Raised when a write would delete evidence/custody, change an intake hash or alter run data."""
 
@@ -94,6 +115,16 @@ class Case(Base):
     name = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
 
+    # Case workflow metadata (Role 3). All nullable or server-defaulted so migrate() can add them to an
+    # existing cases table without rewriting it.
+    description = Column(Text, nullable=True)
+    scope = Column(Text, nullable=True)
+    tags = Column(JSON, nullable=True)
+    owner = Column(String(255), nullable=True)
+    status = Column(String(32), nullable=False, server_default=CASE_STATUS_OPEN, default=CASE_STATUS_OPEN)
+    updated_at = Column(DateTime, nullable=True)
+    closed_at = Column(DateTime, nullable=True)
+
     # No delete cascade: evidence rows must outlive any ORM delete attempt.
     evidence_items = relationship("Evidence", back_populates="case", cascade="save-update, merge")
     events = relationship("EventModel", back_populates="case", cascade="all, delete-orphan")
@@ -103,7 +134,14 @@ class Case(Base):
         return {
             "case_id": self.case_id,
             "name": self.name,
+            "description": self.description,
+            "scope": self.scope,
+            "tags": list(self.tags or []),
+            "owner": self.owner,
+            "status": self.status or CASE_STATUS_OPEN,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "closed_at": self.closed_at.isoformat() if self.closed_at else None,
         }
 
 

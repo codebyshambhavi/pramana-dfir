@@ -18,7 +18,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.db.models import Case, EventModel, Evidence, utc_now
+from app.db.models import CASE_STATUS_CLOSED, Case, EventModel, Evidence, utc_now
 from app.db.session import append_custody_record, get_db
 from app.services.pipeline import execute_parse_evidence
 
@@ -43,6 +43,11 @@ async def upload_evidence(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Case '{id}' not found",
+        )
+    if case.status == CASE_STATUS_CLOSED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Case '{id}' is closed; reopen it before adding evidence",
         )
 
     # Read uploaded content and calculate SHA-256

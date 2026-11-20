@@ -3,6 +3,7 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
+import Cases from "./pages/Cases";
 import EvidenceVault from "./pages/EvidenceVault";
 import InvestigationWorkspace from "./pages/InvestigationWorkspace";
 
@@ -19,6 +20,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/app" element={<Dashboard />} />
+      <Route path="/app/cases" element={<Cases />} />
       <Route path="/app/evidence" element={<EvidenceVault />} />
       <Route path="/app/cases/:caseId/evidence" element={<EvidenceVault />} />
       <Route path="/app/investigation" element={<InvestigationWorkspace />} />
