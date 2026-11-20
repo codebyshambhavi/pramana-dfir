@@ -17,7 +17,8 @@ import VaultToolbar, { type VaultFilters } from "../features/vault/components/Va
 import IntegrityStrip from "../features/vault/components/IntegrityStrip";
 import NetworkBackdrop from "../features/dashboard/components/NetworkBackdrop";
 import { Eyebrow, PANEL } from "../features/vault/components/ui";
-import { DEFAULT_CASE_ID, RECORDED_CASE_ID, getEvidenceSource, resolveSourceKind } from "../features/vault/evidenceSource";
+import { RECORDED_CASE_ID, getEvidenceSource, resolveSourceKind } from "../features/vault/evidenceSource";
+import { useActiveCaseId } from "../features/cases/activeCase";
 import { useCopy, useEvidenceList } from "../features/vault/hooks";
 import { fileKind, isParsedKind, matchesQuery, type FileKind } from "../features/vault/model";
 import { storedTime } from "../lib/time";
@@ -45,7 +46,8 @@ export default function EvidenceVault() {
   const routeParams = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const sourceKind = resolveSourceKind(searchParams.get("source"));
-  const caseId = sourceKind === "recorded" ? RECORDED_CASE_ID : routeParams.caseId ?? DEFAULT_CASE_ID;
+  const activeCaseId = useActiveCaseId();
+  const caseId = sourceKind === "recorded" ? RECORDED_CASE_ID : routeParams.caseId ?? activeCaseId;
   const toPath = useSourceLink();
   const source = useMemo(() => getEvidenceSource(sourceKind), [sourceKind]);
   const { state, reload, refresh } = useEvidenceList(source, caseId);
