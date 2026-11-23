@@ -123,6 +123,17 @@ class Evidence(Base):
     status = Column(String(16), nullable=False, default=EVIDENCE_ACTIVE, server_default=EVIDENCE_ACTIVE)
     verified_at = Column(DateTime, nullable=True)
     verify_state = Column(String(16), nullable=True)
+    source_type = Column(String(64), nullable=True)
+    source_identifier = Column(String(255), nullable=True)
+    acquisition_method = Column(String(64), nullable=True)
+    acquired_by = Column(String(128), nullable=True)
+    parser_name = Column(String(64), nullable=True)
+    parser_version = Column(String(64), nullable=True)
+    parse_status = Column(String(32), nullable=True)
+    parser_warnings = Column(JSON, nullable=True)
+    covered_time_range = Column(JSON, nullable=True)
+    source_locator = Column(String(1024), nullable=True)
+    parent_evidence_id = Column(String(64), nullable=True)
 
     case = relationship("Case", back_populates="evidence_items")
     events = relationship("EventModel", back_populates="evidence", cascade="all, delete-orphan")
@@ -148,6 +159,17 @@ class Evidence(Base):
             "verified_at": _iso(self.verified_at),
             "verify_state": self.verify_state,
             "custody": [entry.to_dict() for entry in self.custody_entries],
+            "source_type": self.source_type,
+            "source_identifier": self.source_identifier,
+            "acquisition_method": self.acquisition_method,
+            "acquired_by": self.acquired_by,
+            "parser_name": self.parser_name,
+            "parser_version": self.parser_version,
+            "parse_status": self.parse_status,
+            "parser_warnings": self.parser_warnings or [],
+            "covered_time_range": self.covered_time_range,
+            "source_locator": self.source_locator,
+            "parent_evidence_id": self.parent_evidence_id,
         }
 
 
@@ -262,6 +284,7 @@ class CustodyEntry(Base):
     entry_hash = Column(String(64), nullable=False)
 
     evidence = relationship("Evidence", back_populates="custody_entries")
+    custody_metadata = relationship("CustodyMetadata", uselist=False, back_populates="custody_entry", cascade="all, delete-orphan")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -273,7 +296,122 @@ class CustodyEntry(Base):
             "sha256": self.sha256,
             "prev_hash": self.prev_hash,
             "entry_hash": self.entry_hash,
+            "metadata": self.custody_metadata.to_dict() if self.custody_metadata else None,
         }
+
+
+class CustodyMetadata(Base):
+    """Additive custody-event metadata; separated to preserve the existing ledger shape."""
+
+    __tablename__ = "custody_metadata"
+
+    custody_event_id = Column(Integer, ForeignKey("custody_entries.id"), primary_key=True)
+    previous_state = Column(String(128), nullable=True)
+    new_state = Column(String(128), nullable=True)
+    reason = Column(Text, nullable=True)
+    request_id = Column(String(128), nullable=True)
+    correlation_id = Column(String(128), nullable=True)
+
+    custody_entry = relationship("CustodyEntry", back_populates="custody_metadata")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "custody_event_id": self.custody_event_id,
+            "previous_state": self.previous_state,
+            "new_state": self.new_state,
+            "reason": self.reason,
+            "request_id": self.request_id,
+            "correlation_id": self.correlation_id,
+        }
+
+
+class Entity(Base):
+    """Case-scoped normalized entity extracted from evidence."""
+
+    __tablename__ = "entities"
+
+    entity_id = Column(String(64), primary_key=True, index=True)
+    case_id = Column(String(64), ForeignKey("cases.case_id"), nullable=False, index=True)
+    evidence_id = Column(String(64), ForeignKey("evidence.evidence_id"), nullable=False, index=True)
+    entity_type = Column(String(32), nullable=False, index=True)
+    canonical_value = Column(String(512), nullable=False, index=True)
+    aliases = Column(JSON, nullable=False, default=list)
+    normalisation_method = Column(String(64), nullable=False)
+    confidence = Column(Float, nullable=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "entity_id": self.entity_id,
+            "case_id": self.case_id,
+            "evidence_id": self.evidence_id,
+            "entity_type": self.entity_type,
+            "canonical_value": self.canonical_value,
+            "aliases": self.aliases or [],
+            "normalisation_method": self.normalisation_method,
+            "confidence": self.confidence,
+        }
+
+
+class ConnectorSync(Base):
+    """Last mailbox/network connector sync state and parser warnings."""
+
+    __tablename__ = "connector_sync"
+
+    sync_id = Column(String(64), primary_key=True, index=True)
+    case_id = Column(String(64), ForeignKey("cases.case_id"), nullable=False, index=True)
+    connector = Column(String(32), nullable=False, index=True)
+    connected_account = Column(String(255), nullable=True)
+    status = Column(String(32), nullable=False)
+    started_at = Column(DateTime, default=utc_now, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    last_successful_sync = Column(DateTime, nullable=True)
+    next_page_token = Column(String(255), nullable=True)
+    evidence_ids = Column(JSON, nullable=False, default=list)
+    warnings = Column(JSON, nullable=False, default=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sync_id": self.sync_id,
+            "case_id": self.case_id,
+            "connector": self.connector,
+            "connected_account": self.connected_account,
+            "status": self.status,
+            "started_at": _iso(self.started_at),
+            "completed_at": _iso(self.completed_at),
+            "last_successful_sync": _iso(self.last_successful_sync),
+            "next_page_token": self.next_page_token,
+            "evidence_ids": self.evidence_ids or [],
+            "warnings": self.warnings or [],
+        }
+
+
+class ConnectorCredential(Base):
+    """Backend-owned OAuth credential; refresh/access tokens are application-encrypted."""
+
+    __tablename__ = "connector_credentials"
+
+    credential_id = Column(String(64), primary_key=True, index=True)
+    case_id = Column(String(64), ForeignKey("cases.case_id"), nullable=False, index=True)
+    connector = Column(String(32), nullable=False, index=True)
+    account_identifier = Column(String(255), nullable=True)
+    access_token_encrypted = Column(Text, nullable=True)
+    refresh_token_encrypted = Column(Text, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    scopes = Column(JSON, nullable=False, default=list)
+    updated_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+class OAuthState(Base):
+    """One-time OAuth state bound to a case and connector."""
+
+    __tablename__ = "oauth_state"
+
+    state = Column(String(128), primary_key=True)
+    case_id = Column(String(64), ForeignKey("cases.case_id"), nullable=False, index=True)
+    connector = Column(String(32), nullable=False, index=True)
+    actor = Column(String(255), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    consumed_at = Column(DateTime, nullable=True)
 
 # -------------------------------------------------------------------------
 # T3: analysis runs and their outputs (H″)

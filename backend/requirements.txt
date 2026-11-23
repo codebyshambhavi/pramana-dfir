@@ -8,3 +8,5 @@ reportlab
 jsonschema
 pytest
 httpx
+cryptography
+eval-type-backport
