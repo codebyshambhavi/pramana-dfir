@@ -58,7 +58,9 @@ def test_same_object_events_within_correlation_window_produce_finding() -> None:
     f = findings[0]
     assert f["type"] == "correlation"
     assert set(f["evidence_event_ids"]) == {"EV-001", "EV-002"}
-    assert f["claim"] == "Two events refer to the same object ('obj123') and occurred within 10 minutes."
+    assert "obj123" in f["claim"]
+    assert "test action" in f["claim"]
+    assert "EV-001" not in f["claim"] and "EV-002" not in f["claim"]
     assert f["confidence"] == 0.8
     assert f["needs_human_review"] is True
 
@@ -78,7 +80,9 @@ def test_same_object_events_at_10_minute_boundary_produce_finding() -> None:
     f = findings[0]
     assert f["type"] == "correlation"
     assert set(f["evidence_event_ids"]) == {"EV-001", "EV-002"}
-    assert f["claim"] == "Two events refer to the same object ('obj123') and occurred within 10 minutes."
+    assert "obj123" in f["claim"]
+    assert "test action" in f["claim"]
+    assert "EV-001" not in f["claim"] and "EV-002" not in f["claim"]
     assert f["confidence"] == 0.8
     assert f["needs_human_review"] is True
 
@@ -140,7 +144,9 @@ def test_event_with_duplicate_id_is_not_correlated_with_itself() -> None:
     # The finding cites the same event ID twice? Actually, we deduplicate in make_finding.
     # The evidence_event_ids are sorted unique IDs -> only one ID.
     assert f["evidence_event_ids"] == ["EV-DUP"]
-    assert f["claim"] == "Two events refer to the same object ('obj123') and occurred within 10 minutes."
+    assert "obj123" in f["claim"]
+    assert "test action" in f["claim"]
+    assert "EV-001" not in f["claim"] and "EV-002" not in f["claim"]
     assert f["confidence"] == 0.8
     assert f["needs_human_review"] is True
 
@@ -197,7 +203,7 @@ def test_archive_upload_within_30_minutes_produces_finding() -> None:
     assert f["type"] == "correlation"
     assert set(f["evidence_event_ids"]) == {"EV-ARCHIVE-001", "EV-UPLOAD-001"}
     # The window used should be 30 minutes.
-    assert "within 30 minutes" in f["claim"]
+    assert "30-minute correlation window" in f["reasoning"]
     assert f["confidence"] == 0.8
 
 
@@ -217,7 +223,7 @@ def test_archive_upload_at_30_minute_boundary_produces_finding() -> None:
     assert f["type"] == "correlation"
     assert set(f["evidence_event_ids"]) == {"EV-ARCHIVE-001", "EV-UPLOAD-001"}
     # The window used should be 30 minutes.
-    assert "within 30 minutes" in f["claim"]
+    assert "30-minute correlation window" in f["reasoning"]
     assert f["confidence"] == 0.8
 
 

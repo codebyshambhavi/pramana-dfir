@@ -311,26 +311,31 @@ def _write_report(
         "- Development scenarios: 3",
         "- Held-out scenarios: 5",
         "- Reproducibility: scenario YAML seeds; use `make bench` or `python3 bench/run.py --seed N`.",
-        "- `make bench` does not run tests. Validation performed for this deliverable: 11 benchmark tests passed; the existing evidence-engine suite reported 95 passed and 1 unrelated failure (`test_sample_case_events_are_valid_and_contain_three_planted_items`, which expects a generated event ID in the untouched sample ground-truth markdown); 0 skipped.",
+        "- `make bench` does not run tests. Run `python -m pytest bench/tests` separately; test results are intentionally not embedded in generated benchmark reports.",
         "",
         "## Results by split",
         "",
     ]
     metric_names = (
-        ("link_precision", "Link precision"),
-        ("link_recall", "Link recall"),
+        ("link_precision", "Link precision (strict artifact references)"),
+        ("link_recall", "Link recall (strict artifact references)"),
+        ("link_precision_equivalence_aware", "Link precision (duplicate-equivalence aware)"),
+        ("link_recall_equivalence_aware", "Link recall (duplicate-equivalence aware)"),
         ("decoy_false_positive_rate", "Decoy false-positive rate"),
-        ("top_hypothesis_accuracy", "Top-hypothesis accuracy"),
+        ("top_hypothesis_accuracy", "Top-hypothesis accuracy (includes correct UNDETERMINED)"),
         ("correct_undetermined_rate", "Correct UNDETERMINED rate"),
         ("over_claim_rate", "Over-claim rate"),
+        ("selective_accuracy", "Selective accuracy (correct commitments / commitments)"),
+        ("abstention_rate", "Abstention rate (UNDETERMINED on definite ground truth)"),
         ("contradiction_recall", "Contradiction recall"),
         ("missing_unobservable_accuracy", "MISSING vs UNOBSERVABLE accuracy"),
         ("claim_lineage_resolution_rate", "Claim lineage resolution"),
-        ("tamper_invalidation_accuracy", "Tamper invalidation accuracy"),
+        ("tamper_invalidation_accuracy", "Tamper invalidation accuracy (strict artifact references)"),
+        ("tamper_invalidation_equivalence_aware_accuracy", "Tamper invalidation accuracy (duplicate-equivalence aware)"),
     )
     for split in ("dev", "held-out"):
         content.extend((f"### {split}", ""))
-        for system in ("B1", "B2", "PRAMANA"):
+        for system in SYSTEMS:
             aggregate = results["aggregate"][split][system]
             content.extend((
                 f"#### {system} — {aggregate['scenario_count']} scenarios, {aggregate['event_count']} events",
@@ -347,11 +352,16 @@ def _write_report(
                 content.append(f"| {label} | {raw} | {percentage} |")
             content.append("")
     content.extend((
+        "## Metric interpretation",
+        "",
+        "- Strict link and tamper metrics compare exact artifact references. Equivalence-aware variants additionally normalize duplicate rows using the simulator's explicit `duplicate_rows` original-to-duplicate mapping; they are reported alongside, never instead of, strict scores.",
+        "- Selective accuracy scores only non-UNDETERMINED commitments against defined ground truth. Abstention rate separately measures UNDETERMINED outputs on cases with a definite ground-truth hypothesis.",
+        "",
         "## Known limitations",
         "",
         "- The scenarios are controlled synthetic fixtures and do not establish real-world forensic accuracy.",
         "- B1/B2 only predict event links; they do not produce hypothesis, contradiction, absence, lineage, or tamper predictions. Those metrics are reported as unavailable where no output exists.",
-        "- Tamper invalidation is exercised only against disposable generated evidence by calling the existing T4 verification service and T8 run-diff service; the benchmark does not implement the demo tamper endpoint or quarantine behavior.",
+        "- The main scenario runner exercises T4 verification and T8 run-diff services directly on disposable generated evidence. The separate ROLE 2 integration test also exercises the public demo tamper endpoint, verification quarantine, Run A invalidation, and child-run diff through the API.",
         "- The T8 runner is database-backed and is invoked through the existing `execute_analysis_run` service in an isolated in-memory SQLite database. Missing T7/T8 dependencies cause the run to fail explicitly.",
         "- T7 source coverage currently uses normalized Event `source` values. Several CSV evidence families share `source=log`; family-specific scheduler/auth coverage may therefore not be distinguishable without a change outside T9/T10.",
         "- Ground truth is authored by the simulator independently of intelligence output. Scoring uses event artifact references, not generated claim IDs.",
@@ -363,6 +373,111 @@ def _write_report(
     ))
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text("\n".join(content), encoding="utf-8")
+
+
+RECORD_KEY_FIELDS = ("scenario_id", "split", "scenario_type", "system")
+SYSTEMS = ("B1", "B2", "PRAMANA")
+METRIC_NAMES = (
+    "link_precision",
+    "link_recall",
+    "link_precision_equivalence_aware",
+    "link_recall_equivalence_aware",
+    "decoy_false_positive_rate",
+    "top_hypothesis_accuracy",
+    "correct_undetermined_rate",
+    "over_claim_rate",
+    "selective_accuracy",
+    "abstention_rate",
+    "contradiction_recall",
+    "missing_unobservable_accuracy",
+    "claim_lineage_resolution_rate",
+    "tamper_invalidation_accuracy",
+    "tamper_invalidation_equivalence_aware_accuracy",
+)
+
+
+class DuplicateBenchmarkRecordError(RuntimeError):
+    """Raised when benchmark records violate the per-key uniqueness invariant."""
+
+
+def record_key(record: dict[str, Any]) -> tuple[str, str, str, str]:
+    """Uniqueness key ``(scenario_id, split, scenario_type, system)``."""
+    return tuple(str(record[field]) for field in RECORD_KEY_FIELDS)  # type: ignore[return-value]
+
+
+def canonicalize_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return exactly one record per ``(scenario_id, split, scenario_type, system)``.
+
+    * Conflicting duplicates (same key, different content) raise
+      ``DuplicateBenchmarkRecordError`` naming the key and differing fields;
+      neither the first nor the last record is silently preferred.
+    * Exactly identical duplicates (canonical JSON equality) collapse to one.
+    * Output order is deterministic (sorted by key).
+    """
+    canonical: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    serialized: dict[tuple[str, str, str, str], str] = {}
+    for record in records:
+        missing = [field for field in RECORD_KEY_FIELDS if field not in record]
+        if missing:
+            raise DuplicateBenchmarkRecordError(f"Benchmark record missing key fields {missing}")
+        key = record_key(record)
+        body = json.dumps(record, sort_keys=True, default=str)
+        if key in canonical:
+            if serialized[key] != body:
+                existing = canonical[key]
+                differing = sorted(
+                    field for field in set(existing) | set(record)
+                    if json.dumps(existing.get(field), sort_keys=True, default=str)
+                    != json.dumps(record.get(field), sort_keys=True, default=str)
+                )
+                raise DuplicateBenchmarkRecordError(
+                    "Conflicting benchmark records for key "
+                    f"{dict(zip(RECORD_KEY_FIELDS, key))}: differing fields {differing}"
+                )
+            continue
+        canonical[key] = record
+        serialized[key] = body
+    return [canonical[key] for key in sorted(canonical)]
+
+
+def validate_unique_records(records: list[dict[str, Any]]) -> None:
+    """Pre-write guard: fail if any uniqueness key appears more than once."""
+    counts: dict[tuple[str, str, str, str], int] = {}
+    for record in records:
+        key = record_key(record)
+        counts[key] = counts.get(key, 0) + 1
+    dupes = {key: count for key, count in counts.items() if count > 1}
+    if dupes:
+        raise DuplicateBenchmarkRecordError(f"Duplicate benchmark record keys: {dupes}")
+
+
+def csv_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Flatten one canonical record into its CSV row."""
+    row: dict[str, Any] = {field: record[field] for field in RECORD_KEY_FIELDS}
+    row["event_count"] = record["event_count"]
+    for metric in METRIC_NAMES:
+        for field in ("numerator", "denominator", "percentage"):
+            row[f"{metric}_{field}"] = record["metrics"][metric][field]
+    return row
+
+
+def write_result_artifacts(results: dict[str, Any], results_dir: Path) -> None:
+    """Overwrite results.json and results.csv from one validated canonical record set."""
+    records = results["scenarios"]
+    validate_unique_records(records)
+    results_dir.mkdir(parents=True, exist_ok=True)
+    json_path = results_dir / "results.json"
+    csv_path = results_dir / "results.csv"
+    json_path.write_text(json.dumps(results, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    columns = [*RECORD_KEY_FIELDS, "event_count"]
+    columns.extend(
+        f"{metric}_{field}" for metric in METRIC_NAMES for field in ("numerator", "denominator", "percentage")
+    )
+    with csv_path.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
+        writer.writeheader()
+        for record in records:
+            writer.writerow(csv_record(record))
 
 
 def run_benchmark(
@@ -409,9 +524,36 @@ def run_benchmark(
                 "B2": b2,
                 "PRAMANA": actual,
             }
-            rows.extend(_prediction_rows(scenario, ground_truth, predictions))
-            for row in rows[-3:]:
+            scenario_rows = _prediction_rows(scenario, ground_truth, predictions)
+            for row in scenario_rows:
                 row["ground_truth"] = ground_truth
+            rows.extend(scenario_rows)
+
+    expected_keys = {
+        (gt["scenario_id"], gt["split"], gt["scenario_type"], system)
+        for gt in truth["scenarios"]
+        for system in SYSTEMS
+    }
+    rows = canonicalize_records([
+        {
+            "scenario_id": row["scenario_id"],
+            "split": row["split"],
+            "scenario_type": row["scenario_type"],
+            "system": row["system"],
+            "event_count": row["event_count"],
+            "prediction": row["prediction"],
+            "metrics": row["metrics"],
+            "ground_truth": row["ground_truth"],
+        }
+        for row in rows
+    ])
+    produced_keys = {record_key(row) for row in rows}
+    if produced_keys != expected_keys:
+        raise DuplicateBenchmarkRecordError(
+            "Benchmark record keys do not match scenario x system inputs: "
+            f"missing={sorted(expected_keys - produced_keys)} "
+            f"unexpected={sorted(produced_keys - expected_keys)}"
+        )
 
     split_system_inputs = {
         split: {
@@ -420,7 +562,7 @@ def run_benchmark(
                 for row in rows
                 if row["split"] == split and row["system"] == system
             ]
-            for system in ("B1", "B2", "PRAMANA")
+            for system in SYSTEMS
         }
         for split in ("dev", "held-out")
     }
@@ -432,61 +574,17 @@ def run_benchmark(
         for split, systems in split_system_inputs.items()
     }
     for split in ("dev", "held-out"):
-        for system in ("B1", "B2", "PRAMANA"):
+        for system in SYSTEMS:
             selected = [row for row in rows if row["split"] == split and row["system"] == system]
             aggregate[split][system]["event_count"] = sum(row["event_count"] for row in selected)
 
     results = {
         "scenario_count": len(truth["scenarios"]),
         "event_count": sum(scenario["event_count"] for scenario in truth["scenarios"]),
-        "scenarios": [
-            {
-                "scenario_id": row["scenario_id"],
-                "split": row["split"],
-                "scenario_type": row["scenario_type"],
-                "system": row["system"],
-                "event_count": row["event_count"],
-                "prediction": row["prediction"],
-                "metrics": row["metrics"],
-                "ground_truth": row["ground_truth"],
-            }
-            for row in rows
-        ],
+        "scenarios": rows,
         "aggregate": aggregate,
     }
-    json_path = results_dir / "results.json"
-    csv_path = results_dir / "results.csv"
-    json_path.write_text(json.dumps(results, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-    metric_names = (
-        "link_precision",
-        "link_recall",
-        "decoy_false_positive_rate",
-        "top_hypothesis_accuracy",
-        "correct_undetermined_rate",
-        "over_claim_rate",
-        "contradiction_recall",
-        "missing_unobservable_accuracy",
-        "claim_lineage_resolution_rate",
-        "tamper_invalidation_accuracy",
-    )
-    with csv_path.open("w", encoding="utf-8", newline="") as stream:
-        columns = ["scenario_id", "split", "scenario_type", "system", "event_count"]
-        columns.extend(f"{metric}_{field}" for metric in metric_names for field in ("numerator", "denominator", "percentage"))
-        writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
-        writer.writeheader()
-        for row in rows:
-            csv_row: dict[str, Any] = {
-                "scenario_id": row["scenario_id"],
-                "split": row["split"],
-                "scenario_type": row["scenario_type"],
-                "system": row["system"],
-                "event_count": row["event_count"],
-            }
-            for metric in metric_names:
-                for field in ("numerator", "denominator", "percentage"):
-                    csv_row[f"{metric}_{field}"] = row["metrics"][metric][field]
-            writer.writerow(csv_row)
+    write_result_artifacts(results, results_dir)
 
     _write_report({
         **results,
@@ -498,7 +596,7 @@ def run_benchmark(
                         1 for scenario in truth["scenarios"] if scenario["split"] == split
                     ),
                 }
-                for system in ("B1", "B2", "PRAMANA")
+                for system in SYSTEMS
             }
             for split in ("dev", "held-out")
         },

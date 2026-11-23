@@ -27,6 +27,7 @@ from typing import Any
 from sqlalchemy import (
     Boolean,
     Column,
+    CheckConstraint,
     DateTime,
     Enum,
     Float,
@@ -57,6 +58,27 @@ VERIFY_MISMATCH = "MISMATCH"
 VERIFY_MISSING = "MISSING"
 VERIFY_CUSTODY_BROKEN = "CUSTODY_BROKEN"
 VERIFY_STATES = (VERIFY_MATCH, VERIFY_MISMATCH, VERIFY_MISSING, VERIFY_CUSTODY_BROKEN)
+
+# Case workflow status (Role 3 plan, section 6.3). A workflow summary, not proof of a forensic conclusion.
+# Only OPEN and CLOSED are set by the API today; the remaining states are reserved for the automatic
+# transitions (evidence collected, analysis, report, review) that follow.
+CASE_STATUS_DRAFT = "DRAFT"
+CASE_STATUS_OPEN = "OPEN"
+CASE_STATUS_CLOSED = "CLOSED"
+CASE_STATUSES = (
+    CASE_STATUS_DRAFT,
+    CASE_STATUS_OPEN,
+    "EVIDENCE_COLLECTED",
+    "ANALYSIS_IN_PROGRESS",
+    "ANALYSIS_COMPLETE",
+    "REPORT_GENERATED",
+    "REVIEWED",
+    CASE_STATUS_CLOSED,
+    "INGESTION_FAILED",
+    "ANALYSIS_FAILED",
+    "REPORT_FAILED",
+    "REOPENED",
+)
 
 class ImmutableRecordError(RuntimeError):
     """Raised when a write would delete evidence/custody, change an intake hash or alter run data."""
@@ -93,6 +115,16 @@ class Case(Base):
     name = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
 
+    # Case workflow metadata (Role 3). All nullable or server-defaulted so migrate() can add them to an
+    # existing cases table without rewriting it.
+    description = Column(Text, nullable=True)
+    scope = Column(Text, nullable=True)
+    tags = Column(JSON, nullable=True)
+    owner = Column(String(255), nullable=True)
+    status = Column(String(32), nullable=False, server_default=CASE_STATUS_OPEN, default=CASE_STATUS_OPEN)
+    updated_at = Column(DateTime, nullable=True)
+    closed_at = Column(DateTime, nullable=True)
+
     # No delete cascade: evidence rows must outlive any ORM delete attempt.
     evidence_items = relationship("Evidence", back_populates="case", cascade="save-update, merge")
     events = relationship("EventModel", back_populates="case", cascade="all, delete-orphan")
@@ -102,7 +134,14 @@ class Case(Base):
         return {
             "case_id": self.case_id,
             "name": self.name,
+            "description": self.description,
+            "scope": self.scope,
+            "tags": list(self.tags or []),
+            "owner": self.owner,
+            "status": self.status or CASE_STATUS_OPEN,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "closed_at": self.closed_at.isoformat() if self.closed_at else None,
         }
 
 
@@ -267,6 +306,39 @@ class FindingModel(Base):
         if self.alternatives is not None:
             data["alternatives"] = self.alternatives
         return data
+
+
+class FindingReviewDecision(Base):
+    """Append-only record of a human review decision; reviewer is self-declared until auth exists."""
+
+    __tablename__ = "finding_review_decisions"
+    __table_args__ = (
+        CheckConstraint("decision IN ('approved', 'rejected')", name="ck_review_decision"),
+        CheckConstraint("reviewer_identity_type = 'self_declared'", name="ck_review_identity_type"),
+    )
+
+    review_id = Column(String(64), primary_key=True)
+    finding_id = Column(String(64), ForeignKey("findings.finding_id"), nullable=False, index=True)
+    decision = Column(String(16), nullable=False)  # approved or rejected
+    reviewer_label = Column(String(120), nullable=False)
+    reviewer_identity_type = Column(String(32), nullable=False, default="self_declared", server_default="self_declared")
+    rationale = Column(Text, nullable=False)
+    decided_at = Column(DateTime, default=utc_now, nullable=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "review_id": self.review_id,
+            "finding_id": self.finding_id,
+            "decision": self.decision,
+            "reviewer_label": self.reviewer_label,
+            "reviewer_identity_type": self.reviewer_identity_type,
+            "rationale": self.rationale,
+            "decided_at": (
+                self.decided_at.replace(tzinfo=timezone.utc).isoformat()
+                if self.decided_at is not None and self.decided_at.tzinfo is None
+                else _iso(self.decided_at)
+            ),
+        }
 
 
 class CustodyEntry(Base):

@@ -29,9 +29,17 @@ PARSER_VERSION = "1.1.0"
 FAMILY = "system_log"
 
 
-def _family_for_path(path: str) -> str:
+def _family_for_path(path: str, case_id: str = "") -> str:
     """Keep known log-like evidence families distinct without changing source."""
-    stem = Path(path).stem.casefold()
+    name = Path(path).name.casefold()
+    if case_id:
+        cid_prefix = case_id.casefold() + "_"
+        if name.startswith(cid_prefix):
+            name = name[len(cid_prefix):]
+            parts = name.split("_", 1)
+            if len(parts) == 2 and len(parts[0]) == 6:
+                name = parts[1]
+    stem = Path(name).stem.casefold()
     if "scheduler" in stem:
         return "scheduler"
     if "authentication" in stem or "auth" in stem or "vpn" in stem:
@@ -110,7 +118,7 @@ def parse(path: str, case_id: str, evidence_id: str, sha256: str) -> List[Dict[s
                     "raw": raw,
                     **provenance_fields(
                         parser=PARSER_NAME, version=PARSER_VERSION,
-                        family=_family_for_path(path), tz_assumption=tz_basis,
+                        family=_family_for_path(path, case_id), tz_assumption=tz_basis,
                     ),
                 }
 

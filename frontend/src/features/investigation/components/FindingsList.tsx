@@ -2,7 +2,7 @@
 import { ChevronDown, ScanSearch, Search } from "../../../components/console/icons";
 import type { Finding } from "../../../api/types";
 import { StatusChip, TYPE_CHIP } from "../../dashboard/components/FindingsPanel";
-import { TYPE_LABEL, evidenceIdsFor, type CaseIndex } from "../findingModel";
+import { TYPE_LABEL, evidenceIdsFor, readableFindingText, type CaseIndex } from "../findingModel";
 
 export type TypeFilter = Finding["type"] | "all";
 
@@ -81,11 +81,10 @@ export default function FindingsList({ findings, index, selectedId, onSelect, qu
                   }`}
                 >
                   <span className="min-w-0">
-                    <span className="flex items-center gap-2 text-[12px] text-soft/60 tabular-nums">
-                      {f.finding_id}
+                    <span className="flex min-w-0 flex-wrap items-center gap-2 text-[12px] text-soft/70">
                       <span className={`rounded-md border px-1.5 py-px text-[11px] ${TYPE_CHIP[f.type] ?? TYPE_CHIP.hypothesis}`}>{TYPE_LABEL[f.type]}</span>
                     </span>
-                    <span className="mt-1 line-clamp-2 block text-[14px] leading-snug text-white">{f.claim}</span>
+                    <span className="mt-1 line-clamp-2 block text-[14px] leading-snug text-white">{readableFindingText(f.claim, index)}</span>
                     {evidence.length > 0 && (
                       <span className="mt-1.5 block truncate text-[12px] text-trace-soft/80 tabular-nums">{evidence.join(" · ")}</span>
                     )}

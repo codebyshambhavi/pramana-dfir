@@ -59,6 +59,7 @@ def test_find_anomalies_detects_odd_hour_event_at_exact_start() -> None:
     assert "odd hours" in f["claim"].lower()
     assert f["confidence"] == 0.7
     assert f["needs_human_review"] is True
+    assert "EV-001" not in f["reasoning"]
 
 
 def test_find_anomalies_detects_odd_hour_event_at_exact_end_minus_one_second() -> None:

@@ -132,7 +132,7 @@ def test_nonexistent_routes_and_entities(client: TestClient):
     assert client.get("/cases/DOES_NOT_EXIST/graph").status_code == 404
     assert client.post("/cases/DOES_NOT_EXIST/analyze").status_code == 404
     assert client.get("/cases/DOES_NOT_EXIST/findings").status_code == 404
-    assert client.patch("/findings/DOES_NOT_EXIST", json={"status": "approved"}).status_code == 404
+    assert client.patch("/findings/DOES_NOT_EXIST", json={"status": "approved", "reviewer_label": "Test Investigator", "rationale": "Checking missing finding behavior."}).status_code == 404
     assert client.get("/findings/DOES_NOT_EXIST/lineage").status_code == 404
     assert client.get("/cases/DOES_NOT_EXIST/report?format=pdf").status_code == 404
 

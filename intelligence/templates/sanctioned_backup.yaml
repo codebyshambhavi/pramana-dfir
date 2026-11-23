@@ -1,4 +1,4 @@
-id: H2
+﻿id: H2
 kind: sanctioned_backup
 name: Sanctioned Backup
 description: The activity is part of an authorized or scheduled backup process.
@@ -38,12 +38,6 @@ expects:
       service: scheduled_backup
     weight: 1.0
 forbids:
-  - id: H2-FORBID-1
-    stage: staging
-    description: Unauthorized off-hours session outside approved maintenance window
-    claim_type: OFFHOURS_SESSION
-    source_kind: system_log
-    critical: true
   - id: H2-FORBID-2
     stage: verification
     description: Missing audit records in covered window during backup run

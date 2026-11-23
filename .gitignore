@@ -30,6 +30,7 @@ build/
 /data/
 /uploads/
 /storage/
+/backend/storage/
 
 # --- Real evidence must never be committed. Synthetic fixtures live in datasets/ ---
 /evidence/

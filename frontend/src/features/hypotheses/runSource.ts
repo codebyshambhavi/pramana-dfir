@@ -1,4 +1,4 @@
-// Role 4 / T11: where the run-based views (Hypotheses, Claims, Reconstruction) get their analysis run. This is the only
+﻿// Role 4 / T11: where the run-based views (Hypotheses, Claims, Reconstruction) get their analysis run. This is the only
 // place they touch T7/T8.
 //   demo: a run from the CASE-DEMO-IST recording (real backend output, see api/recorded/case-demo-ist/README.md).
 //         Run A (before the tamper) by default; run B when asked for by ID. Any other ID is reported as not recorded.
@@ -24,7 +24,7 @@ export function useLatestRun(kind: EvidenceSourceKind, caseId: string, runId: st
   useEffect(() => {
     const controller = new AbortController();
     setState({ status: "loading" });
-    if (kind === "demo") {
+    if (kind === "demo" || kind === "recorded") {
       loadRecording()
         .then(rec => {
           if (controller.signal.aborted) return;

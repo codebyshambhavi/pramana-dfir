@@ -1,12 +1,13 @@
-// Role 4: Report tab of the Investigation Workspace. In live mode it requests GET /cases/{id}/report?format=pdf and,
-// only if the server returns a PDF, previews it and offers that exact file for download. Demo mode has no backend to
-// generate a report, so it shows what the report will contain, built from the loaded data, with no download button.
+// Role 4: Report tab of the Investigation Workspace. Live mode requests the backend PDF unchanged; recorded mode
+// builds a deterministic PDF from the bundled recording without contacting or writing to the backend.
 import { useEffect, useState } from "react";
 import { Alert, ReportIcon, Refresh } from "../components/console/icons";
 import { fetchReportPdf } from "../api/client";
 import type { EvidenceItem, Finding } from "../api/types";
 import { statusOf } from "../features/dashboard/components/FindingsPanel";
 import type { EvidenceSourceKind } from "../features/vault/evidenceSource";
+import { loadRecording } from "../api/recorded/loadRecording";
+import { buildRecordedReportPdf } from "../features/report/recordedReport";
 
 type PdfState = { status: "idle" } | { status: "loading" } | { status: "error"; message: string } | { status: "ready"; url: string };
 
@@ -57,7 +58,10 @@ export default function Report({
   const generate = async () => {
     setPdf({ status: "loading" });
     try {
-      const blob = await fetchReportPdf(caseId);
+      const blob =
+        sourceKind === "recorded"
+          ? buildRecordedReportPdf(await loadRecording())
+          : await fetchReportPdf(caseId);
       setPdf({ status: "ready", url: URL.createObjectURL(blob) });
     } catch (error) {
       setPdf({ status: "error", message: error instanceof Error ? error.message : "The report could not be generated." });
@@ -81,7 +85,9 @@ export default function Report({
         ) : pdf.status === "ready" ? (
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-[13.5px] text-soft/80">Preview of the PDF returned by the server.</p>
+              <p className="text-[13.5px] text-soft/80">
+                {sourceKind === "recorded" ? "Preview of the PDF generated from the recorded investigation." : "Preview of the PDF returned by the server."}
+              </p>
               <a
                 href={pdf.url}
                 download={`${caseId}-report.pdf`}
@@ -97,8 +103,12 @@ export default function Report({
             <div className="flex gap-4">
               <ReportIcon size={26} className="shrink-0 text-trace-soft" />
               <div className="text-[13.5px]">
-                <p className="font-semibold text-white">Investigator-reviewed report</p>
-                <p className="mt-1 text-soft/80">Requests GET /cases/{caseId}/report?format=pdf. Only a PDF the server returns is shown or saved.</p>
+                <p className="font-semibold text-white">{sourceKind === "recorded" ? "Recorded investigation report" : "Investigator-reviewed report"}</p>
+                <p className="mt-1 text-soft/80">
+                  {sourceKind === "recorded"
+                    ? "Generate a deterministic PDF locally from the recorded evidence, custody, runs, integrity results and engine output."
+                    : `Requests GET /cases/${caseId}/report?format=pdf. Only a PDF the server returns is shown or saved.`}
+                </p>
               </div>
             </div>
             {pdf.status === "error" && (
@@ -113,7 +123,7 @@ export default function Report({
               className="inline-flex items-center gap-2 rounded-lg border border-trace/50 bg-trace/10 px-4 py-2.5 text-[13.5px] text-white transition hover:bg-trace/20 disabled:opacity-50"
             >
               {pdf.status === "error" && <Refresh size={15} />}
-              {pdf.status === "loading" ? "Requesting report…" : pdf.status === "error" ? "Try again" : "Request report"}
+              {pdf.status === "loading" ? (sourceKind === "recorded" ? "Building report…" : "Requesting report…") : pdf.status === "error" ? "Try again" : sourceKind === "recorded" ? "Generate report" : "Request report"}
             </button>
           </div>
         )}

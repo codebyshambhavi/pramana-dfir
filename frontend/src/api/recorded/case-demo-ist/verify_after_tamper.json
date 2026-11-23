@@ -13,11 +13,11 @@
   "custody_entry": {
     "id": 7,
     "evidence_id": "EVID-002",
-    "actor": "PRAMANA T11 recording",
+    "actor": "PRAMANA T12 demo",
     "action": "Integrity verification: MISMATCH (ACTIVE -> QUARANTINED)",
-    "time": "2026-11-08T04:39:28.979804",
+    "time": "2026-11-09T05:44:23.854062",
     "sha256": "146284a7565ec5aaa8e86394e000acbae4f1a4168f187737b28d680241e13d76",
-    "prev_hash": "3c9aedaa12aa0ace4e48e9964bab88c5706eb52917a79f815ff099a9396eefd4",
-    "entry_hash": "3dc2d1183ea8b320ffa8d027c4017dcaf6dd527e659b841999a09753d5f0b56f"
+    "prev_hash": "8c1ef6fe4ec1d293b1e3ea9deb9edeebab3fce0838af63689e5cdbd51cb8794f",
+    "entry_hash": "7a9020e3436113d9825ed050c05a577c30304263d49682a5e9d26b8833b910ce"
   }
 }

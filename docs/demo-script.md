@@ -30,11 +30,11 @@ Open http://localhost:5173/app/evidence and set the header switch to **UTC**. To
 |---|---|---|---|
 | 0–15 s | Evidence Vault | Point at the five files. Open `browser_history.csv` (EVID-002). | "Five sources for one laptop. Each file's SHA-256 is taken at intake and every action is hash-chained in custody." |
 | 15–25 s | Drawer, Details | Show status ACTIVE and the SHA-256. | "Integrity status comes from the backend, not the browser." |
-| 25–40 s | Investigation › Hypotheses | Show run A ranking: H2 Sanctioned Backup leading, H1 weakened, H3 refuted. Open one matrix row. | "Each hypothesis is checked item by item against the evidence. Nothing is a confidence score." |
+| 25–40 s | Investigation › Hypotheses | Show run A ranking: H2 Sanctioned Backup leading, H1 and H3 weakened. Open one matrix row. | "Each hypothesis is checked item by item against the evidence. Nothing is a confidence score." |
 | 40–50 s | Claims tab | Open a claim and follow its lineage to an event and its SHA-256. | "Every claim traces to stored events and the file hash." |
 | 50–65 s | Vault › EVID-002 drawer | Click **Simulate tamper & verify**. | "Someone edits the stored file. Re-hashing gives MISMATCH, so the file is QUARANTINED and run A is invalidated." |
 | 65–80 s | Investigation › Run diff | Click **New run from current evidence**. | "A new run uses only ACTIVE evidence. Run A is kept, write-once." |
-| 80–95 s | Run diff | Show EVID-002 removed, the three claims that depended on it removed, H2 LEADING → WEAKENED, backup stage SUPPORTED → GAP. | "The diff shows exactly what the tampered file was holding up." |
+| 80–95 s | Run diff | Show EVID-002 removed, the three claims that depended on it removed, H2 LEADING → WEAKENED (rank 1 → 3), outcome LEADING → UNDETERMINED. | "The diff shows exactly what the tampered file was holding up." |
 | 95–100 s | Header switch | Switch **UTC → IST**. | "Display only: 10:41 UTC reads 16:11 IST. Stored timestamps never change." |
 
 Expected result: the engine ranks **H2 Sanctioned Backup** first, while the scenario's ground truth is H1. This is the

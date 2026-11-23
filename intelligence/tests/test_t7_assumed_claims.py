@@ -118,6 +118,11 @@ def test_assumed_claim_matching_forbidden_item_does_not_violate():
 
 def test_mixed_assumed_and_asserted_claims():
     """When both ASSERTED and ASSUMED claims match, only ASSERTED counts as evidence."""
+    system_event = {
+        **BASE_EVENTS[0],
+        "event_id": "EV-SYSTEM",
+        "source": "system_log",
+    }
     claims = [
         {
             "claim_id": "CLAIM-REAL-1",
@@ -125,7 +130,7 @@ def test_mixed_assumed_and_asserted_claims():
             "params": {"actor": "mira", "device": "dev-01"},
             "status": "ASSERTED",
             "grade": "A",
-            "edges": [{"ref_kind": "event", "ref_id": "EV-1", "role": "SUPPORTS"}],
+            "edges": [{"ref_kind": "event", "ref_id": "EV-SYSTEM", "role": "SUPPORTS"}],
         },
         {
             "claim_id": "CLAIM-ASSUMED-1",
@@ -136,7 +141,7 @@ def test_mixed_assumed_and_asserted_claims():
         },
     ]
 
-    result = evaluate_hypotheses(claims=claims, events=BASE_EVENTS)
+    result = evaluate_hypotheses(claims=claims, events=[*BASE_EVENTS, system_event])
     h1 = next(h for h in result.ranked_hypotheses if h.id == "H1")
     req_item = next(e for e in h1.evaluations if e.category == "requires" and e.claim_type == "ACTOR_DEVICE_CONSISTENT")
 

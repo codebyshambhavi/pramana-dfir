@@ -98,11 +98,11 @@ def test_bundled_templates_validate_against_schema():
 
 # --- 2. Golden Case: H1 Insider Exfiltration ---
 
-def test_golden_case_h1_insider_exfiltration_leading():
+def test_golden_case_h1_insider_exfiltration_plausible():
     """Actor alice accesses files and exfiltrates via browser during off-hours.
-    H2 (Backup) is REFUTED by the off-hours forbidden claim.
+    Off-hours activity supports H1 but does not independently refute H2.
     H3 (Session Misuse) is WEAKENED/REFUTED by missing session origin mismatch.
-    Result: H1 is LEADING.
+    Result: H1 remains a plausible explanation.
     """
     ev_login = _make_event("EV-1", "system_log", "login", "2026-10-18T02:00:00Z", actor="alice", device="dev-01")
     ev_stage = _make_event("EV-2", "system_log", "archive_create", "2026-10-18T02:15:00Z", actor="alice", device="dev-01")
@@ -118,16 +118,13 @@ def test_golden_case_h1_insider_exfiltration_leading():
 
     result = evaluate_hypotheses(claims, events)
 
-    assert result.outcome == STATUS_LEADING
-    top = result.ranked_hypotheses[0]
-    assert top.id == "H1"
-    assert top.status == STATUS_LEADING
-    assert top.inconsistency_score == 0.0
-
-    # H2 is refuted because it strictly forbids OFFHOURS_SESSION
+    # Off-hours activity alone must not refute H2.
     h2 = next(h for h in result.ranked_hypotheses if h.id == "H2")
-    assert h2.status == STATUS_REFUTED
-    assert h2.hard_violations_count >= 1
+    assert h2.status != STATUS_REFUTED
+    assert h2.hard_violations_count == 0
+    # The chat event is not evidence for C1/C2, so H2's chat-specific
+    # expectation is MISSING rather than satisfied by unrelated case evidence.
+    assert h2.inconsistency_score == 0.25
 
     # H3 lacks session origin mismatch
     h3 = next(h for h in result.ranked_hypotheses if h.id == "H3")
@@ -155,7 +152,8 @@ def test_golden_case_h2_sanctioned_backup_leading():
     result = evaluate_hypotheses(claims, events)
 
     h2 = next(h for h in result.ranked_hypotheses if h.id == "H2")
-    assert h2.inconsistency_score == 0.0
+    # No chat-backed claim exists, so H2's chat-specific expectation is MISSING.
+    assert h2.inconsistency_score == 0.25
     assert h2.hard_violations_count == 0
 
     # H1 expects off-hours session. Since system_log covers this window, it is MISSING -> penalized
@@ -245,20 +243,19 @@ def test_witness_family_deduplication():
     """Multiple violations from the same (source_kind, device) family count once
     using the maximum contribution, rather than summing up artificially.
     """
-    ev1 = _make_event("EV-1", "system_log", "login", "2026-10-18T02:00:00Z", device="srv-01")
-    ev2 = _make_event("EV-2", "system_log", "auth", "2026-10-18T02:05:00Z", device="srv-01")
+    ev1 = _make_event("EV-1", "auth", "login", "2026-10-18T02:00:00Z", device="srv-01")
+    ev2 = _make_event("EV-2", "auth", "auth", "2026-10-18T02:05:00Z", device="srv-01")
     events = [ev1, ev2]
 
-    # Two off-hours claims on the exact same (system_log, srv-01) family
+    # Two origin-mismatch claims from the same (auth, srv-01) family.
     claims = [
-        _make_claim("C1", "OFFHOURS_SESSION", events=[ev1]),
-        _make_claim("C2", "OFFHOURS_SESSION", events=[ev2]),
+        _make_claim("C1", "SESSION_ORIGIN_MISMATCH", events=[ev1]),
+        _make_claim("C2", "SESSION_ORIGIN_MISMATCH", events=[ev2]),
     ]
 
     result = evaluate_hypotheses(claims, events)
     h2 = next(h for h in result.ranked_hypotheses if h.id == "H2")
-    # For H2, off-hours is forbidden (penalty 2.0). Both come from (system_log, srv-01).
-    # Deduped family penalty should be max (2.0), not 2.0 + 2.0 = 4.0!
+    # One witness family contributes its maximum penalty, not the sum.
     assert h2.inconsistency_score == 2.0
 
 

@@ -112,6 +112,8 @@ def test_tie_breaking_by_diagnostic_items():
     assert ranked[0].rank == 1
     assert ranked[1].id == "HB"
     assert ranked[1].rank == 2
+    assert res.outcome == STATUS_LEADING
+    assert ranked[0].status == STATUS_LEADING
 
 
 def test_identical_tie_yields_undetermined_outcome():

@@ -13,13 +13,14 @@ from __future__ import annotations
 import io
 from datetime import datetime, timezone
 from typing import Any
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from app.db.models import Case, CustodyEntry, Evidence, FindingModel
+from app.db.models import Case, CustodyEntry, Evidence, FindingModel, FindingReviewDecision
 from app.db.session import verify_custody_log
 
 
@@ -91,7 +92,7 @@ def generate_case_pdf_report(case: Case, db: Any) -> bytes:
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     story.append(
         Paragraph(
-            f"Case ID: <b>{case.case_id}</b> &nbsp;|&nbsp; Case Name: <b>{case.name}</b> &nbsp;|&nbsp; Generated: {now_str}",
+            f"Case ID: <b>{escape(case.case_id)}</b> &nbsp;|&nbsp; Case Name: <b>{escape(case.name)}</b> &nbsp;|&nbsp; Generated: {now_str}",
             subtitle_style,
         )
     )
@@ -148,9 +149,9 @@ def generate_case_pdf_report(case: Case, db: Any) -> bytes:
         for ev in evidence_items:
             intake_str = ev.intake_time.strftime("%Y-%m-%d %H:%M:%S") if ev.intake_time else "N/A"
             evidence_data.append([
-                Paragraph(ev.evidence_id, body_style),
-                Paragraph(ev.filename, body_style),
-                Paragraph(ev.sha256, code_style),
+                Paragraph(escape(ev.evidence_id), body_style),
+                Paragraph(escape(ev.filename), body_style),
+                Paragraph(escape(ev.sha256), code_style),
                 Paragraph(intake_str, body_style),
                 Paragraph(f"{ev.size_bytes} B", body_style),
             ])
@@ -200,9 +201,9 @@ def generate_case_pdf_report(case: Case, db: Any) -> bytes:
             status_text = "<font color='green'><b>VERIFIED</b></font>" if is_valid else "<font color='red'><b>TAMPERED</b></font>"
             t_str = entry.time.strftime("%Y-%m-%d %H:%M:%S") if entry.time else "N/A"
             custody_data.append([
-                Paragraph(entry.evidence_id, body_style),
-                Paragraph(entry.actor, body_style),
-                Paragraph(entry.action, body_style),
+                Paragraph(escape(entry.evidence_id), body_style),
+                Paragraph(escape(entry.actor), body_style),
+                Paragraph(escape(entry.action), body_style),
                 Paragraph(t_str, body_style),
                 Paragraph(status_text, body_style),
             ])
@@ -223,9 +224,15 @@ def generate_case_pdf_report(case: Case, db: Any) -> bytes:
 
     story.append(Spacer(1, 10))
 
-    # Section 3: Forensic Findings (Approved and Pending)
-    story.append(Paragraph("3. Forensic Findings & Evidence Lineage", section_heading))
-    findings = case.findings or []
+    # Section 3: Only investigator-approved findings are included as report conclusions.
+    story.append(Paragraph("3. Investigator-Approved Findings & Evidence Lineage", section_heading))
+    all_findings = case.findings or []
+    findings = [finding for finding in all_findings if finding.status == "approved"]
+    omitted_count = len(all_findings) - len(findings)
+    story.append(Paragraph(
+        f"{len(findings)} approved finding(s) included. {omitted_count} pending or rejected finding(s) omitted from conclusions.",
+        body_style,
+    ))
     if findings:
         findings_data: list[list[Any]] = [
             [
@@ -240,13 +247,16 @@ def generate_case_pdf_report(case: Case, db: Any) -> bytes:
             status_color = "green" if f.status == "approved" else ("red" if f.status == "rejected" else "orange")
             status_html = f"<font color='{status_color}'><b>{f.status.upper()}</b></font>"
             cited_events = ", ".join(f.evidence_event_ids or [])
-            claim_html = f"<b>Claim:</b> {f.claim}<br/><b>Events:</b> {cited_events}"
+            claim_html = (
+                f"<b>Claim:</b> {escape(f.claim)}<br/>"
+                f"<b>Events:</b> {escape(cited_events)}"
+            )
             if f.reasoning:
-                claim_html += f"<br/><b>Reasoning:</b> {f.reasoning}"
+                claim_html += f"<br/><b>Reasoning:</b> {escape(f.reasoning)}"
 
             findings_data.append([
-                Paragraph(f.finding_id, body_style),
-                Paragraph(f.type.capitalize(), body_style),
+                Paragraph(escape(f.finding_id), body_style),
+                Paragraph(escape(f.type.capitalize()), body_style),
                 Paragraph(status_html, body_style),
                 Paragraph(f"{int(f.confidence * 100)}%", body_style),
                 Paragraph(claim_html, body_style),
@@ -264,12 +274,54 @@ def generate_case_pdf_report(case: Case, db: Any) -> bytes:
         )
         story.append(findings_table)
     else:
-        story.append(Paragraph("<i>No findings generated yet.</i>", body_style))
+        message = "No investigator-approved findings are available for this report." if all_findings else "No findings generated yet."
+        story.append(Paragraph(f"<i>{message}</i>", body_style))
+
+    story.append(Spacer(1, 10))
+
+    # Section 4: review audit trail. Legacy decisions are not fabricated/backfilled.
+    story.append(Paragraph("4. Finding Review Decision History", section_heading))
+    finding_ids = [finding.finding_id for finding in all_findings]
+    review_rows = []
+    if finding_ids:
+        review_rows = (
+            db.query(FindingReviewDecision)
+            .filter(FindingReviewDecision.finding_id.in_(finding_ids))
+            .order_by(FindingReviewDecision.decided_at.asc(), FindingReviewDecision.review_id.asc())
+            .all()
+        )
+    if review_rows:
+        review_data: list[list[Any]] = [[
+            Paragraph("<b>Finding ID</b>", body_style),
+            Paragraph("<b>Decision</b>", body_style),
+            Paragraph("<b>Reviewer (self-declared)</b>", body_style),
+            Paragraph("<b>Timestamp (UTC)</b>", body_style),
+            Paragraph("<b>Rationale</b>", body_style),
+        ]]
+        for review in review_rows:
+            review_data.append([
+                Paragraph(escape(review.finding_id or ""), body_style),
+                Paragraph(escape((review.decision or "").upper()), body_style),
+                Paragraph(escape(review.reviewer_label or ""), body_style),
+                Paragraph(review.decided_at.strftime("%Y-%m-%d %H:%M:%S") if review.decided_at else "N/A", body_style),
+                Paragraph(escape(review.rationale or ""), body_style),
+            ])
+        review_table = Table(review_data, colWidths=[85, 65, 105, 105, 150], repeatRows=1)
+        review_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EDF2F7")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(review_table)
+    else:
+        story.append(Paragraph("<i>No review decisions recorded. Existing legacy statuses are not assigned invented reviewer details.</i>", body_style))
 
     story.append(Spacer(1, 14))
 
-    # Section 4: Examiner Certification Sign-off Section
-    story.append(Paragraph("4. Forensic Examiner & Reviewer Sign-Off", section_heading))
+    # Section 5: Examiner Certification Sign-off Section
+    story.append(Paragraph("5. Forensic Examiner & Reviewer Sign-Off", section_heading))
     sign_data = [
         [
             Paragraph("<b>Investigating Forensic Examiner:</b>", body_style),

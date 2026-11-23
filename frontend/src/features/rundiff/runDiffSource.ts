@@ -1,5 +1,5 @@
-// Role 4 / T11: where the Run diff view gets its data. The only place that view touches T8.
-//   demo: the recorded CASE-DEMO-IST diff of run A → run B (B was created after EVID-002 was quarantined), both runs,
+﻿// Role 4 / T11: where the Run diff view gets its data. The only place that view touches T8.
+//   demo: the recorded CASE-DEMO-IST diff of run A â†’ run B (B was created after EVID-002 was quarantined), both runs,
 //         and the evidence list recorded after the quarantine. Only that pair was recorded; any other pair is refused.
 //   api:  GET /runs/{a}/diff/{b} and GET /runs/{a}, /runs/{b} (pending OpenAPI schema, via api/pending/runs.ts), plus
 //         the documented GET /cases/{id}/evidence for file names and current status. Without explicit IDs, B is the
@@ -44,12 +44,12 @@ export function useRunDiff(kind: EvidenceSourceKind, caseId: string, runA: strin
     const signal = controller.signal;
     setState({ status: "loading" });
 
-    if (kind === "demo") {
+    if (kind === "demo" || kind === "recorded") {
       loadRecording()
         .then(REC => {
           if (signal.aborted) return;
           if ((runA || runB) && (runA !== REC.runA.run_id || runB !== REC.runB.run_id)) {
-            setState({ status: "error", message: `Only ${REC.runA.run_id} → ${REC.runB.run_id} was recorded for CASE-DEMO-IST.` });
+            setState({ status: "error", message: `Only ${REC.runA.run_id} â†’ ${REC.runB.run_id} was recorded for CASE-DEMO-IST.` });
             return;
           }
           setState({

@@ -54,6 +54,10 @@ def test_impossible_travel_is_contradiction():
     assert finding["type"] == "contradiction"
     assert finding["evidence_event_ids"] == ["A", "B"]
     assert finding["needs_human_review"] is True
+    assert "28.61, 77.21" in finding["claim"]
+    assert "19.08, 72.88" in finding["claim"]
+    assert "A" not in finding["claim"] and "B" not in finding["claim"]
+    assert "Event A" not in finding["reasoning"]
     common.validate_finding(finding)
 
 

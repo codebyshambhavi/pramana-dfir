@@ -7,6 +7,7 @@ import { useSourceLink } from "./useSourceLink";
 import { ZoneToggle } from "../../lib/time";
 
 const LINKS = [
+  { to: "/app/cases", label: "Cases" },
   { to: "/app", label: "Dashboard", end: true },
   { to: "/app/evidence", label: "Evidence Vault" },
   { to: "/app/investigation", label: "Investigation Workspace" }

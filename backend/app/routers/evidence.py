@@ -44,6 +44,11 @@ async def upload_evidence(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Case '{id}' not found",
         )
+    if case.status == CASE_STATUS_CLOSED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Case '{id}' is closed; reopen it before adding evidence",
+        )
 
     # Read uploaded content and calculate SHA-256
     content = await file.read()

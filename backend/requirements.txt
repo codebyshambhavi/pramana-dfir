@@ -5,6 +5,7 @@ sqlalchemy
 psycopg2-binary
 networkx
 reportlab
+pdfminer.six
 jsonschema
 pytest
 httpx

@@ -710,6 +710,10 @@ def test_snapshot_availability_vs_ranking_verification(
     tampered = json.loads(json.dumps(snap.snapshot))
     # Mutate ranked hypotheses so replay produces divergent hash
     tampered["events"][0]["action"] = "tampered_action_for_replay"
+    if tampered.get("ranked_hypotheses"):
+        tampered["ranked_hypotheses"][0]["inconsistency_score"] = 999.0
+    if tampered.get("templates"):
+        tampered["templates"][0]["requires"][0]["weight"] = 99.0
 
     db_session.execute(text("PRAGMA foreign_keys=OFF"))
     db_session.execute(text("DROP TRIGGER IF EXISTS trg_run_snapshots_no_update"))

@@ -36,3 +36,27 @@ export const TYPE_LABEL: Record<Finding["type"], string> = {
   correlation: "Correlation",
   hypothesis: "Hypothesis"
 };
+
+
+/** Render finding prose for people while keeping exact IDs in the evidence/provenance views. */
+export function readableFindingText(value: string | undefined, index: CaseIndex): string {
+  if (!value) return "";
+  let result = value;
+  // Replace longest IDs first so composite IDs cannot be partially substituted.
+  const events = [...index.eventById.values()].sort((a, b) => b.event_id.length - a.event_id.length);
+  for (const event of events) {
+    const target = event.object ?? event.ip ?? (event.location
+      ? `${event.location.lat.toFixed(2)}, ${event.location.lon.toFixed(2)}`
+      : null);
+    const action = event.action.replace(/_/g, " ");
+    const label = target ? `${action} — ${target}` : action;
+    result = result.split(event.event_id).join(label);
+  }
+  // Hashes are machine provenance, not useful narrative. Their full values remain in Evidence.
+  for (const evidence of index.evidenceById.values()) {
+    if (evidence.sha256 && evidence.sha256.length >= 32) {
+      result = result.split(evidence.sha256).join(`SHA-256 for ${evidence.filename}`);
+    }
+  }
+  return result;
+}

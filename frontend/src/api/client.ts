@@ -1,15 +1,25 @@
 // Role 4: typed client for contracts/openapi.yaml.
 // Point VITE_API_URL at a Prism mock first, then at the real backend.
 import type {
+  AnalyzeResponse,
+  CaseCreateInput,
   CaseEvent,
+  CaseSummary,
+  CaseUpdateInput,
   CaseGraph,
-  CaseIntegrity,
+  CaseIntegrity,
+
   EvidenceItem,
   EvidenceStateChange,
   EvidenceUploadResult,
   Finding,
   FindingLineage,
-  FindingStatusUpdate,
+  FindingReviewDecision,
+  FindingStatusUpdate,
+
+
+
+
   TamperSimulation,
   VerificationResult
 } from "./types";
@@ -111,6 +121,31 @@ export async function listFindings(caseId: string, signal?: AbortSignal): Promis
   return data as unknown as Finding[];
 }
 
+/** POST /cases/{id}/analyze */
+export async function analyzeCase(caseId: string, signal?: AbortSignal): Promise<AnalyzeResponse> {
+  const data = await request<unknown>(`/cases/${encodeURIComponent(caseId)}/analyze`, {
+    method: "POST",
+    signal
+  });
+  if (
+    !isRecord(data) ||
+    typeof data.findings_created !== "number" ||
+    !Number.isInteger(data.findings_created) ||
+    data.findings_created < 0 ||
+    (data.run_id !== null && !isString(data.run_id)) ||
+    typeof data.claims_created !== "number" ||
+    !Number.isInteger(data.claims_created) ||
+    data.claims_created < 0
+  ) {
+    throw new ApiError("The analysis response did not match the documented response shape.");
+  }
+  return {
+    findings_created: data.findings_created,
+    run_id: data.run_id,
+    claims_created: data.claims_created
+  };
+}
+
 /** GET /cases/{id}/graph */
 export async function getGraph(caseId: string, signal?: AbortSignal): Promise<CaseGraph> {
   const data = await request<unknown>(`/cases/${encodeURIComponent(caseId)}/graph`, { signal });
@@ -118,6 +153,23 @@ export async function getGraph(caseId: string, signal?: AbortSignal): Promise<Ca
   if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges))
     throw new ApiError("The graph did not match the documented response shape.");
   return graph as CaseGraph;
+}
+
+/** GET /findings/{id}/reviews: chronological, append-only decision history. */
+export async function listFindingReviews(findingId: string, signal?: AbortSignal): Promise<FindingReviewDecision[]> {
+  const data = await request<unknown>(`/findings/${encodeURIComponent(findingId)}/reviews`, { signal });
+  if (!Array.isArray(data) || !data.every(item =>
+    item !== null && typeof item === "object" &&
+    isString((item as FindingReviewDecision).review_id) &&
+    isString((item as FindingReviewDecision).finding_id) &&
+    ((item as FindingReviewDecision).decision === "approved" ||
+      (item as FindingReviewDecision).decision === "rejected") &&
+    isString((item as FindingReviewDecision).reviewer_label) &&
+    (item as FindingReviewDecision).reviewer_identity_type === "self_declared" &&
+    isString((item as FindingReviewDecision).rationale) &&
+    isString((item as FindingReviewDecision).decided_at)
+  )) throw new ApiError("The finding review history did not match the documented response shape.");
+  return data as FindingReviewDecision[];
 }
 
 /** GET /findings/{id}/lineage */
@@ -129,11 +181,17 @@ export async function getFindingLineage(findingId: string, signal?: AbortSignal)
 }
 
 /** PATCH /findings/{id}: the investigator approves or rejects a finding. */
-export async function updateFindingStatus(findingId: string, status: "approved" | "rejected", signal?: AbortSignal): Promise<FindingStatusUpdate> {
+export async function updateFindingStatus(
+  findingId: string,
+  status: "approved" | "rejected",
+  reviewerLabel: string,
+  rationale: string,
+  signal?: AbortSignal
+): Promise<FindingStatusUpdate> {
   return request<FindingStatusUpdate>(`/findings/${encodeURIComponent(findingId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, reviewer_label: reviewerLabel, rationale }),
     signal
   });
 }
@@ -190,4 +248,57 @@ export async function fetchReportPdf(caseId: string, signal?: AbortSignal): Prom
   const blob = await response.blob();
   if (!blob.type.includes("pdf") || blob.size === 0) throw new ApiError("The server did not return a PDF.");
   return blob;
+}
+
+// --- Role 3 case workflow (documented in contracts/openapi.yaml) ---
+
+const isCaseSummary = (data: unknown): data is CaseSummary =>
+  isRecord(data) &&
+  isString(data.case_id) &&
+  isString(data.name) &&
+  isString(data.status) &&
+  Array.isArray(data.tags) &&
+  typeof data.evidence_count === "number";
+
+function assertCase(data: unknown): CaseSummary {
+  if (!isCaseSummary(data)) throw new ApiError("The case did not match the documented response shape.");
+  return data;
+}
+
+/** GET /cases: newest first, with evidence, finding and run counts. */
+export async function listCases(signal?: AbortSignal): Promise<CaseSummary[]> {
+  const data = await request<unknown>("/cases", { signal });
+  if (!Array.isArray(data)) throw new ApiError("The case list did not match the documented response shape.");
+  return data.map(assertCase);
+}
+
+/** GET /cases/{id} */
+export async function getCase(caseId: string, signal?: AbortSignal): Promise<CaseSummary> {
+  return assertCase(await request<unknown>(`/cases/${enc(caseId)}`, { signal }));
+}
+
+/** POST /cases */
+export async function createCase(input: CaseCreateInput, signal?: AbortSignal): Promise<CaseSummary> {
+  return assertCase(await postJson<unknown>("/cases", input, signal));
+}
+
+/** PATCH /cases/{id}: 409 while the case is closed. */
+export async function updateCase(caseId: string, changes: CaseUpdateInput, signal?: AbortSignal): Promise<CaseSummary> {
+  const data = await request<unknown>(`/cases/${enc(caseId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(changes),
+    signal
+  });
+  return assertCase(data);
+}
+
+/** POST /cases/{id}/close: the case then refuses new evidence and edits. */
+export async function closeCase(caseId: string, signal?: AbortSignal): Promise<CaseSummary> {
+  return assertCase(await postJson<unknown>(`/cases/${enc(caseId)}/close`, undefined, signal));
+}
+
+/** POST /cases/{id}/reopen: status becomes REOPENED. */
+export async function reopenCase(caseId: string, signal?: AbortSignal): Promise<CaseSummary> {
+  return assertCase(await postJson<unknown>(`/cases/${enc(caseId)}/reopen`, undefined, signal));
 }

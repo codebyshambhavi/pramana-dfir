@@ -23,7 +23,9 @@ from intelligence.claims import (
     generate_actor_device_consistent_claims,
     generate_claims,
     generate_offhours_session_claims,
+    generate_same_object_flow_claims,
 )
+from intelligence.correlate import CandidateRelationship
 from intelligence.timeline import SourceClock
 
 
@@ -198,3 +200,97 @@ def test_actor_device_consistent_generic_identifier_gets_grade_c():
     assert len(specs) == 1
     claim = specs[0]
     assert claim.grade == "C"
+
+# SAME_OBJECT_FLOW regression tests
+
+def _candidate_relationship(candidate_type: str, canonical_entities: dict) -> CandidateRelationship:
+    return CandidateRelationship(
+        candidate_id="CAND-TEST", source_event_id="EV-1", target_event_id="EV-2",
+        candidate_type=candidate_type, matched_signals=[], canonical_entities=canonical_entities,
+        temporal_delta=120.0, sequence_compatibility="COMPATIBLE",
+        contradiction_signals=[], score=1.0, promotion_decision=True, reason_codes=[],
+    )
+
+
+def test_same_object_flow_rejects_event_correlation_without_exact_object():
+    e1 = _make_event("EV-1", "2026-10-18T10:00:00Z", action="login", obj="/home/alice")
+    e2 = _make_event("EV-2", "2026-10-18T10:02:00Z", action="archive_create", obj="incident.zip")
+    link = _candidate_relationship("EVENT_CORRELATION", {"shared_object": None, "shared_content_hash": None})
+    assert generate_same_object_flow_claims([link], {e["event_id"]: e for e in (e1, e2)}) == []
+
+
+def test_same_object_flow_rejects_missing_or_placeholder_shared_identifier():
+    e1 = _make_event("EV-1", "2026-10-18T10:00:00Z", obj="incident.zip")
+    e2 = _make_event("EV-2", "2026-10-18T10:02:00Z", obj="incident.zip")
+    for identifier in (None, "", "unknown", "none", "null", "n/a"):
+        link = _candidate_relationship("SAME_OBJECT_FLOW", {"shared_object": identifier, "shared_content_hash": None})
+        assert generate_same_object_flow_claims([link], {e["event_id"]: e for e in (e1, e2)}) == []
+
+
+@pytest.mark.parametrize("identifier", ["abcd1234", "8000000000000000"])
+def test_same_object_flow_rejects_short_hex_and_perceptual_shared_objects(identifier: str):
+    e1 = _make_event("EV-1", "2026-10-18T10:00:00Z", obj=identifier)
+    e2 = _make_event("EV-2", "2026-10-18T10:02:00Z", obj=identifier)
+    link = _candidate_relationship(
+        "SAME_OBJECT_FLOW",
+        {"shared_object": identifier, "shared_content_hash": None},
+    )
+
+    assert generate_same_object_flow_claims([link], {e["event_id"]: e for e in (e1, e2)}) == []
+
+
+@pytest.mark.parametrize("identifier", ["abcd1234", "8000000000000000"])
+def test_normal_correlation_rejects_short_hex_and_perceptual_object_identifiers(identifier: str):
+    events = [
+        _make_event("EV-1", "2026-10-18T10:00:00Z", action="archive_create", obj=identifier),
+        _make_event("EV-2", "2026-10-18T10:02:00Z", action="file_upload", obj=identifier),
+    ]
+
+    claims = [claim for claim in generate_claims(events) if claim.type == "SAME_OBJECT_FLOW"]
+
+    assert claims == []
+
+
+def test_same_object_flow_preserves_exact_shared_object_claim():
+    e1 = _make_event("EV-1", "2026-10-18T10:00:00Z", action="archive_create", obj="incident.zip")
+    e2 = _make_event("EV-2", "2026-10-18T10:03:00Z", action="file_upload", obj="incident.zip")
+    link = _candidate_relationship("SAME_OBJECT_FLOW", {"shared_object": "incident.zip", "shared_content_hash": None})
+    claims = generate_same_object_flow_claims([link], {e["event_id"]: e for e in (e1, e2)})
+    assert len(claims) == 1
+    assert claims[0].params["object"] == "incident.zip"
+
+
+def test_same_object_flow_uses_valid_hash_when_short_object_identifier_is_invalid():
+    e1 = _make_event("EV-1", "2026-10-18T10:00:00Z", obj="incident.zip")
+    e2 = _make_event("EV-2", "2026-10-18T10:02:00Z", obj="incident.zip")
+    digest = "c" * 64
+    link = _candidate_relationship(
+        "SAME_OBJECT_FLOW",
+        {"shared_object": "abcd1234", "shared_content_hash": digest},
+    )
+
+    claims = generate_same_object_flow_claims(
+        [link], {e["event_id"]: e for e in (e1, e2)}
+    )
+
+    assert len(claims) == 1
+    assert claims[0].params["object"] == digest
+
+
+def test_same_object_flow_uses_sha256_through_normal_correlation_path():
+    digest = "d" * 64
+    events = [
+        _make_event(
+            "EV-1", "2026-10-18T10:00:00Z", source="log",
+            action="archive_create", raw={"content_hash": digest},
+        ),
+        _make_event(
+            "EV-2", "2026-10-18T10:02:00Z", source="browser",
+            action="file_upload", raw={"sha256": digest},
+        ),
+    ]
+
+    claims = [claim for claim in generate_claims(events) if claim.type == "SAME_OBJECT_FLOW"]
+
+    assert len(claims) == 1
+    assert claims[0].params["object"] == digest
