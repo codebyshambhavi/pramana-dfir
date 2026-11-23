@@ -55,7 +55,11 @@
         "chat",
         "log",
         "pcap",
-        "image"
+        "image",
+        "gmail",
+        "outlook",
+        "pst",
+        "zeek"
       ]
     },
     "device": {

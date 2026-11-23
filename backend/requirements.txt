@@ -9,3 +9,5 @@ pdfminer.six
 jsonschema
 pytest
 httpx
+cryptography
+eval-type-backport

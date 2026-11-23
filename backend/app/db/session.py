@@ -22,6 +22,7 @@ from app.db.models import (
     VERIFY_MISSING,
     VERIFY_STATES,
     CustodyEntry,
+    CustodyMetadata,
     Evidence,
     compute_entry_hash,
     utc_now,
@@ -82,6 +83,11 @@ def append_custody_record(
     action: str,
     sha256: str,
     time_val: datetime | None = None,
+    previous_state: str | None = None,
+    new_state: str | None = None,
+    reason: str | None = None,
+    request_id: str | None = None,
+    correlation_id: str | None = None,
 ) -> CustodyEntry:
     """Append a cryptographically hash-chained entry to the custody log.
     
@@ -122,6 +128,15 @@ def append_custody_record(
     db.add(entry)
     db.flush()  # Flush to get the ID without committing
     db.refresh(entry)
+    db.add(CustodyMetadata(
+        custody_event_id=entry.id,
+        previous_state=previous_state,
+        new_state=new_state,
+        reason=reason,
+        request_id=request_id,
+        correlation_id=correlation_id,
+    ))
+    db.flush()
     return entry
 
 

@@ -16,7 +16,7 @@ from typing import Any, Callable
 from jsonschema import Draft202012Validator, FormatChecker
 
 from intake.hashing import sha256_file
-from . import browser_csv, chat_json, image_meta, log_csv, pcap
+from . import browser_csv, chat_json, image_meta, log_csv, pcap, zeek, mail, pst
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -77,10 +77,19 @@ def _csv_kind(path: Path) -> str:
 
 def _select_parser(path: Path) -> tuple[Callable[..., list[dict]], str]:
     suffix = path.suffix.lower()
+    name_lower = path.name.lower()
+    if suffix == ".pst":
+        return pst.parse, "pst"
+    if suffix == ".log" or name_lower.endswith(".conn") or name_lower.endswith(".dns"):
+        return zeek.parse, "zeek"
     if suffix == ".csv":
         kind = _csv_kind(path)
         return (browser_csv.parse if kind == "browser" else log_csv.parse), kind
     if suffix == ".json":
+        if ".gmail" in name_lower or name_lower.endswith("gmail.json"):
+            return mail.parse_gmail, "gmail"
+        if ".outlook" in name_lower or name_lower.endswith("outlook.json"):
+            return mail.parse_outlook, "outlook"
         return chat_json.parse, "chat"
     if suffix in {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".bmp"}:
         return image_meta.parse, "image"
@@ -88,7 +97,8 @@ def _select_parser(path: Path) -> tuple[Callable[..., list[dict]], str]:
         return pcap.parse, "pcap"
     raise ValueError(
         f"Unsupported evidence format '{suffix or '<no extension>'}' for '{path.name}'. "
-        "Supported formats: browser/log CSV, chat JSON, images, PCAP/PCAPNG."
+        "Supported formats: browser/log CSV, chat JSON, Gmail/Outlook JSON, PST, "
+        "Zeek conn/dns.log, images, PCAP/PCAPNG."
     )
 
 
