@@ -14,9 +14,15 @@ T3 (run foundation, PRAMANA H″):
 - hypothesis_eval, source_coverage: stubs for T7 (no fields defined by H″ yet)
 - schema_migrations: applied data-migration steps
 
+Role 3 reporting:
+- case_report: write-once PDF report generated from one completed analysis run
+- case_report_decision: append-only reviewer decisions (APPROVE / REJECT / INCONCLUSIVE) on a report
+
 Integrity rules (ORM guards at the end of this file; database triggers in db_guards):
 - evidence and custody_entries rows are never deleted; evidence.sha256 never changes
 - run data is write-once: no UPDATE/DELETE, and no child rows after the run row exists
+- case_report rows are write-once: no UPDATE/DELETE; the run must belong to the same case
+- case_report_decision rows are append-only: no UPDATE/DELETE; the report must belong to the same case
 """
 from __future__ import annotations
 
@@ -35,8 +41,10 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Integer,
     JSON,
+    LargeBinary,
     String,
     Text,
+    UniqueConstraint,
     event,
     inspect,
     select,
@@ -697,6 +705,103 @@ class RunSnapshot(Base):
         }
 
 
+class CaseReport(Base):
+    """Write-once PDF report built from one completed, authoritative analysis run (Role 3).
+
+    The PDF is immutable: reviewer decisions are separate append-only records that point at
+    report_id, so the document itself always reads "Pending review".
+
+    content_hash = SHA-256 of the canonical JSON content the PDF was rendered from (no report_id
+    or timestamp in it, so two reports of the same run share it). sha256 = SHA-256 of the PDF
+    bytes; it cannot be printed inside the PDF, so it lives here and in API responses.
+    """
+
+    __tablename__ = "case_report"
+    __table_args__ = (UniqueConstraint("run_id", "report_version", name="uq_case_report_run_version"),)
+
+    report_id = Column(String(64), primary_key=True)
+    case_id = Column(String(64), ForeignKey("cases.case_id"), nullable=False, index=True)
+    run_id = Column(String(64), ForeignKey("analysis_run.run_id"), nullable=False, index=True)
+    report_version = Column(Integer, nullable=False)
+    report_format = Column(String(16), nullable=False, default="pdf", server_default="pdf")
+    generator_version = Column(String(64), nullable=False)
+    generated_at = Column(DateTime, default=utc_now, nullable=False)
+    generated_by = Column(String(255), nullable=True)  # self-declared until authentication exists
+    content_hash = Column(String(64), nullable=False)
+    sha256 = Column(String(64), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    storage_ref = Column(String(255), nullable=False)
+    pdf_bytes = Column(LargeBinary, nullable=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Metadata only; the PDF bytes are served by the download endpoint."""
+        return {
+            "report_id": self.report_id,
+            "case_id": self.case_id,
+            "run_id": self.run_id,
+            "report_version": self.report_version,
+            "report_format": self.report_format,
+            "generator_version": self.generator_version,
+            # Stored as UTC; SQLite hands it back naive, so the offset is restored here.
+            "generated_at": (
+                self.generated_at.replace(tzinfo=timezone.utc).isoformat()
+                if self.generated_at is not None and self.generated_at.tzinfo is None
+                else _iso(self.generated_at)
+            ),
+            "generated_by": self.generated_by,
+            "content_hash": self.content_hash,
+            "sha256": self.sha256,
+            "size_bytes": self.size_bytes,
+            "storage_ref": self.storage_ref,
+            "review_status": "PENDING_REVIEW",
+        }
+
+
+REPORT_DECISIONS = ("APPROVE", "REJECT", "INCONCLUSIVE")
+
+
+class CaseReportDecision(Base):
+    """Append-only reviewer decision on one immutable report (Role 3).
+
+    A new decision never replaces an earlier one; the history is the record. The reviewer is
+    self-declared (reviewer_identity_type = 'self_declared') until authentication exists, so the
+    name is a label typed by the reviewer, not a verified identity.
+    """
+
+    __tablename__ = "case_report_decision"
+    __table_args__ = (
+        CheckConstraint("decision IN ('APPROVE', 'REJECT', 'INCONCLUSIVE')", name="ck_report_decision"),
+        CheckConstraint("reviewer_identity_type = 'self_declared'", name="ck_report_decision_identity"),
+        CheckConstraint("length(trim(rationale)) > 0", name="ck_report_decision_rationale"),
+    )
+
+    decision_id = Column(String(64), primary_key=True)
+    case_id = Column(String(64), ForeignKey("cases.case_id"), nullable=False, index=True)
+    report_id = Column(String(64), ForeignKey("case_report.report_id"), nullable=False, index=True)
+    decision = Column(String(16), nullable=False)
+    rationale = Column(Text, nullable=False)
+    reviewer_label = Column(String(120), nullable=False)
+    reviewer_identity_type = Column(String(32), nullable=False, default="self_declared", server_default="self_declared")
+    decided_at = Column(DateTime, default=utc_now, nullable=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "decision_id": self.decision_id,
+            "case_id": self.case_id,
+            "report_id": self.report_id,
+            "decision": self.decision,
+            "rationale": self.rationale,
+            "reviewer_label": self.reviewer_label,
+            "reviewer_identity_type": self.reviewer_identity_type,
+            "identity_verified": False,
+            "decided_at": (
+                self.decided_at.replace(tzinfo=timezone.utc).isoformat()
+                if self.decided_at is not None and self.decided_at.tzinfo is None
+                else _iso(self.decided_at)
+            ),
+        }
+
+
 class SchemaMigration(Base):
     """Data migration steps already applied (infrastructure, see app.db.migrate)."""
 
@@ -712,6 +817,8 @@ class SchemaMigration(Base):
 
 RUN_TABLE_MODELS = (AnalysisRun, Claim, ClaimEdge, HypothesisEval, SourceCoverage, RunSnapshot)
 RUN_CHILD_MODELS = (Claim, ClaimEdge, HypothesisEval, SourceCoverage, RunSnapshot)
+# Write-once models that are not part of a run's own records.
+WRITE_ONCE_MODELS = RUN_TABLE_MODELS + (CaseReport, CaseReportDecision)
 
 
 def _run_row_exists(session: Session, run_id: str | None) -> bool:
@@ -732,7 +839,7 @@ def _enforce_integrity(session: Session, flush_context, instances) -> None:
             raise ImmutableRecordError(
                 f"{type(obj).__name__} rows are never deleted; change evidence status instead"
             )
-        if isinstance(obj, RUN_TABLE_MODELS):
+        if isinstance(obj, WRITE_ONCE_MODELS):
             raise ImmutableRecordError(f"{type(obj).__tablename__} rows are immutable and never deleted")
 
     for obj in session.dirty:
@@ -740,7 +847,7 @@ def _enforce_integrity(session: Session, flush_context, instances) -> None:
             continue
         if isinstance(obj, Evidence) and inspect(obj).attrs.sha256.history.deleted:
             raise ImmutableRecordError("evidence.sha256 is the intake hash and cannot be changed")
-        if isinstance(obj, RUN_TABLE_MODELS):
+        if isinstance(obj, WRITE_ONCE_MODELS):
             raise ImmutableRecordError(f"{type(obj).__tablename__} rows are write-once")
 
     for obj in session.new:
@@ -763,5 +870,5 @@ def _block_bulk_writes(state) -> None:
             )
         if cls is CustodyEntry and state.is_delete:
             raise ImmutableRecordError("custody_entries rows are never deleted")
-        if cls in RUN_TABLE_MODELS:
+        if cls in WRITE_ONCE_MODELS:
             raise ImmutableRecordError(f"{cls.__tablename__} rows are write-once")
