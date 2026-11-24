@@ -234,3 +234,51 @@ export interface CaseCreateInput {
 
 /** PATCH /cases/{id} body: only the fields present are changed. */
 export type CaseUpdateInput = Partial<Pick<CaseSummary, "name" | "description" | "scope" | "tags" | "owner">>;
+
+// ---------------------------------------------------------------------------------------------------------------
+// Role 3 immutable run-based reports (contracts/openapi.yaml: CaseReportResponse, ReportCreateRequest).
+
+/** Metadata of a write-once report. The PDF itself comes from GET /cases/{case_id}/reports/{report_id}/pdf. */
+export interface CaseReport {
+  report_id: string;
+  case_id: string;
+  run_id: string;
+  /** 1 for the first report of a run, then 2, 3, ... */
+  report_version: number;
+  report_format: "pdf";
+  generator_version: string;
+  generated_at: string;
+  /** Self-declared until authentication exists. */
+  generated_by: string | null;
+  /** SHA-256 of the canonical report content; equal for reports of the same run. */
+  content_hash: string;
+  /** SHA-256 of the PDF bytes; the server re-verifies it before every download. */
+  sha256: string;
+  size_bytes: number;
+  storage_ref: string;
+  review_status: "PENDING_REVIEW";
+}
+
+// Role 3 reviewer decisions on a saved report (contracts/openapi.yaml: ReportDecisionCreateRequest,
+// ReportDecisionResponse). Append-only: the last item of the history is the current decision.
+
+export type ReportDecisionValue = "APPROVE" | "REJECT" | "INCONCLUSIVE";
+
+export interface ReportDecision {
+  decision_id: string;
+  case_id: string;
+  report_id: string;
+  decision: ReportDecisionValue;
+  rationale: string;
+  /** Typed by the reviewer; not a verified identity (no authentication yet). */
+  reviewer_label: string;
+  reviewer_identity_type: "self_declared";
+  identity_verified: false;
+  decided_at: string;
+}
+
+export interface ReportDecisionInput {
+  decision: ReportDecisionValue;
+  rationale: string;
+  reviewer_label: string;
+}

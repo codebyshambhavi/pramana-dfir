@@ -8,6 +8,7 @@ import { statusOf } from "../features/dashboard/components/FindingsPanel";
 import type { EvidenceSourceKind } from "../features/vault/evidenceSource";
 import { loadRecording } from "../api/recorded/loadRecording";
 import { buildRecordedReportPdf } from "../features/report/recordedReport";
+import RunReports from "../features/report/RunReports";
 
 type PdfState = { status: "idle" } | { status: "loading" } | { status: "error"; message: string } | { status: "ready"; url: string };
 
@@ -71,6 +72,14 @@ export default function Report({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="min-w-0">
+        {sourceKind === "api" && (
+          <>
+            <RunReports caseId={caseId} />
+            <h3 className="mt-7 mb-3 text-[14.5px] font-semibold text-white">
+              Current-state report <span className="ml-1 text-[12.5px] font-normal text-muted">built live from the case, not saved</span>
+            </h3>
+          </>
+        )}
         {sourceKind === "demo" ? (
           <div className="flex gap-4 rounded-xl border border-amber-300/25 bg-amber-300/[0.05] p-5">
             <ReportIcon size={26} className="shrink-0 text-amber-300" />
