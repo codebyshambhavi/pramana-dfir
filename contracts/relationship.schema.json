@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pramana.local/contracts/relationship.schema.json",
+  "title": "PRAMANA Correlation Relationship",
+  "type": "object",
+  "required": [
+    "relationship_id", "case_id", "source_event_id", "target_event_id",
+    "relationship_type", "status", "confidence", "score", "anchors",
+    "feature_contributions", "counter_signals", "evidence_pointers",
+    "explanation", "registry_version", "registry_hash", "config_version",
+    "calibration_status", "thresholds"
+  ],
+  "properties": {
+    "relationship_id": {"type": "string", "pattern": "^rel_[0-9a-f]{64}$"},
+    "case_id": {"type": "string", "minLength": 1},
+    "source_event_id": {"type": "string", "minLength": 1},
+    "target_event_id": {"type": "string", "minLength": 1},
+    "relationship_type": {"enum": ["PRIMARY", "SECONDARY"]},
+    "status": {"type": "string"},
+    "confidence": {"type": "string"},
+    "score": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "raw_score": {"type": "number"},
+    "anchor_type": {"type": "array", "items": {"type": "string"}},
+    "anchors": {"type": "array", "items": {"type": "object"}},
+    "feature_contributions": {"type": "array", "items": {"type": "object"}},
+    "counter_signals": {"type": "array", "items": {"type": "object"}},
+    "unavailable_parameters": {"type": "array", "items": {"type": "string"}},
+    "blocked_parameters": {"type": "array", "items": {"type": "object"}},
+    "reliability_factors": {"type": "object"},
+    "evidence_pointers": {
+      "type": "object",
+      "required": ["source", "target"],
+      "properties": {"source": {"type": "object"}, "target": {"type": "object"}},
+      "additionalProperties": false
+    },
+    "explanation": {"type": "string", "minLength": 1},
+    "registry_version": {"type": "string"},
+    "registry_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "config_version": {"type": "string"},
+    "calibration_status": {"type": "string"},
+    "thresholds": {"type": ["object", "null"]}
+  },
+  "additionalProperties": true
+}

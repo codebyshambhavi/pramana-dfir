@@ -1,0 +1,5478 @@
+{
+  "schema_version": "1",
+  "registry_version": "corr-registry-v1",
+  "config_version": "corr-config-v1",
+  "effective_date": "2026-11-24",
+  "change_reason": "Initial registry for the Role 1 correlation engine. Every weight, threshold and window is a PROVISIONAL starting point, not an empirically established value.",
+  "calibration": {
+    "status": "PROVISIONAL",
+    "note": "Not calibrated. Weights, thresholds and collision factors are expert-judgement placeholders until validated on representative labelled data (see evaluate.py). Synthetic benchmark results do not establish real-world accuracy."
+  },
+  "score_model": {
+    "formula": "S = clamp( sum(weight x feature x reliability) - sum(collision) - sum(penalty x contradiction) )",
+    "clamp_min": 0.0,
+    "clamp_max": 1.0
+  },
+  "thresholds": {
+    "T_HIGH": {
+      "value": 0.6,
+      "status": "PROVISIONAL",
+      "meaning": "score >= T_HIGH: high-confidence secondary candidate"
+    },
+    "T_REVIEW": {
+      "value": 0.35,
+      "status": "PROVISIONAL",
+      "meaning": "T_REVIEW <= score < T_HIGH: requires analyst review; below T_REVIEW is excluded from default results"
+    }
+  },
+  "candidate_generation": {
+    "windows_seconds": {
+      "default": 600,
+      "staging": 1800
+    },
+    "hub_thresholds": {
+      "ip": 3,
+      "device": 8,
+      "domain": 8,
+      "filename": 5
+    },
+    "indexes": [
+      "file_hash",
+      "attachment_hash",
+      "message_id",
+      "message_reference",
+      "thread_id",
+      "session_id",
+      "account",
+      "email",
+      "username",
+      "domain",
+      "ip",
+      "device",
+      "filename",
+      "time_window"
+    ],
+    "max_bucket_size": 50,
+    "note": "ip and device hub thresholds and the 600 s / 1800 s windows are copied from the existing T5 engine (intelligence/correlate.py, intelligence/config.py); domain and filename thresholds and max_bucket_size are new PROVISIONAL values. Candidate generation is not evidence."
+  },
+  "reference_data": {
+    "ordered_action_pairs": [
+      [
+        "archive_create",
+        "file_upload"
+      ],
+      [
+        "file_read",
+        "archive_create"
+      ],
+      [
+        "file_open",
+        "archive_create"
+      ],
+      [
+        "file_access",
+        "archive_create"
+      ],
+      [
+        "login",
+        "archive_create"
+      ],
+      [
+        "login",
+        "file_upload"
+      ],
+      [
+        "login",
+        "file_access"
+      ],
+      [
+        "session_start",
+        "file_upload"
+      ],
+      [
+        "session_start",
+        "file_access"
+      ],
+      [
+        "message_sent",
+        "archive_create"
+      ],
+      [
+        "message_sent",
+        "file_access"
+      ],
+      [
+        "message_sent",
+        "file_upload"
+      ],
+      [
+        "file_upload",
+        "message_sent"
+      ],
+      [
+        "file_download",
+        "file_open"
+      ],
+      [
+        "dns_query",
+        "network_connection"
+      ]
+    ],
+    "common_values": {
+      "filenames": [
+        "image.png",
+        "image.jpg",
+        "image001.png",
+        "image002.png",
+        "logo.png",
+        "signature.png",
+        "untitled.txt",
+        "document.docx",
+        "document.pdf",
+        "report.pdf",
+        "invoice.pdf",
+        "scan.pdf",
+        "attachment.pdf",
+        "unnamed",
+        "noname"
+      ],
+      "domains": [
+        "gstatic.com",
+        "googleapis.com",
+        "cloudflare.com",
+        "akamai.net",
+        "akamaiedge.net",
+        "microsoft.com",
+        "windowsupdate.com",
+        "msftconnecttest.com",
+        "apple.com",
+        "mozilla.org",
+        "digicert.com"
+      ],
+      "subjects": [
+        "hello",
+        "hi",
+        "test",
+        "update",
+        "invoice",
+        "meeting",
+        "report",
+        "fwd",
+        "no subject",
+        "(no subject)"
+      ],
+      "phrases": [
+        "best regards",
+        "kind regards",
+        "thanks and regards",
+        "thank you",
+        "please find attached",
+        "sent from my iphone",
+        "sent from my android",
+        "confidential",
+        "unsubscribe"
+      ],
+      "ports": [
+        "53",
+        "80",
+        "123",
+        "443"
+      ],
+      "user_agents": [],
+      "usernames": [
+        "admin",
+        "administrator",
+        "root",
+        "system",
+        "user",
+        "guest",
+        "test",
+        "service",
+        "nt authority\\system"
+      ]
+    },
+    "alias_groups": [],
+    "note": "Generic seed lists (PROVISIONAL), not exhaustive. ordered_action_pairs are the T5 ORDERED_PAIRS plus (dns_query, network_connection). alias_groups is empty by default: aliases are case-specific analyst input and are never inferred."
+  },
+  "parameters": [
+    {
+      "parameter_id": "ANCHOR_SHA256",
+      "display_name": "Verified exact SHA-256",
+      "description": "Both events carry the same well-formed 64-hex SHA-256 of the same content (file or attachment) and neither event's evidence is quarantined, removed or failing verification. A filename, IP address or timestamp can never anchor.",
+      "family": "ARTIFACT",
+      "role": "ANCHOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "file.sha256",
+        "attachment.sha256",
+        "prov.integrity"
+      ],
+      "extraction_method": {
+        "method": "ANCHOR_EXACT",
+        "hash_length": 64,
+        "block_on_integrity": true
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same 64-hex SHA-256 on an email attachment and an uploaded file object",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {
+                "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              },
+              "object": "bundle.zip"
+            }
+          ],
+          "expect": {
+            "status": "ANCHORED"
+          }
+        },
+        "negative": {
+          "label": "same file name, different hashes: no anchor",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {
+                "sha256": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+              },
+              "object": "bundle.zip"
+            }
+          ],
+          "expect": {
+            "status": "NO_MATCH"
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ANCHOR_MESSAGE_ID",
+      "display_name": "Exact RFC 5322 Message-ID",
+      "description": "Both events carry the same well-formed Message-ID (<local@domain>): the same message observed twice (e.g. sent copy and received copy).",
+      "family": "ARTIFACT",
+      "role": "ANCHOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "MAIL-MAIL"
+      ],
+      "applies_to_sources": [
+        "gmail",
+        "outlook",
+        "pst"
+      ],
+      "source_fields": [
+        "message.id",
+        "prov.integrity"
+      ],
+      "extraction_method": {
+        "method": "ANCHOR_EXACT",
+        "id_format": "rfc5322_message_id",
+        "block_on_integrity": true
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "sent copy (gmail) and received copy (outlook) share one Message-ID",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<m1@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:30:20Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [],
+                "internetMessageId": "<M1@example.org>"
+              }
+            }
+          ],
+          "expect": {
+            "status": "ANCHORED"
+          }
+        },
+        "negative": {
+          "label": "different Message-IDs",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<m1@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:30:20Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [],
+                "internetMessageId": "<m2@example.org>"
+              }
+            }
+          ],
+          "expect": {
+            "status": "NO_MATCH"
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ANCHOR_MESSAGE_REFERENCE",
+      "display_name": "Explicit message reference",
+      "description": "One event's In-Reply-To/References header names the other event's Message-ID: an explicit, directed reply/forward link.",
+      "family": "ARTIFACT",
+      "role": "ANCHOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "MAIL-MAIL"
+      ],
+      "applies_to_sources": [
+        "gmail",
+        "outlook",
+        "pst"
+      ],
+      "source_fields": [
+        "message.id",
+        "message.references",
+        "prov.integrity"
+      ],
+      "extraction_method": {
+        "method": "ANCHOR_REFERENCE",
+        "direction": "EITHER",
+        "block_on_integrity": true
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "reply references the original Message-ID",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<m1@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:40:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<m2@example.org>",
+                  "references": "<m1@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "status": "ANCHORED"
+          }
+        },
+        "negative": {
+          "label": "reply references an unrelated Message-ID",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<m1@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:40:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<m2@example.org>",
+                  "references": "<other@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "status": "NO_MATCH"
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ANCHOR_THREAD_ID",
+      "display_name": "Scoped thread/conversation ID",
+      "description": "Same thread/conversation identifier, valid only inside one source and one account namespace (Gmail threadId and Outlook conversationId are not global). An identifier with no account scope is rejected, never anchored.",
+      "family": "ARTIFACT",
+      "role": "ANCHOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "MAIL-MAIL"
+      ],
+      "applies_to_sources": [
+        "gmail",
+        "outlook",
+        "pst"
+      ],
+      "source_fields": [
+        "thread.id",
+        "account.id",
+        "event.source",
+        "prov.integrity"
+      ],
+      "extraction_method": {
+        "method": "ANCHOR_SCOPED_EXACT",
+        "scope_fields": [
+          "event.source",
+          "account.id"
+        ],
+        "scope_mode": "ALL",
+        "block_on_integrity": true
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same Gmail threadId inside the same account",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [],
+                "threadId": "t-100"
+              },
+              "account_id": "alice@example.org"
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:45:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [],
+                "threadId": "t-100"
+              },
+              "account_id": "alice@example.org"
+            }
+          ],
+          "expect": {
+            "status": "ANCHORED"
+          }
+        },
+        "negative": {
+          "label": "same threadId but the account scope is unknown: rejected",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [],
+                "threadId": "t-100"
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:45:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [],
+                "threadId": "t-100"
+              }
+            }
+          ],
+          "expect": {
+            "status": "REJECTED"
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ANCHOR_SESSION_ID",
+      "display_name": "Scoped network session ID",
+      "description": "Same network session identifier (e.g. Zeek uid) inside the same capture or, failing that, the same evidence file. Session identifiers are only unique within a capture.",
+      "family": "NETWORK",
+      "role": "ANCHOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "NETWORK-NETWORK"
+      ],
+      "applies_to_sources": [
+        "zeek",
+        "pcap"
+      ],
+      "source_fields": [
+        "net.session_id",
+        "net.capture_id",
+        "prov.evidence_id",
+        "prov.integrity"
+      ],
+      "extraction_method": {
+        "method": "ANCHOR_SCOPED_EXACT",
+        "scope_fields": [
+          "net.capture_id",
+          "prov.evidence_id"
+        ],
+        "scope_mode": "FIRST_PRESENT",
+        "block_on_integrity": true
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same Zeek uid in the same evidence file",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "CAbc123",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              },
+              "evidence_id": "EVID-N1"
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:05Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "CAbc123",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              },
+              "evidence_id": "EVID-N1"
+            }
+          ],
+          "expect": {
+            "status": "ANCHORED"
+          }
+        },
+        "negative": {
+          "label": "same uid in two different captures: different scope, rejected",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "CAbc123",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              },
+              "evidence_id": "EVID-N1"
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:05Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "CAbc123",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              },
+              "evidence_id": "EVID-N2"
+            }
+          ],
+          "expect": {
+            "status": "REJECTED"
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ACCOUNT_EXACT",
+      "display_name": "Same account identifier",
+      "description": "Both events carry the same provider account identifier (mailbox/tenant account). Missing account identifiers are unavailable, not a mismatch.",
+      "family": "IDENTITY",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "account.id"
+      ],
+      "extraction_method": {
+        "method": "EXACT_MATCH"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.3,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same account id",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              },
+              "account_id": "acct-42"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "account_id": "acct-42"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different account ids",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              },
+              "account_id": "acct-42"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "account_id": "acct-77"
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "EMAIL_EXACT",
+      "display_name": "Same email address",
+      "description": "Both events' actor resolves to the same normalised email address.",
+      "family": "IDENTITY",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "actor.email"
+      ],
+      "extraction_method": {
+        "method": "EXACT_MATCH"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.3,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same address, different display forms",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "ALICE@example.org",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different addresses",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "alice@example.org",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "alice@example.org",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "carol@example.org",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ALIAS_MAPPED",
+      "display_name": "Analyst-mapped alias",
+      "description": "The two events' identities belong to one alias group declared in reference_data.alias_groups. No fuzzy merging: with no group configured the parameter is unavailable.",
+      "family": "IDENTITY",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "actor.normalized",
+        "actor.email",
+        "actor.username"
+      ],
+      "extraction_method": {
+        "method": "ALIAS_MAPPED"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.2,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "both identities are members of one alias group",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "m.chen",
+              "raw": {}
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "mira.chen@example.org",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "mira.chen@example.org",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          },
+          "reference_data": {
+            "alias_groups": [
+              {
+                "group_id": "G-MIRA",
+                "members": [
+                  "m.chen",
+                  "mira.chen@example.org"
+                ]
+              }
+            ]
+          }
+        },
+        "negative": {
+          "label": "identities are not in the same group",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "m.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "dev.rao",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          },
+          "reference_data": {
+            "alias_groups": [
+              {
+                "group_id": "G-MIRA",
+                "members": [
+                  "m.chen",
+                  "mira.chen@example.org"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "USERNAME_MATCH",
+      "display_name": "Same username",
+      "description": "Same non-email username/actor string after existing entity normalisation. Generic usernames (admin, root, ...) are discounted.",
+      "family": "IDENTITY",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "actor.username"
+      ],
+      "extraction_method": {
+        "method": "EXACT_MATCH"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.12,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "usernames",
+        "penalty_factor": 0.2
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same username",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:32:00Z",
+              "action": "file_upload",
+              "actor": "Mira.Chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different usernames",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:32:00Z",
+              "action": "login",
+              "actor": "dev.rao",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "SENDER_RECIPIENT",
+      "display_name": "Sender/recipient relation",
+      "description": "One event's sender is a recipient of the other event.",
+      "family": "IDENTITY",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "MAIL-MAIL"
+      ],
+      "applies_to_sources": [
+        "gmail",
+        "outlook",
+        "pst"
+      ],
+      "source_fields": [
+        "actor.email",
+        "recipients.emails"
+      ],
+      "extraction_method": {
+        "method": "SET_CONTAINS"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.15,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "Alice wrote to Bob; Bob's reply is sent from his address",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "alice@example.org",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "alice@example.org",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:45:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "unrelated correspondents",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "alice@example.org",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "alice@example.org",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:45:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "dan@example.com",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "dan@example.com",
+                "recipients": [
+                  "erin@example.com"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "DEVICE_EXACT",
+      "display_name": "Same device identifier",
+      "description": "Same normalised device identifier. Devices that appear in many events are discounted with the T5 hub formula.",
+      "family": "IDENTITY",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "device.id"
+      ],
+      "extraction_method": {
+        "method": "EXACT_MATCH"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.15,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "HUB_COUNT",
+        "counter": "device"
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same device",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "device": "field-laptop-07"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {},
+              "device": "Field-Laptop-07"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different devices",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "device": "field-laptop-07"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "device": "field-phone-07"
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ATTACHMENT_HASH",
+      "display_name": "Shared attachment hash",
+      "description": "The two events' attachment SHA-256 sets intersect. Counted in the secondary score only; the validated PRIMARY anchor is separate.",
+      "family": "ARTIFACT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "attachment.sha256"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "attachment.sha256",
+            "attachment.sha256"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.45,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "both emails carry the same attachment hash",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "attachments differ",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "FILE_HASH",
+      "display_name": "Shared file hash",
+      "description": "A file content hash on one event equals a file or attachment hash on the other (attachment-vs-attachment is ATTACHMENT_HASH, so nothing is counted twice).",
+      "family": "ARTIFACT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "file.sha256",
+        "attachment.sha256"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "file.sha256",
+            "file.sha256"
+          ],
+          [
+            "file.sha256",
+            "attachment.sha256"
+          ],
+          [
+            "attachment.sha256",
+            "file.sha256"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.45,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "uploaded file hash equals an email attachment hash",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {
+                "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              },
+              "object": "bundle.zip"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different hashes",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {
+                "sha256": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+              },
+              "object": "bundle.zip"
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "MESSAGE_REF_OVERLAP",
+      "display_name": "Shared message ancestry",
+      "description": "The two messages reference at least one common Message-ID (siblings in one conversation). Direct replies are ANCHOR_MESSAGE_REFERENCE.",
+      "family": "ARTIFACT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "MAIL-MAIL"
+      ],
+      "applies_to_sources": [
+        "gmail",
+        "outlook",
+        "pst"
+      ],
+      "source_fields": [
+        "message.references"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "message.references",
+            "message.references"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.12,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "two replies to the same root message",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<a@example.org>",
+                  "references": "<root@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<b@example.org>",
+                  "references": "<root@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "replies to different roots",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<a@example.org>",
+                  "references": "<root1@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<b@example.org>",
+                  "references": "<root2@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "FILENAME",
+      "display_name": "Same file name",
+      "description": "Same normalised file name. A name is a weak, forgeable label and can never be proof; common names (image.png, report.pdf, ...) are discounted.",
+      "family": "ARTIFACT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "file.name",
+        "attachment.names"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "file.name",
+            "file.name"
+          ],
+          [
+            "file.name",
+            "attachment.names"
+          ],
+          [
+            "attachment.names",
+            "file.name"
+          ],
+          [
+            "attachment.names",
+            "attachment.names"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.08,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "filenames",
+        "penalty_factor": 0.25
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "attachment name equals an uploaded object name",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "Q3-plan.xlsx",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {},
+              "object": "C:\\Users\\mira\\Q3-plan.xlsx"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different names",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "Q3-plan.xlsx",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {},
+              "object": "roster.xlsx"
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "MIME_TYPE",
+      "display_name": "Same MIME type",
+      "description": "The two events' file/attachment MIME types intersect. Very weak on its own.",
+      "family": "ARTIFACT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "file.mime"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "file.mime",
+            "file.mime"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.04,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "both attachments are zip archives",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "zip versus pdf",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [
+                  {
+                    "filename": "a.pdf",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/pdf",
+                    "size": 20480
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "FILE_SIZE",
+      "display_name": "Same file size",
+      "description": "The two events' file/attachment byte sizes intersect. Weak on its own.",
+      "family": "ARTIFACT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "file.size"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "file.size",
+            "file.size"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.06,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same byte size",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different byte size",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 999
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "TIME_DELTA",
+      "display_name": "Time proximity",
+      "description": "Linear decay of the separation between the events' effective time intervals over the configured window. Time proximity alone is never enough to relate events.",
+      "family": "TEMPORAL",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "time.interval"
+      ],
+      "extraction_method": {
+        "method": "TIME_SEPARATION"
+      },
+      "normalisation_rule": {
+        "kind": "LINEAR_DECAY",
+        "window_seconds": 600
+      },
+      "weight": 0.2,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "TIMEZONE_CERTAINTY",
+          "CLOCK_UNCERTAINTY",
+          "TIMESTAMP_QUALITY",
+          "EVIDENCE_INTEGRITY",
+          "PARSER_CONFIDENCE"
+        ],
+        "combine": "PRODUCT",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "60 s apart inside a 600 s window",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "file_access",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.9
+          }
+        },
+        "negative": {
+          "label": "900 s apart: outside the window",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:45:00Z",
+              "action": "file_access",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "EVENT_ORDER",
+      "display_name": "Compatible action order",
+      "description": "The pair of actions appears in the registry's ordered action pairs and the time order agrees. Neutral action pairs contribute nothing (no evidence is not disproof).",
+      "family": "TEMPORAL",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "event.action",
+        "time.interval"
+      ],
+      "extraction_method": {
+        "method": "ORDERED_ACTIONS"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.1,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "TIMEZONE_CERTAINTY",
+          "CLOCK_UNCERTAINTY",
+          "TIMESTAMP_QUALITY",
+          "EVIDENCE_INTEGRITY",
+          "PARSER_CONFIDENCE"
+        ],
+        "combine": "PRODUCT",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "login followed by archive_create",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:41:00Z",
+              "action": "archive_create",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "no ordered relation between the actions",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:41:00Z",
+              "action": "logout",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "WINDOW_OVERLAP",
+      "display_name": "Overlapping uncertainty windows",
+      "description": "The events' clock-uncertainty windows overlap although their point timestamps differ. Counts only the uncertainty-driven overlap, so it does not repeat TIME_DELTA.",
+      "family": "TEMPORAL",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "time.interval",
+        "time.utc"
+      ],
+      "extraction_method": {
+        "method": "INTERVAL_OVERLAP",
+        "require_point_difference": true
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.06,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "TIMEZONE_CERTAINTY",
+          "CLOCK_UNCERTAINTY",
+          "TIMESTAMP_QUALITY",
+          "EVIDENCE_INTEGRITY",
+          "PARSER_CONFIDENCE"
+        ],
+        "combine": "PRODUCT",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "90 s apart but the log clock is uncertain by 60 s",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:30Z",
+              "action": "file_access",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          },
+          "source_clocks": {
+            "log": {
+              "offset_seconds": 0,
+              "uncertainty_seconds": 60
+            }
+          }
+        },
+        "negative": {
+          "label": "90 s apart with exact clocks: windows do not overlap",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:30Z",
+              "action": "file_access",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "TIMEZONE_CERTAINTY",
+      "display_name": "Timezone certainty",
+      "description": "Reliability factor: how the event's timezone was determined (explicit offset / epoch versus assumed UTC). A missing basis is penalised explicitly.",
+      "family": "TEMPORAL",
+      "role": "RELIABILITY_FACTOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "time.tz_assumption"
+      ],
+      "extraction_method": {
+        "method": "FIELD_QUALITY_MAP",
+        "map": {
+          "explicit_offset": 1.0,
+          "epoch_utc": 1.0,
+          "assumed_utc": 0.85
+        },
+        "default": null
+      },
+      "normalisation_rule": {
+        "kind": "MAP_LOOKUP"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "EXPLICIT_PENALTY",
+        "penalty": 0.1
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "both timestamps carried an explicit offset",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "tz_assumption": "explicit_offset"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "tz_assumption": "explicit_offset"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "one timestamp was naive and assumed UTC",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "tz_assumption": "explicit_offset"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "tz_assumption": "assumed_utc"
+            }
+          ],
+          "expect": {
+            "value": 0.85
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "CLOCK_UNCERTAINTY",
+      "display_name": "Clock uncertainty",
+      "description": "Reliability factor: 1 minus the source-clock uncertainty over the scoring window (worst of the two events). No configured clock means no adjustment, recorded.",
+      "family": "TEMPORAL",
+      "role": "RELIABILITY_FACTOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "time.clock_uncertainty_seconds"
+      ],
+      "extraction_method": {
+        "method": "CLOCK_UNCERTAINTY",
+        "window_seconds": 600
+      },
+      "normalisation_rule": {
+        "kind": "UNIT_PASSTHROUGH"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "no clock uncertainty configured",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "log clock uncertain by 300 s over a 600 s window",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.5
+          },
+          "source_clocks": {
+            "log": {
+              "offset_seconds": 0,
+              "uncertainty_seconds": 300
+            }
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "SHARED_IP",
+      "display_name": "Shared IP address",
+      "description": "The events' IP address sets intersect. A shared address is weak (NAT, proxies, shared hosting) and is discounted with the T5 hub formula when many events share it.",
+      "family": "NETWORK",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "net.ip"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "net.ip",
+            "net.ip"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.1,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "HUB_COUNT",
+        "counter": "ip"
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same client IP",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "ip": "203.0.113.42"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {},
+              "ip": "203.0.113.42"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different IPs",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "ip": "203.0.113.42"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {},
+              "ip": "203.0.113.43"
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ENDPOINT_PAIR",
+      "display_name": "Same endpoint pair",
+      "description": "The same (source, destination) address pair, in either direction; ports are compared only when both events carry them.",
+      "family": "NETWORK",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "NETWORK-NETWORK"
+      ],
+      "applies_to_sources": [
+        "zeek",
+        "pcap"
+      ],
+      "source_fields": [
+        "net.src_ip",
+        "net.dst_ip",
+        "net.src_port",
+        "net.dst_port"
+      ],
+      "extraction_method": {
+        "method": "ENDPOINT_PAIR"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.15,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "Zeek connection and the reverse-direction packet",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "pcap",
+              "timestamp": "2026-10-18T02:30:02Z",
+              "action": "TCP segment",
+              "raw": {
+                "src_ip": "198.51.100.7",
+                "dst_ip": "10.0.0.5",
+                "protocol": "TCP"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different destination",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "pcap",
+              "timestamp": "2026-10-18T02:30:02Z",
+              "action": "TCP segment",
+              "raw": {
+                "src_ip": "10.0.0.5",
+                "dst_ip": "192.0.2.80",
+                "protocol": "TCP"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "PORT_MATCH",
+      "display_name": "Same destination port",
+      "description": "Same destination port. Well-known ports (53, 80, 123, 443) are discounted because they say almost nothing.",
+      "family": "NETWORK",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "NETWORK-NETWORK"
+      ],
+      "applies_to_sources": [
+        "zeek",
+        "pcap"
+      ],
+      "source_fields": [
+        "net.dst_port"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "net.dst_port",
+            "net.dst_port"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.04,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "ports",
+        "penalty_factor": 0.25
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same unusual port",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:8443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "8443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:30Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:8443",
+              "raw": {
+                "uid": "C2",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "8443",
+                "proto": "tcp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different ports",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:8443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "8443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:30Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:9000",
+              "raw": {
+                "uid": "C2",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "9000",
+                "proto": "tcp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "PROTOCOL_MATCH",
+      "display_name": "Same protocol",
+      "description": "Same transport/application protocol (case-folded).",
+      "family": "NETWORK",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "NETWORK-NETWORK"
+      ],
+      "applies_to_sources": [
+        "zeek",
+        "pcap"
+      ],
+      "source_fields": [
+        "net.protocol"
+      ],
+      "extraction_method": {
+        "method": "EXACT_MATCH"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.03,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "tcp and TCP",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "pcap",
+              "timestamp": "2026-10-18T02:30:02Z",
+              "action": "TCP segment",
+              "raw": {
+                "src_ip": "10.0.0.5",
+                "dst_ip": "198.51.100.7",
+                "protocol": "TCP"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "tcp versus udp",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:05Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C2",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "udp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "DOMAIN_MATCH",
+      "display_name": "Same domain",
+      "description": "The events' domains (DNS names or URL hosts) intersect. Common infrastructure domains are discounted.",
+      "family": "NETWORK",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "net.domain",
+        "content.url_domains"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "net.domain",
+            "net.domain"
+          ],
+          [
+            "net.domain",
+            "content.url_domains"
+          ],
+          [
+            "content.url_domains",
+            "net.domain"
+          ],
+          [
+            "content.url_domains",
+            "content.url_domains"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.15,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "domains",
+        "penalty_factor": 0.25
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "DNS query for the host the browser then visited",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "DNS_QUERY",
+              "object": "vault.example.test",
+              "raw": {
+                "query": "vault.example.test",
+                "answers": "198.51.100.7"
+              }
+            },
+            {
+              "source": "browser",
+              "timestamp": "2026-10-18T02:30:40Z",
+              "action": "upload",
+              "object": "https://vault.example.test/upload/CASE-001.tar.gz",
+              "raw": {
+                "url": "https://vault.example.test/upload/CASE-001.tar.gz"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different hosts",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "DNS_QUERY",
+              "object": "vault.example.test",
+              "raw": {
+                "query": "vault.example.test",
+                "answers": "198.51.100.7"
+              }
+            },
+            {
+              "source": "browser",
+              "timestamp": "2026-10-18T02:30:40Z",
+              "action": "visit",
+              "object": "https://news.example.org/a",
+              "raw": {
+                "url": "https://news.example.org/a"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "DNS_RESOLUTION",
+      "display_name": "DNS resolution link",
+      "description": "One event's DNS answers contain an address the other event used.",
+      "family": "NETWORK",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "NETWORK-NETWORK"
+      ],
+      "applies_to_sources": [
+        "zeek",
+        "pcap"
+      ],
+      "source_fields": [
+        "net.dns_answers",
+        "net.ip"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "pairs": [
+          [
+            "net.dns_answers",
+            "net.ip"
+          ],
+          [
+            "net.ip",
+            "net.dns_answers"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.15,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "DNS answer equals the later connection's destination",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "DNS_QUERY",
+              "object": "vault.example.test",
+              "raw": {
+                "query": "vault.example.test",
+                "answers": "198.51.100.7"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:20Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "answer differs from the connection's addresses",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "DNS_QUERY",
+              "object": "vault.example.test",
+              "raw": {
+                "query": "vault.example.test",
+                "answers": "192.0.2.99"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:20Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "SESSION_ID",
+      "display_name": "Same session identifier (unscoped)",
+      "description": "Equal network session identifiers whose scope could not be validated, so they are evidence rather than an anchor. Only used when ANCHOR_SESSION_ID does not apply.",
+      "family": "NETWORK",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "NETWORK-NETWORK"
+      ],
+      "applies_to_sources": [
+        "zeek",
+        "pcap"
+      ],
+      "source_fields": [
+        "net.session_id"
+      ],
+      "extraction_method": {
+        "method": "EXACT_MATCH"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.3,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same uid",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "CAbc123",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:05Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "CAbc123",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different uid",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "CAbc123",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:05Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "CXyz789",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "USER_AGENT",
+      "display_name": "Same user agent",
+      "description": "Same HTTP user-agent string. DISABLED: no current parser emits a user-agent, so enabling it would only ever report 'unavailable'.",
+      "family": "NETWORK",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "net.user_agent"
+      ],
+      "extraction_method": {
+        "method": "EXACT_MATCH"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.06,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "user_agents",
+        "penalty_factor": 0.3
+      },
+      "version": "1.0.0",
+      "status": "DISABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Disabled in v1: no parser emits a user-agent (dependency: evidence-engine owner).",
+      "fixtures": {
+        "positive": {
+          "label": "same user agent",
+          "events": [
+            {
+              "source": "browser",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "visit",
+              "raw": {
+                "user_agent": "AcmeBrowser/9.1 (X11)"
+              }
+            },
+            {
+              "source": "pcap",
+              "timestamp": "2026-10-18T02:30:20Z",
+              "action": "HTTP request",
+              "raw": {
+                "user_agent": "AcmeBrowser/9.1 (X11)"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different user agents",
+          "events": [
+            {
+              "source": "browser",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "visit",
+              "raw": {
+                "user_agent": "AcmeBrowser/9.1 (X11)"
+              }
+            },
+            {
+              "source": "pcap",
+              "timestamp": "2026-10-18T02:30:20Z",
+              "action": "HTTP request",
+              "raw": {
+                "user_agent": "Curl/8.0"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "SUBJECT_SIMILARITY",
+      "display_name": "Subject similarity",
+      "description": "Token Jaccard similarity of mail subjects after stripping reply/forward prefixes. Generic subjects are discounted.",
+      "family": "CONTENT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "MAIL-MAIL"
+      ],
+      "applies_to_sources": [
+        "gmail",
+        "outlook",
+        "pst"
+      ],
+      "source_fields": [
+        "content.subject"
+      ],
+      "extraction_method": {
+        "method": "TOKEN_JACCARD",
+        "strip_prefixes": [
+          "re:",
+          "fw:",
+          "fwd:"
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "UNIT_FLOOR",
+        "floor": 0.5
+      },
+      "weight": 0.12,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "subjects",
+        "penalty_factor": 0.25
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "reply keeps the subject",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review draft",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review draft",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:40:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Re: Q3 budget review draft",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Re: Q3 budget review draft",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "unrelated subjects",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review draft",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review draft",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:40:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Holiday party plans",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Holiday party plans",
+                "raw_headers": {},
+                "body": "",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "BODY_SIMILARITY",
+      "display_name": "Message body similarity",
+      "description": "Token Jaccard similarity of mail bodies. Boilerplate phrases (signatures, disclaimers) are discounted.",
+      "family": "CONTENT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "MAIL-MAIL"
+      ],
+      "applies_to_sources": [
+        "gmail",
+        "outlook",
+        "pst"
+      ],
+      "source_fields": [
+        "content.body"
+      ],
+      "extraction_method": {
+        "method": "TOKEN_JACCARD"
+      },
+      "normalisation_rule": {
+        "kind": "UNIT_FLOOR",
+        "floor": 0.6
+      },
+      "weight": 0.1,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "phrases",
+        "penalty_factor": 0.5
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "identical body text",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "Please review the attached budget figures and confirm them by Friday",
+                "attachments": []
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:40:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "Please review the attached budget figures and confirm them by Friday",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different body text",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "Please review the attached budget figures and confirm them by Friday",
+                "attachments": []
+              }
+            },
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:40:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "Lunch is moved to the second floor kitchen this week",
+                "attachments": []
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "TEXT_SIMILARITY",
+      "display_name": "Chat text similarity",
+      "description": "Token Jaccard similarity of two chat messages' text.",
+      "family": "CONTENT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "CHAT-CHAT"
+      ],
+      "applies_to_sources": [
+        "chat"
+      ],
+      "source_fields": [
+        "content.text"
+      ],
+      "extraction_method": {
+        "method": "TOKEN_JACCARD"
+      },
+      "normalisation_rule": {
+        "kind": "UNIT_FLOOR",
+        "floor": 0.5
+      },
+      "weight": 0.1,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "phrases",
+        "penalty_factor": 0.5
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same message text",
+          "events": [
+            {
+              "source": "chat",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "message_sent",
+              "actor": "mira.chen",
+              "object": "Upload complete; archive is in the review vault"
+            },
+            {
+              "source": "chat",
+              "timestamp": "2026-10-18T02:32:00Z",
+              "action": "message_sent",
+              "actor": "dev.rao",
+              "object": "Upload complete; archive is in the review vault"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "different message text",
+          "events": [
+            {
+              "source": "chat",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "message_sent",
+              "actor": "mira.chen",
+              "object": "Upload complete; archive is in the review vault"
+            },
+            {
+              "source": "chat",
+              "timestamp": "2026-10-18T02:32:00Z",
+              "action": "message_sent",
+              "actor": "dev.rao",
+              "object": "Lunch at noon on Friday"
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "URL_DOMAIN_SIMILARITY",
+      "display_name": "Related URL domain",
+      "description": "Domains differ but share the same parent domain (e.g. upload.example.test and vault.example.test). Exact matches are DOMAIN_MATCH, so nothing is counted twice. The parent domain is the last two labels (no public-suffix list is bundled).",
+      "family": "CONTENT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "content.url_domains",
+        "net.domain"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "transform": "parent_domain",
+        "exclude_exact_overlap": true,
+        "pairs": [
+          [
+            "content.url_domains",
+            "net.domain"
+          ],
+          [
+            "net.domain",
+            "content.url_domains"
+          ],
+          [
+            "content.url_domains",
+            "content.url_domains"
+          ],
+          [
+            "net.domain",
+            "net.domain"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.1,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "domains",
+        "penalty_factor": 0.25
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "sibling subdomains of one parent domain",
+          "events": [
+            {
+              "source": "browser",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "visit",
+              "object": "https://upload.example.test/x",
+              "raw": {
+                "url": "https://upload.example.test/x"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:30Z",
+              "action": "DNS_QUERY",
+              "object": "vault.example.test",
+              "raw": {
+                "query": "vault.example.test",
+                "answers": "198.51.100.7"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "unrelated parent domains",
+          "events": [
+            {
+              "source": "browser",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "visit",
+              "object": "https://upload.example.test/x",
+              "raw": {
+                "url": "https://upload.example.test/x"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:30Z",
+              "action": "DNS_QUERY",
+              "object": "vault.example.org",
+              "raw": {
+                "query": "vault.example.org",
+                "answers": "198.51.100.7"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ATTACHMENT_NAME_RELATION",
+      "display_name": "Related attachment name",
+      "description": "File names differ but share the same stem once extensions and version markers (_v2, -final, (1), copy) are removed. Exact names are FILENAME.",
+      "family": "CONTENT",
+      "role": "FEATURE",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "attachment.names",
+        "file.name"
+      ],
+      "extraction_method": {
+        "method": "SET_INTERSECTION",
+        "transform": "filename_stem",
+        "exclude_exact_overlap": true,
+        "pairs": [
+          [
+            "file.name",
+            "file.name"
+          ],
+          [
+            "file.name",
+            "attachment.names"
+          ],
+          [
+            "attachment.names",
+            "file.name"
+          ],
+          [
+            "attachment.names",
+            "attachment.names"
+          ]
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.1,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": {
+        "factors": [
+          "SOURCE_TYPE",
+          "ACQUISITION_METHOD",
+          "PARSER_CONFIDENCE",
+          "EVIDENCE_INTEGRITY",
+          "METADATA_COMPLETENESS"
+        ],
+        "combine": "MIN",
+        "floor": 0.0
+      },
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": {
+        "kind": "COMMON_VALUE",
+        "list": "filenames",
+        "penalty_factor": 0.25
+      },
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "budget_v2.xlsx versus budget.xlsx",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "budget_v2.xlsx",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {},
+              "object": "budget.xlsx"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "unrelated stems",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "budget_v2.xlsx",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 20480
+                  }
+                ]
+              }
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:35:00Z",
+              "action": "file_upload",
+              "actor": "mira.chen",
+              "raw": {},
+              "object": "roster.xlsx"
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "SOURCE_TYPE",
+      "display_name": "Source type reliability",
+      "description": "Reliability factor by event source type. Ordinal placeholder: machine-generated captures above user-authored or application exports. PROVISIONAL.",
+      "family": "PROVENANCE",
+      "role": "RELIABILITY_FACTOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "prov.source"
+      ],
+      "extraction_method": {
+        "method": "FIELD_QUALITY_MAP",
+        "map": {
+          "pcap": 1.0,
+          "zeek": 1.0,
+          "log": 0.95,
+          "gmail": 0.95,
+          "outlook": 0.95,
+          "pst": 0.9,
+          "browser": 0.9,
+          "chat": 0.9,
+          "image": 0.9
+        },
+        "default": null
+      },
+      "normalisation_rule": {
+        "kind": "MAP_LOOKUP"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "two network captures",
+          "events": [
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:05Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C2",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "chat and network capture",
+          "events": [
+            {
+              "source": "chat",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "message_sent",
+              "actor": "mira.chen"
+            },
+            {
+              "source": "zeek",
+              "timestamp": "2026-10-18T02:30:05Z",
+              "action": "NETWORK_CONNECTION",
+              "actor": "10.0.0.5",
+              "ip": "10.0.0.5",
+              "object": "10.0.0.5:51000->198.51.100.7:443",
+              "raw": {
+                "uid": "C1",
+                "id.orig_h": "10.0.0.5",
+                "id.orig_p": "51000",
+                "id.resp_h": "198.51.100.7",
+                "id.resp_p": "443",
+                "proto": "tcp"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.9
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "ACQUISITION_METHOD",
+      "display_name": "Acquisition method reliability",
+      "description": "Reliability factor by how the evidence was acquired. No parser emits this yet, so it is normally 'missing' and adjusts nothing (recorded).",
+      "family": "PROVENANCE",
+      "role": "RELIABILITY_FACTOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "prov.acquisition_method"
+      ],
+      "extraction_method": {
+        "method": "FIELD_QUALITY_MAP",
+        "map": {
+          "forensic_image": 1.0,
+          "vendor_export": 0.95,
+          "live_collection": 0.9,
+          "user_provided": 0.85
+        },
+        "default": null
+      },
+      "normalisation_rule": {
+        "kind": "MAP_LOOKUP"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "both from a forensic image",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "acquisition_method": "forensic_image"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "acquisition_method": "forensic_image"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "one user-provided export",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "acquisition_method": "forensic_image"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "acquisition_method": "user_provided"
+            }
+          ],
+          "expect": {
+            "value": 0.85
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "PARSER_CONFIDENCE",
+      "display_name": "Parser confidence",
+      "description": "Reliability factor: the parser's own confidence in the extracted event (0..1). Missing confidence is unavailable and excluded, not treated as low.",
+      "family": "PROVENANCE",
+      "role": "RELIABILITY_FACTOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "prov.parser_confidence"
+      ],
+      "extraction_method": {
+        "method": "FIELD_UNIT_VALUE"
+      },
+      "normalisation_rule": {
+        "kind": "UNIT_PASSTHROUGH"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "both events fully extracted",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "parser_confidence": 1.0
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "parser_confidence": 1.0
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "one event was a partial extraction",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "parser_confidence": 1.0
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "parser_confidence": 0.6
+            }
+          ],
+          "expect": {
+            "value": 0.6
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "TIMESTAMP_QUALITY",
+      "display_name": "Timestamp quality",
+      "description": "Reliability factor from the parser's timestamp-quality label.",
+      "family": "PROVENANCE",
+      "role": "RELIABILITY_FACTOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "time.quality"
+      ],
+      "extraction_method": {
+        "method": "FIELD_QUALITY_MAP",
+        "map": {
+          "exact": 1.0,
+          "derived": 0.9,
+          "estimated": 0.7
+        },
+        "default": null
+      },
+      "normalisation_rule": {
+        "kind": "MAP_LOOKUP"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "both timestamps exact",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "timestamp_quality": "exact"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "timestamp_quality": "exact"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "one estimated timestamp",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "timestamp_quality": "exact"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "timestamp_quality": "estimated"
+            }
+          ],
+          "expect": {
+            "value": 0.7
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "EVIDENCE_INTEGRITY",
+      "display_name": "Evidence integrity",
+      "description": "Reliability factor from the evidence file's verification state. MISMATCH, MISSING, CUSTODY_BROKEN, QUARANTINED or REMOVED evidence BLOCKS scoring with a recorded reason. No integrity information is unavailable, not assumed good.",
+      "family": "PROVENANCE",
+      "role": "RELIABILITY_FACTOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "prov.integrity"
+      ],
+      "extraction_method": {
+        "method": "FIELD_QUALITY_MAP",
+        "map": {
+          "MATCH": 1.0,
+          "UNVERIFIED": 0.9
+        },
+        "block_values": [
+          "MISMATCH",
+          "MISSING",
+          "CUSTODY_BROKEN",
+          "QUARANTINED",
+          "REMOVED"
+        ],
+        "default": null
+      },
+      "normalisation_rule": {
+        "kind": "MAP_LOOKUP"
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "both evidence files re-verified",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "integrity_status": "MATCH"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "integrity_status": "MATCH"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "one evidence file failed re-verification",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "integrity_status": "MATCH"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "integrity_status": "MISMATCH"
+            }
+          ],
+          "expect": {
+            "status": "BLOCKED",
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "METADATA_COMPLETENESS",
+      "display_name": "Metadata completeness",
+      "description": "Reliability factor: 0.7 + 0.3 x the fraction of core fields (actor, device, IP, action, time) the event carries. Missing metadata lowers reliability; it is never silently treated as a mismatch.",
+      "family": "PROVENANCE",
+      "role": "RELIABILITY_FACTOR",
+      "direction": "SUPPORTS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "actor.normalized",
+        "device.id",
+        "net.ip",
+        "event.action",
+        "time.utc"
+      ],
+      "extraction_method": {
+        "method": "FIELD_COMPLETENESS",
+        "missing_penalty_factor": 0.3
+      },
+      "normalisation_rule": {
+        "kind": "UNIT_RESCALE",
+        "min_factor": 0.7
+      },
+      "weight": null,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "ZERO_CONTRIBUTION"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "all five core fields present on both events",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "device": "d1",
+              "ip": "203.0.113.5"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "device": "d1",
+              "ip": "203.0.113.5"
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "one event carries only action, time and actor (3/5)",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {},
+              "device": "d1",
+              "ip": "203.0.113.5"
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.88
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "IDENTITY_CONFLICT",
+      "display_name": "Conflicting identities",
+      "description": "Both events carry an identity in the same namespace (email, account or username) and the values differ with no alias mapping. Different namespaces are not comparable and are never a conflict.",
+      "family": "CONTRADICTION",
+      "role": "CONTRADICTION",
+      "direction": "WEAKENS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "actor.email",
+        "account.id",
+        "actor.username"
+      ],
+      "extraction_method": {
+        "method": "IDENTITY_CONFLICT"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.25,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "two different usernames",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "dev.rao",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "same username",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "IMPOSSIBLE_ORDER",
+      "display_name": "Impossible event order",
+      "description": "An ordered action pair is definitely violated: even allowing for clock uncertainty, the 'later' action happened before the 'earlier' one.",
+      "family": "CONTRADICTION",
+      "role": "CONTRADICTION",
+      "direction": "WEAKENS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "event.action",
+        "time.interval"
+      ],
+      "extraction_method": {
+        "method": "ORDERED_ACTIONS_VIOLATION"
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.3,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "archive created 11 minutes before the login that should precede it",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "archive_create",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:41:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "login first, then archive",
+          "events": [
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "login",
+              "actor": "mira.chen",
+              "raw": {}
+            },
+            {
+              "source": "log",
+              "timestamp": "2026-10-18T02:41:00Z",
+              "action": "archive_create",
+              "actor": "mira.chen",
+              "raw": {}
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "TIMESTAMP_CONFLICT",
+      "display_name": "Conflicting timestamps",
+      "description": "The same Message-ID is stamped with times further apart than the tolerance: the same message cannot have two distant times.",
+      "family": "CONTRADICTION",
+      "role": "CONTRADICTION",
+      "direction": "WEAKENS",
+      "relation_type": [
+        "MAIL-MAIL"
+      ],
+      "applies_to_sources": [
+        "gmail",
+        "outlook",
+        "pst"
+      ],
+      "source_fields": [
+        "message.id",
+        "time.utc"
+      ],
+      "extraction_method": {
+        "method": "CONFLICT_CHECK",
+        "checks": [
+          {
+            "label": "same_message_distant_times",
+            "key_fields": [
+              "message.id"
+            ],
+            "fact_fields": [
+              "time.utc"
+            ],
+            "tolerance_seconds": 300
+          }
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.2,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same Message-ID a day apart",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<m1@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-19T02:30:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [],
+                "internetMessageId": "<m1@example.org>"
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "same Message-ID 20 s apart",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {
+                  "message-id": "<m1@example.org>"
+                },
+                "body": "",
+                "attachments": []
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:30:20Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [],
+                "internetMessageId": "<m1@example.org>"
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    },
+    {
+      "parameter_id": "INCONSISTENT_SOURCE_FACTS",
+      "display_name": "Inconsistent source facts",
+      "description": "A shared key (same hash, same session, same Message-ID) with differing facts (different size, endpoint or subject). Only single-valued keys and facts are compared.",
+      "family": "CONTRADICTION",
+      "role": "CONTRADICTION",
+      "direction": "WEAKENS",
+      "relation_type": [
+        "ANY"
+      ],
+      "applies_to_sources": [
+        "*"
+      ],
+      "source_fields": [
+        "attachment.sha256",
+        "file.sha256",
+        "file.size",
+        "net.session_id",
+        "prov.evidence_id",
+        "net.dst_ip",
+        "net.dst_port",
+        "net.protocol",
+        "message.id",
+        "content.subject"
+      ],
+      "extraction_method": {
+        "method": "CONFLICT_CHECK",
+        "checks": [
+          {
+            "label": "same_hash_different_size",
+            "key_fields": [
+              "attachment.sha256"
+            ],
+            "fact_fields": [
+              "file.size"
+            ]
+          },
+          {
+            "label": "same_file_hash_different_size",
+            "key_fields": [
+              "file.sha256"
+            ],
+            "fact_fields": [
+              "file.size"
+            ]
+          },
+          {
+            "label": "same_session_different_endpoint",
+            "key_fields": [
+              "net.session_id",
+              "prov.evidence_id"
+            ],
+            "fact_fields": [
+              "net.dst_ip",
+              "net.dst_port",
+              "net.protocol"
+            ]
+          },
+          {
+            "label": "same_message_different_subject",
+            "key_fields": [
+              "message.id"
+            ],
+            "fact_fields": [
+              "content.subject"
+            ]
+          }
+        ]
+      },
+      "normalisation_rule": {
+        "kind": "BINARY"
+      },
+      "weight": 0.2,
+      "weight_status": "PROVISIONAL",
+      "reliability_rule": null,
+      "missing_value_policy": {
+        "policy": "UNAVAILABLE"
+      },
+      "collision_penalty_rule": null,
+      "version": "1.0.0",
+      "status": "ENABLED",
+      "effective_date": "2026-11-24",
+      "change_reason": "Initial PROVISIONAL registry (corr-registry-v1); values are uncalibrated starting points.",
+      "fixtures": {
+        "positive": {
+          "label": "same attachment hash but different byte sizes",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 100
+                  }
+                ]
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 200
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "value": 1.0
+          }
+        },
+        "negative": {
+          "label": "same attachment hash and size",
+          "events": [
+            {
+              "source": "gmail",
+              "timestamp": "2026-10-18T02:30:00Z",
+              "action": "EMAIL_SENT",
+              "actor": "Alice <alice@example.org>",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "Alice <alice@example.org>",
+                "recipients": "bob@example.net",
+                "subject": "Q3 budget review",
+                "raw_headers": {},
+                "body": "",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 100
+                  }
+                ]
+              }
+            },
+            {
+              "source": "outlook",
+              "timestamp": "2026-10-18T02:31:00Z",
+              "action": "EMAIL_RECEIVED",
+              "actor": "bob@example.net",
+              "object": "Q3 budget review",
+              "raw": {
+                "sender": "bob@example.net",
+                "recipients": [
+                  "alice@example.org"
+                ],
+                "subject": "Q3 budget review",
+                "attachments": [
+                  {
+                    "filename": "bundle.zip",
+                    "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                    "mimeType": "application/zip",
+                    "size": 100
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "value": 0.0
+          }
+        }
+      }
+    }
+  ]
+}
