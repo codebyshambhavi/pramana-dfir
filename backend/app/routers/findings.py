@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.db.models import Case, EventModel, FindingModel, FindingReviewDecision
+from app.db.models import Case, EVIDENCE_ACTIVE, Evidence, EventModel, FindingModel, FindingReviewDecision
 from app.db.runs import create_analysis_run, manifest_evidence
 from app.db.session import get_db
 from app.reports.lineage import get_finding_lineage
@@ -45,7 +45,18 @@ def analyze_case(id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
             detail=f"Case '{id}' not found",
         )
 
-    events = db.query(EventModel).filter(EventModel.case_id == id).all()
+    # New findings use ACTIVE evidence only.
+    # Previously generated findings and immutable analysis runs remain untouched.
+    events = (
+        db.query(EventModel)
+        .join(Evidence, EventModel.evidence_id == Evidence.evidence_id)
+        .filter(
+            EventModel.case_id == id,
+            Evidence.case_id == id,
+            Evidence.status == EVIDENCE_ACTIVE,
+        )
+        .all()
+    )
     events_payload = [e.to_dict() for e in events]
 
     findings_data = execute_analyze(events_payload, case_id=id)

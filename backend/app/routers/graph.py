@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.models import Case, EventModel
+from app.db.models import Case, EVIDENCE_ACTIVE, Evidence, EventModel
 from app.db.session import get_db
 from app.graph.builder import build_graph
 
@@ -29,7 +29,18 @@ def get_case_graph(id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
             detail=f"Case '{id}' not found",
         )
 
-    events = db.query(EventModel).filter(EventModel.case_id == id).all()
+    # Only ACTIVE evidence contributes to the current graph.
+    # Removed evidence and its events remain stored for forensic history.
+    events = (
+        db.query(EventModel)
+        .join(Evidence, EventModel.evidence_id == Evidence.evidence_id)
+        .filter(
+            EventModel.case_id == id,
+            Evidence.case_id == id,
+            Evidence.status == EVIDENCE_ACTIVE,
+        )
+        .all()
+    )
     events_payload = [e.to_dict() for e in events]
 
     graph_data = build_graph(events_payload)
