@@ -4,6 +4,9 @@ import type {
   AnalyzeResponse,
   CaseCreateInput,
   CaseEvent,
+  CaseReport,
+  ReportDecision,
+  ReportDecisionInput,
   CaseSummary,
   CaseUpdateInput,
   CaseGraph,
@@ -301,4 +304,114 @@ export async function closeCase(caseId: string, signal?: AbortSignal): Promise<C
 /** POST /cases/{id}/reopen: status becomes REOPENED. */
 export async function reopenCase(caseId: string, signal?: AbortSignal): Promise<CaseSummary> {
   return assertCase(await postJson<unknown>(`/cases/${enc(caseId)}/reopen`, undefined, signal));
+}
+
+// --- Role 3 immutable run-based reports (documented in contracts/openapi.yaml) ---
+
+const isCaseReport = (data: unknown): data is CaseReport =>
+  isRecord(data) &&
+  isString(data.report_id) &&
+  isString(data.case_id) &&
+  isString(data.run_id) &&
+  typeof data.report_version === "number" &&
+  isString(data.generated_at) &&
+  isString(data.sha256) &&
+  /^[0-9a-f]{64}$/.test(data.sha256) &&
+  typeof data.size_bytes === "number";
+
+function assertReport(data: unknown): CaseReport {
+  if (!isCaseReport(data)) throw new ApiError("The report did not match the documented response shape.");
+  return data;
+}
+
+/** GET /cases/{case_id}/reports: metadata only, newest first. */
+export async function listCaseReports(caseId: string, signal?: AbortSignal): Promise<CaseReport[]> {
+  const data = await request<unknown>(`/cases/${enc(caseId)}/reports`, { signal });
+  if (!Array.isArray(data)) throw new ApiError("The report list did not match the documented response shape.");
+  return data.map(assertReport);
+}
+
+/** POST /cases/{case_id}/runs/{run_id}/reports: 409 when the run is invalidated or has no authoritative snapshot. */
+export async function createRunReport(
+  caseId: string,
+  runId: string,
+  body: { generated_by?: string } = {},
+  signal?: AbortSignal
+): Promise<CaseReport> {
+  return assertReport(await postJson<unknown>(`/cases/${enc(caseId)}/runs/${enc(runId)}/reports`, body, signal));
+}
+
+async function sha256Hex(blob: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * GET /cases/{case_id}/reports/{report_id}/pdf. The server re-verifies the stored SHA-256 before sending; the
+ * bytes received are hashed again here and must equal the recorded SHA-256, or the download is refused.
+ */
+export async function downloadCaseReportPdf(report: CaseReport, signal?: AbortSignal): Promise<Blob> {
+  const path = `/cases/${enc(report.case_id)}/reports/${enc(report.report_id)}/pdf`;
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ApiError(`Could not reach the API at ${API_URL}.`);
+  }
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body.detail === "string") detail = `: ${body.detail}`;
+    } catch {
+      // No JSON body; the status code is enough.
+    }
+    throw new ApiError(`GET ${path} failed with ${response.status}${detail}`, response.status);
+  }
+  const blob = await response.blob();
+  if (blob.size === 0) throw new ApiError("The server returned an empty file.");
+  const actual = await sha256Hex(blob);
+  if (actual !== report.sha256) {
+    throw new ApiError(`Downloaded PDF failed SHA-256 verification (expected ${report.sha256}, received ${actual}).`);
+  }
+  return new Blob([blob], { type: "application/pdf" });
+}
+
+// --- Role 3 reviewer decisions on a saved report (documented in contracts/openapi.yaml) ---
+
+const REPORT_DECISIONS = ["APPROVE", "REJECT", "INCONCLUSIVE"];
+
+const isReportDecision = (data: unknown): data is ReportDecision =>
+  isRecord(data) &&
+  isString(data.decision_id) &&
+  isString(data.case_id) &&
+  isString(data.report_id) &&
+  isString(data.decision) &&
+  REPORT_DECISIONS.includes(data.decision) &&
+  isString(data.rationale) &&
+  isString(data.reviewer_label) &&
+  data.reviewer_identity_type === "self_declared" &&
+  isString(data.decided_at);
+
+function assertDecision(data: unknown): ReportDecision {
+  if (!isReportDecision(data)) throw new ApiError("The decision did not match the documented response shape.");
+  return data;
+}
+
+/** GET /cases/{case_id}/reports/{report_id}/decisions: append-only history, oldest first. */
+export async function listReportDecisions(caseId: string, reportId: string, signal?: AbortSignal): Promise<ReportDecision[]> {
+  const data = await request<unknown>(`/cases/${enc(caseId)}/reports/${enc(reportId)}/decisions`, { signal });
+  if (!Array.isArray(data)) throw new ApiError("The decision history did not match the documented response shape.");
+  return data.map(assertDecision);
+}
+
+/** POST /cases/{case_id}/reports/{report_id}/decisions: appends; never changes the report PDF. */
+export async function createReportDecision(
+  caseId: string,
+  reportId: string,
+  body: ReportDecisionInput,
+  signal?: AbortSignal
+): Promise<ReportDecision> {
+  return assertDecision(await postJson<unknown>(`/cases/${enc(caseId)}/reports/${enc(reportId)}/decisions`, body, signal));
 }
