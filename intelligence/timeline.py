@@ -41,7 +41,7 @@ from typing import Any, Iterable, Mapping
 from .common import NormalizedEvent
 from .config import SOURCE_CLOCKS_ENV_VAR
 
-KNOWN_SOURCES = frozenset({"browser", "chat", "log", "pcap", "image"})
+KNOWN_SOURCES = frozenset({"browser", "chat", "log", "pcap", "image", "gmail", "outlook", "pst", "zeek"})
 _ZERO = timedelta(0)
 
 

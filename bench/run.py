@@ -33,7 +33,7 @@ def _stable_output(value: Any) -> Any:
         return {
             key: _stable_output(item)
             for key, item in value.items()
-            if key not in {"run_id", "created_at"}
+            if key not in {"run_id", "analysis_run_id", "created_at"}
         }
     if isinstance(value, list):
         return [_stable_output(item) for item in value]
