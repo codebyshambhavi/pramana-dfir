@@ -16,11 +16,13 @@ T3 (run foundation, PRAMANA H″):
 
 Role 3 reporting:
 - case_report: write-once PDF report generated from one completed analysis run
+- case_report_decision: append-only reviewer decisions (APPROVE / REJECT / INCONCLUSIVE) on a report
 
 Integrity rules (ORM guards at the end of this file; database triggers in db_guards):
 - evidence and custody_entries rows are never deleted; evidence.sha256 never changes
 - run data is write-once: no UPDATE/DELETE, and no child rows after the run row exists
 - case_report rows are write-once: no UPDATE/DELETE; the run must belong to the same case
+- case_report_decision rows are append-only: no UPDATE/DELETE; the report must belong to the same case
 """
 from __future__ import annotations
 
@@ -755,6 +757,51 @@ class CaseReport(Base):
         }
 
 
+REPORT_DECISIONS = ("APPROVE", "REJECT", "INCONCLUSIVE")
+
+
+class CaseReportDecision(Base):
+    """Append-only reviewer decision on one immutable report (Role 3).
+
+    A new decision never replaces an earlier one; the history is the record. The reviewer is
+    self-declared (reviewer_identity_type = 'self_declared') until authentication exists, so the
+    name is a label typed by the reviewer, not a verified identity.
+    """
+
+    __tablename__ = "case_report_decision"
+    __table_args__ = (
+        CheckConstraint("decision IN ('APPROVE', 'REJECT', 'INCONCLUSIVE')", name="ck_report_decision"),
+        CheckConstraint("reviewer_identity_type = 'self_declared'", name="ck_report_decision_identity"),
+        CheckConstraint("length(trim(rationale)) > 0", name="ck_report_decision_rationale"),
+    )
+
+    decision_id = Column(String(64), primary_key=True)
+    case_id = Column(String(64), ForeignKey("cases.case_id"), nullable=False, index=True)
+    report_id = Column(String(64), ForeignKey("case_report.report_id"), nullable=False, index=True)
+    decision = Column(String(16), nullable=False)
+    rationale = Column(Text, nullable=False)
+    reviewer_label = Column(String(120), nullable=False)
+    reviewer_identity_type = Column(String(32), nullable=False, default="self_declared", server_default="self_declared")
+    decided_at = Column(DateTime, default=utc_now, nullable=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "decision_id": self.decision_id,
+            "case_id": self.case_id,
+            "report_id": self.report_id,
+            "decision": self.decision,
+            "rationale": self.rationale,
+            "reviewer_label": self.reviewer_label,
+            "reviewer_identity_type": self.reviewer_identity_type,
+            "identity_verified": False,
+            "decided_at": (
+                self.decided_at.replace(tzinfo=timezone.utc).isoformat()
+                if self.decided_at is not None and self.decided_at.tzinfo is None
+                else _iso(self.decided_at)
+            ),
+        }
+
+
 class SchemaMigration(Base):
     """Data migration steps already applied (infrastructure, see app.db.migrate)."""
 
@@ -771,7 +818,7 @@ class SchemaMigration(Base):
 RUN_TABLE_MODELS = (AnalysisRun, Claim, ClaimEdge, HypothesisEval, SourceCoverage, RunSnapshot)
 RUN_CHILD_MODELS = (Claim, ClaimEdge, HypothesisEval, SourceCoverage, RunSnapshot)
 # Write-once models that are not part of a run's own records.
-WRITE_ONCE_MODELS = RUN_TABLE_MODELS + (CaseReport,)
+WRITE_ONCE_MODELS = RUN_TABLE_MODELS + (CaseReport, CaseReportDecision)
 
 
 def _run_row_exists(session: Session, run_id: str | None) -> bool:

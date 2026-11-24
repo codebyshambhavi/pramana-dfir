@@ -104,10 +104,11 @@ def test_migrate_pre_t3_adds_columns_tables_and_guards(legacy_engine):
         "cases.updated_at", "cases.closed_at",
     }
     assert NEW_TABLES <= _tables(legacy_engine)
-    assert "case_report" in _tables(legacy_engine)
+    assert {"case_report", "case_report_decision"} <= _tables(legacy_engine)
     assert {"trg_evidence_no_delete", "trg_custody_no_delete", "trg_analysis_run_validate",
             "trg_claim_sealed_run", "trg_case_report_no_update", "trg_case_report_no_delete",
-            "trg_case_report_validate"} <= _triggers(legacy_engine)
+            "trg_case_report_validate", "trg_report_decision_no_update",
+            "trg_report_decision_no_delete", "trg_report_decision_validate"} <= _triggers(legacy_engine)
 
 
 def test_migrate_preserves_rows_and_custody_chain(legacy_engine):

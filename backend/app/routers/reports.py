@@ -6,19 +6,21 @@ Endpoints:
 - GET /cases/{case_id}/reports: List immutable reports of a case
 - GET /cases/{case_id}/reports/{report_id}: Report metadata
 - GET /cases/{case_id}/reports/{report_id}/pdf: Download after SHA-256 verification
+- POST /cases/{case_id}/reports/{report_id}/decisions: Append a reviewer decision
+- GET /cases/{case_id}/reports/{report_id}/decisions: Reviewer decision history (oldest first)
 """
 from __future__ import annotations
 
 import uuid
 from datetime import timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.models import Case, CaseReport, utc_now
+from app.db.models import Case, CaseReport, CaseReportDecision, utc_now
 from app.db.session import get_db
 from app.reports.export_pdf import generate_case_pdf_report
 from app.reports.run_report import (
@@ -216,3 +218,75 @@ def download_case_report(case_id: str, report_id: str, db: Session = Depends(get
             "Cache-Control": "no-store",
         },
     )
+
+
+# ---------------------------------------------------------------------------------------------------
+# Role 3: reviewer decisions on an immutable report.
+#
+#   POST /cases/{case_id}/reports/{report_id}/decisions   append APPROVE / REJECT / INCONCLUSIVE (201)
+#   GET  /cases/{case_id}/reports/{report_id}/decisions   full history, oldest first
+#
+# Append-only: a later decision never overwrites an earlier one (ORM guard + database triggers).
+# The report PDF is not changed. The reviewer is self-declared; there is no authentication yet, so
+# responses carry reviewer_identity_type = "self_declared" and identity_verified = false.
+# ---------------------------------------------------------------------------------------------------
+
+
+class ReportDecisionCreateRequest(BaseModel):
+    decision: Literal["APPROVE", "REJECT", "INCONCLUSIVE"]
+    rationale: str = Field(..., min_length=1, max_length=10000, description="Why the reviewer reached this decision")
+    reviewer_label: str = Field(
+        ..., min_length=1, max_length=120,
+        description="Self-declared reviewer name; not a verified identity (no authentication yet)",
+    )
+
+
+@router.post(
+    "/cases/{case_id}/reports/{report_id}/decisions",
+    status_code=status.HTTP_201_CREATED,
+    summary="Append a reviewer decision to an immutable report",
+)
+def create_report_decision(
+    case_id: str,
+    report_id: str,
+    payload: ReportDecisionCreateRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """404 when the case or report does not exist, or the report belongs to another case."""
+    _report_or_404(db, case_id, report_id)
+    rationale = payload.rationale.strip()
+    reviewer = payload.reviewer_label.strip()
+    if not rationale:
+        raise HTTPException(status_code=422, detail="Rationale must not be empty")
+    if not reviewer:
+        raise HTTPException(status_code=422, detail="Reviewer label must not be empty")
+
+    decision = CaseReportDecision(
+        decision_id=f"DEC-{uuid.uuid4().hex.upper()}",
+        case_id=case_id,
+        report_id=report_id,
+        decision=payload.decision,
+        rationale=rationale,
+        reviewer_label=reviewer,
+        reviewer_identity_type="self_declared",
+        decided_at=utc_now(),
+    )
+    db.add(decision)
+    db.commit()
+    db.refresh(decision)
+    return decision.to_dict()
+
+
+@router.get(
+    "/cases/{case_id}/reports/{report_id}/decisions",
+    summary="Append-only reviewer decision history of a report (oldest first)",
+)
+def list_report_decisions(case_id: str, report_id: str, db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    _report_or_404(db, case_id, report_id)
+    rows = (
+        db.query(CaseReportDecision)
+        .filter(CaseReportDecision.case_id == case_id, CaseReportDecision.report_id == report_id)
+        .order_by(CaseReportDecision.decided_at.asc(), CaseReportDecision.decision_id.asc())
+        .all()
+    )
+    return [r.to_dict() for r in rows]

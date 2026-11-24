@@ -60,13 +60,19 @@ SECTION_TITLES = (
 
 # Fields the architecture document requires but no module produces yet. Printed verbatim.
 UNAVAILABLE_FIELDS: dict[str, str] = {
-    "correlation_registry_version": "Unavailable: correlation parameter registry is not implemented (Role 1 correlation engine).",
-    "scoring_thresholds": "Unavailable: correlation scoring thresholds are not published by the correlation engine (Role 1).",
-    "relationship_score": "Unavailable: per-relationship scores and contributing parameters are not stored with the run (Role 1).",
-    "relationship_type": "Unavailable: primary/secondary relationship type is not stored with the run (Role 1).",
+    "correlation_registry_version": (
+        "Unavailable: the correlation parameter registry exists (intelligence/correlation/registry_v1.json), "
+        "but its configuration and results are not recorded with this run (correlation engine, Shambhavi)."
+    ),
+    "scoring_thresholds": (
+        "Unavailable: correlation scoring thresholds are defined in the registry, but the values applied are "
+        "not recorded with this run (correlation engine, Shambhavi)."
+    ),
+    "relationship_score": "Unavailable: per-relationship scores and contributing parameters are not stored with the run (correlation engine, Shambhavi).",
+    "relationship_type": "Unavailable: primary/secondary relationship type is not stored with the run (correlation engine, Shambhavi).",
     "clock_uncertainty": "Unavailable: per-event clock uncertainty is not recorded; only the time-zone assumption is stored.",
-    "source_coverage": "Unavailable: source coverage is a stub table with no fields yet (Role 4, T7/T8).",
-    "inaccessible_sources": "Unavailable: inaccessible-source and encrypted-payload limits are not recorded at acquisition (Role 2).",
+    "source_coverage": "Unavailable: source coverage is a stub table with no fields yet (Niharika, T7/T8).",
+    "inaccessible_sources": "Unavailable: inaccessible-source and encrypted-payload limits are not recorded at acquisition (evidence acquisition/provenance, Anupriya).",
     "reviewer_identity": "Unavailable: authentication is not implemented, so reviewer identity cannot be verified.",
 }
 

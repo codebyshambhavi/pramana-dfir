@@ -827,6 +827,68 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /cases/{case_id}/reports/{report_id}/decisions:
+    parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: Append a reviewer decision to an immutable report
+      description: >
+        Append-only. A later decision never overwrites an earlier one, and the report PDF is not
+        changed. The reviewer is self-declared (no authentication yet); it is not a verified identity.
+      operationId: createReportDecision
+      tags:
+        - reports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportDecisionCreateRequest'
+      responses:
+        "201":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDecisionResponse'
+        "404":
+          description: Case or report not found, or the report does not belong to this case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "422":
+          description: Unknown decision, or empty rationale / reviewer label
+    get:
+      summary: Reviewer decision history of a report (oldest first)
+      operationId: listReportDecisions
+      tags:
+        - reports
+      responses:
+        "200":
+          description: All decisions ever recorded for the report; the last one is the current decision
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReportDecisionResponse'
+        "404":
+          description: Case or report not found, or the report does not belong to this case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /evidence/{id}/verify:
     parameters:
       - $ref: '#/components/parameters/EvidenceIdPath'
@@ -1556,6 +1618,66 @@ components:
         - size_bytes
         - storage_ref
         - review_status
+
+    ReportDecisionCreateRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [APPROVE, REJECT, INCONCLUSIVE]
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: Must contain non-whitespace text
+        reviewer_label:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Self-declared reviewer name; not a verified identity (no authentication yet)
+      required:
+        - decision
+        - rationale
+        - reviewer_label
+
+    ReportDecisionResponse:
+      type: object
+      description: One append-only reviewer decision on a report.
+      properties:
+        decision_id:
+          type: string
+          example: "DEC-6B1E0F2A9C4D4E7F8A1B2C3D4E5F6A7B"
+        case_id:
+          type: string
+        report_id:
+          type: string
+        decision:
+          type: string
+          enum: [APPROVE, REJECT, INCONCLUSIVE]
+        rationale:
+          type: string
+        reviewer_label:
+          type: string
+        reviewer_identity_type:
+          type: string
+          enum: [self_declared]
+        identity_verified:
+          type: boolean
+          enum: [false]
+          description: Always false until authentication exists
+        decided_at:
+          type: string
+          format: date-time
+      required:
+        - decision_id
+        - case_id
+        - report_id
+        - decision
+        - rationale
+        - reviewer_label
+        - reviewer_identity_type
+        - identity_verified
+        - decided_at
 
     EvidenceUploadResponse:
       type: object

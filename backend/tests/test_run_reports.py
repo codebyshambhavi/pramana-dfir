@@ -71,7 +71,9 @@ def test_generate_persists_report_with_hashes_and_all_sections(client: TestClien
     assert run_id in body and meta["report_id"] in body
     assert meta["content_hash"] in body.replace(" ", "")
     # Teammate-owned fields are printed as unavailable, not invented.
-    assert "Unavailable: correlation parameter registry is not implemented" in body
+    assert "Unavailable: the correlation parameter registry exists" in body
+    assert "not recorded with this run (correlation engine, Shambhavi)" in body
+    assert "registry is not implemented" not in body
     assert "Unavailable: source coverage is a stub table" in body
 
 
@@ -235,3 +237,9 @@ def test_unavailable_markers_cover_every_teammate_gap() -> None:
     for key in ("correlation_registry_version", "scoring_thresholds", "relationship_score", "relationship_type",
                 "clock_uncertainty", "source_coverage", "inaccessible_sources", "reviewer_identity"):
         assert UNAVAILABLE_FIELDS[key].startswith("Unavailable: ")
+    # Owners named in the gaps match code ownership; no stale role numbers.
+    for key in ("correlation_registry_version", "scoring_thresholds", "relationship_score", "relationship_type"):
+        assert UNAVAILABLE_FIELDS[key].endswith("(correlation engine, Shambhavi).")
+    assert UNAVAILABLE_FIELDS["source_coverage"].endswith("(Niharika, T7/T8).")
+    assert UNAVAILABLE_FIELDS["inaccessible_sources"].endswith("(evidence acquisition/provenance, Anupriya).")
+    assert not any("(Role " in text for text in UNAVAILABLE_FIELDS.values())

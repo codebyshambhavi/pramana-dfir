@@ -20,6 +20,10 @@ analysis_run, claim, claim_edge, hypothesis_eval, source_coverage
 case_report
   - no UPDATE, no DELETE, no TRUNCATE (reports are write-once)
   - on INSERT the referenced run must exist and belong to the report's case
+case_report_decision
+  - no UPDATE, no DELETE, no TRUNCATE (reviewer decisions are append-only)
+  - on INSERT the report must exist in the same case; decision is APPROVE / REJECT /
+    INCONCLUSIVE; rationale is not blank; reviewer identity is 'self_declared'
 
 What it does NOT enforce:
   - A trigger cannot tell which transaction created a row. The write-once rule is
@@ -40,7 +44,7 @@ import sqlite3
 from sqlalchemy import event
 from sqlalchemy.engine import Connection, Engine
 
-from app.db.models import EVIDENCE_STATUSES, VERIFY_STATES
+from app.db.models import EVIDENCE_STATUSES, REPORT_DECISIONS, VERIFY_STATES
 
 RUN_TABLES = ("analysis_run", "claim", "claim_edge", "hypothesis_eval", "source_coverage", "run_snapshots")
 RUN_CHILD_TABLES = ("claim", "claim_edge", "hypothesis_eval", "source_coverage", "run_snapshots")
@@ -75,6 +79,19 @@ def _in_list(values: tuple[str, ...]) -> str:
 _STATUS_BAD = (
     f"NEW.status NOT IN {_in_list(EVIDENCE_STATUSES)} "
     f"OR (NEW.verify_state IS NOT NULL AND NEW.verify_state NOT IN {_in_list(VERIFY_STATES)})"
+)
+
+
+# Shared by both dialects: valid fields, and the report must exist in the same case. PostgreSQL
+# does not allow subqueries in a trigger's WHEN, so there it runs inside a trigger function.
+_DECISION_FIELDS_BAD = (
+    f"NEW.decision NOT IN {_in_list(REPORT_DECISIONS)} "
+    "OR NEW.reviewer_identity_type <> 'self_declared' "
+    "OR length(trim(NEW.rationale)) = 0 OR length(trim(NEW.reviewer_label)) = 0"
+)
+_DECISION_BAD = (
+    f"({_DECISION_FIELDS_BAD}) OR NOT EXISTS "
+    "(SELECT 1 FROM case_report r WHERE r.report_id = NEW.report_id AND r.case_id = NEW.case_id)"
 )
 
 
@@ -121,6 +138,15 @@ def _sqlite_statements() -> list[tuple[str, str]]:
          "CREATE TRIGGER trg_case_report_validate BEFORE INSERT ON case_report "
          "WHEN NOT EXISTS (SELECT 1 FROM analysis_run r WHERE r.run_id = NEW.run_id AND r.case_id = NEW.case_id) "
          f"BEGIN {abort('report run must exist in the same case')} END"),
+        ("trg_report_decision_no_update",
+         f"CREATE TRIGGER trg_report_decision_no_update BEFORE UPDATE ON case_report_decision BEGIN "
+         f"{abort('report decisions are append-only')} END"),
+        ("trg_report_decision_no_delete",
+         f"CREATE TRIGGER trg_report_decision_no_delete BEFORE DELETE ON case_report_decision BEGIN "
+         f"{abort('report decisions are append-only')} END"),
+        ("trg_report_decision_validate",
+         f"CREATE TRIGGER trg_report_decision_validate BEFORE INSERT ON case_report_decision "
+         f"WHEN {_DECISION_BAD} BEGIN {abort('invalid report decision')} END"),
     ]
     for table in RUN_TABLES:
         t.append((f"trg_{table}_no_update",
@@ -177,6 +203,14 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM analysis_run r WHERE r.run_id = NEW.run_id AND r.case_id = NEW.case_id) THEN
     RAISE EXCEPTION 'PRAMANA: report run must exist in the same case'
       USING ERRCODE = 'integrity_constraint_violation';
+  END IF;
+  RETURN NEW;
+END $$""",
+    f"""
+CREATE OR REPLACE FUNCTION pramana_validate_report_decision() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF {_DECISION_BAD} THEN
+    RAISE EXCEPTION 'PRAMANA: invalid report decision' USING ERRCODE = 'integrity_constraint_violation';
   END IF;
   RETURN NEW;
 END $$""",
@@ -260,6 +294,12 @@ def _pg_triggers() -> list[str]:
         f"FOR EACH STATEMENT {reject('case_report rows are write-once')}",
         "CREATE OR REPLACE TRIGGER trg_case_report_validate BEFORE INSERT ON case_report "
         "FOR EACH ROW EXECUTE FUNCTION pramana_validate_report()",
+        f"CREATE OR REPLACE TRIGGER trg_report_decision_no_change BEFORE UPDATE OR DELETE ON case_report_decision "
+        f"FOR EACH ROW {reject('report decisions are append-only')}",
+        f"CREATE OR REPLACE TRIGGER trg_report_decision_no_truncate BEFORE TRUNCATE ON case_report_decision "
+        f"FOR EACH STATEMENT {reject('report decisions are append-only')}",
+        "CREATE OR REPLACE TRIGGER trg_report_decision_validate BEFORE INSERT ON case_report_decision "
+        "FOR EACH ROW EXECUTE FUNCTION pramana_validate_report_decision()",
     ]
     for table in RUN_TABLES:
         t.append(f"CREATE OR REPLACE TRIGGER trg_{table}_no_change BEFORE UPDATE OR DELETE ON {table} "
