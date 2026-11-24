@@ -670,6 +670,163 @@ paths:
               example:
                 detail: "Case 'CASE-001' not found"
 
+  /cases/{case_id}/runs/{run_id}/reports:
+    parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: Generate an immutable PDF report from a completed analysis run
+      description: >
+        Builds the PDF only from the run, its authoritative database snapshot, the claims and edges
+        stored with the run, and the evidence in the run manifest. Nothing is recomputed. The report is
+        write-once and always reads "Pending review"; reviewer decisions are separate records linked to
+        report_id. Fields that teammate modules do not produce yet are printed as unavailable.
+      operationId: createRunReport
+      tags:
+        - reports
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportCreateRequest'
+      responses:
+        "201":
+          description: Report generated and stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseReportResponse'
+        "404":
+          description: Case not found, or the run does not exist in this case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: Run is invalidated (manifest evidence removed, quarantined or changed), has no authoritative snapshot, or a concurrent generation took the same version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cases/{case_id}/reports:
+    parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: List immutable reports of a case (metadata only)
+      operationId: listCaseReports
+      tags:
+        - reports
+      responses:
+        "200":
+          description: Reports, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CaseReportResponse'
+        "404":
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cases/{case_id}/reports/{report_id}:
+    parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Metadata of one immutable report
+      operationId: getCaseReportMetadata
+      tags:
+        - reports
+      responses:
+        "200":
+          description: Report metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseReportResponse'
+        "404":
+          description: Case not found, or the report does not belong to this case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cases/{case_id}/reports/{report_id}/pdf:
+    parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Download an immutable report after re-verifying its SHA-256
+      operationId: downloadCaseReport
+      tags:
+        - reports
+      responses:
+        "200":
+          description: The stored PDF, byte-identical to the recorded SHA-256
+          headers:
+            X-Report-Id:
+              schema:
+                type: string
+            X-Report-SHA256:
+              description: SHA-256 of the PDF bytes
+              schema:
+                type: string
+            X-Report-Content-Hash:
+              description: SHA-256 of the canonical report content
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Case not found, or the report does not belong to this case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Stored PDF bytes do not match the recorded SHA-256; the file is not served
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /evidence/{id}/verify:
     parameters:
       - $ref: '#/components/parameters/EvidenceIdPath'
@@ -1335,6 +1492,70 @@ components:
         - evidence_count
         - finding_count
         - run_count
+
+    ReportCreateRequest:
+      type: object
+      properties:
+        generated_by:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: Self-declared name of the person generating the report (no authentication yet)
+
+    CaseReportResponse:
+      type: object
+      description: Metadata of a write-once report. The PDF bytes are served only by the download endpoint.
+      properties:
+        report_id:
+          type: string
+          example: "RPT-3F9A1C22B07E"
+        case_id:
+          type: string
+        run_id:
+          type: string
+        report_version:
+          type: integer
+          description: 1 for the first report of a run, then 2, 3, ...
+        report_format:
+          type: string
+          enum: [pdf]
+        generator_version:
+          type: string
+          example: "pramana-run-report@1.0.0"
+        generated_at:
+          type: string
+          format: date-time
+        generated_by:
+          type: string
+          nullable: true
+        content_hash:
+          type: string
+          description: SHA-256 of the canonical report content; equal for reports of the same run
+        sha256:
+          type: string
+          description: SHA-256 of the PDF bytes, re-verified before every download
+        size_bytes:
+          type: integer
+        storage_ref:
+          type: string
+          example: "db:case_report/RPT-3F9A1C22B07E"
+        review_status:
+          type: string
+          enum: [PENDING_REVIEW]
+          description: The PDF is immutable; decisions are separate append-only records linked to report_id
+      required:
+        - report_id
+        - case_id
+        - run_id
+        - report_version
+        - report_format
+        - generator_version
+        - generated_at
+        - content_hash
+        - sha256
+        - size_bytes
+        - storage_ref
+        - review_status
 
     EvidenceUploadResponse:
       type: object
