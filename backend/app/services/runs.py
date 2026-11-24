@@ -27,11 +27,116 @@ from app.db.models import (
     RunSnapshot,
     SourceCoverage,
 )
-from app.db.runs import create_analysis_run, manifest_evidence
+from app.db.runs import create_analysis_run, derive_parser_versions, manifest_evidence
 from intelligence.claims import generate_claims
-from intelligence.hyp.engine import evaluate_hypotheses
+from intelligence.correlation.registry import DEFAULT_REGISTRY_VERSION, load_registry
+from intelligence.correlation.service import correlate_case_events
+from intelligence.hyp.engine import evaluate_hypotheses, validate_relationship_payload
 from intelligence.hyp.reconstruct import reconstruct_narrative
 import intelligence.hyp.engine as hyp_engine
+
+T5_LINK_ENGINE_VERSION = "t5-correlate@1.0.0"
+T6_CLAIMS_ENGINE_VERSION = "t6-claims@1.0.0"
+T7_HYPOTHESIS_ENGINE_VERSION = "t7-hyp-engine@1.1.0"
+T8_RECONSTRUCTION_ENGINE_VERSION = "t8-reconstruct@1.1.0"
+T8_RUNS_SERVICE_VERSION = "t8-runs@1.1.0"
+DEFAULT_CORRELATION_CONFIG_VERSION = "corr-config-v1"
+
+_CACHED_DEFAULT_REGISTRY = None
+
+
+def _get_default_registry():
+    global _CACHED_DEFAULT_REGISTRY
+    if _CACHED_DEFAULT_REGISTRY is None:
+        _CACHED_DEFAULT_REGISTRY = load_registry()
+    return _CACHED_DEFAULT_REGISTRY
+
+
+_CORRELATION_SOURCES = frozenset({"gmail", "outlook", "pst", "zeek", "pcap"})
+_CORRELATION_RAW_KEYS = frozenset({
+    "message_id",
+    "in_reply_to",
+    "references",
+    "zeek_uid",
+    "uid",
+    "flow_id",
+    "community_id",
+    "packet_number",
+    "frame_number",
+    "source_locator",
+    "attachment_sha256",
+    "parent_message_id",
+})
+
+
+def _should_auto_correlate_relationships(
+    events_payload: Sequence[Mapping[str, Any]],
+    case_assumptions: Mapping[str, Any],
+) -> bool:
+    """Return True when events carry Event v1.1 / correlation-architecture fields or explicit opt-in."""
+    if case_assumptions.get("enable_correlation_engine"):
+        return True
+    for ev in events_payload:
+        src = str(ev.get("source") or "").strip().lower()
+        if src in _CORRELATION_SOURCES:
+            return True
+        if ev.get("source_locator") or ev.get("event_type") or ev.get("extraction_quality"):
+            return True
+        raw = ev.get("raw")
+        if isinstance(raw, Mapping) and any(k in raw for k in _CORRELATION_RAW_KEYS):
+            return True
+    return False
+
+
+def build_module_versions(
+    engine_version: str = "pramana-engine@1.0.0",
+    correlation_registry_version: str = DEFAULT_REGISTRY_VERSION,
+) -> dict[str, str]:
+    """Return structured module versions for immutable analysis-run manifests."""
+    return {
+        "engine": engine_version,
+        "t5_link_engine": T5_LINK_ENGINE_VERSION,
+        "correlation_engine": f"correlation@{correlation_registry_version}",
+        "t6_claims_engine": T6_CLAIMS_ENGINE_VERSION,
+        "t7_hypothesis_engine": T7_HYPOTHESIS_ENGINE_VERSION,
+        "t8_reconstruction_engine": T8_RECONSTRUCTION_ENGINE_VERSION,
+        "t8_immutable_runs": T8_RUNS_SERVICE_VERSION,
+    }
+
+
+def compute_output_manifest_hash(
+    *,
+    case_id: str,
+    input_evidence_hashes: Sequence[Mapping[str, Any]],
+    parser_versions: Mapping[str, Any],
+    correlation_config_version: str,
+    module_versions: Mapping[str, Any],
+    assumptions_hash: str,
+    template_hash: str,
+    ranking_hash: str | None,
+    outcome: str | None,
+    claim_ids: Sequence[str],
+    relationship_ids: Sequence[str],
+    h0_unassigned_event_ids: Sequence[str],
+) -> str:
+    """Compute a deterministic cryptographic SHA-256 hash over the run's canonical output manifest."""
+    return H({
+        "case_id": case_id,
+        "input_evidence_hashes": [
+            {"evidence_id": str(e.get("evidence_id")), "sha256": str(e.get("sha256"))}
+            for e in sorted(input_evidence_hashes, key=lambda x: str(x.get("evidence_id")))
+        ],
+        "parser_versions": _canonicalize_json(dict(parser_versions)),
+        "correlation_config_version": str(correlation_config_version),
+        "module_versions": _canonicalize_json(dict(module_versions)),
+        "assumptions_hash": str(assumptions_hash),
+        "template_hash": str(template_hash),
+        "ranking_hash": ranking_hash,
+        "outcome": outcome,
+        "claim_ids": sorted(str(cid) for cid in claim_ids if cid),
+        "relationship_ids": sorted(str(rid) for rid in relationship_ids if rid),
+        "h0_unassigned_event_ids": sorted(str(eid) for eid in h0_unassigned_event_ids if eid),
+    })
 
 
 def load_templates():
@@ -210,10 +315,15 @@ def execute_analysis_run(
     engine_version: str = "pramana-engine@1.0.0",
     assumptions: dict[str, Any] | None = None,
     parent_run_id: str | None = None,
+    relationships: Sequence[Mapping[str, Any]] | None = None,
+    correlation_config_version: str | None = None,
 ) -> dict[str, Any]:
     """Execute complete T5 correlation, T6 claims, and T7 hypothesis evaluation,
     persisting an immutable write-once AnalysisRun.
     """
+    started_at_dt = datetime.now(timezone.utc)
+    started_at_iso = started_at_dt.isoformat()
+
     case = db.get(Case, case_id)
     if not case:
         raise LookupError(f"Case '{case_id}' not found")
@@ -238,6 +348,11 @@ def execute_analysis_run(
         raise ValueError(f"Case '{case_id}' has no ACTIVE evidence to analyze")
 
     active_ev_ids = {e["evidence_id"] for e in manifest}
+    input_evidence_hashes = [
+        {"evidence_id": e["evidence_id"], "sha256": e["sha256"]}
+        for e in manifest
+    ]
+    parser_versions = derive_parser_versions(db, [e["evidence_id"] for e in manifest])
 
     # 2. Load stored case events only for active manifest evidence
     events = (
@@ -246,8 +361,56 @@ def execute_analysis_run(
         .all()
     )
     events_payload = [e.to_dict() for e in events]
+    events_by_id = {e["event_id"]: e for e in events_payload if "event_id" in e}
 
-    # 3. Generate T5 candidate relationships and T6 claims
+    # 3a. Execute Shambhavi's versioned correlation engine (or validate explicit relationships)
+    registry = _get_default_registry()
+    resolved_corr_config_version = correlation_config_version or registry.config_version
+    resolved_corr_registry_version = registry.registry_version
+    resolved_corr_registry_hash = registry.registry_hash
+
+    if relationships is not None:
+        relationships_payload = [
+            validate_relationship_payload(r, expected_case_id=case_id, events_by_id=events_by_id)
+            for r in relationships
+        ]
+    elif _should_auto_correlate_relationships(events_payload, case_assumptions):
+        ev_rows = (
+            db.query(Evidence)
+            .filter(Evidence.case_id == case_id, Evidence.evidence_id.in_(list(active_ev_ids)))
+            .all()
+        )
+        evidence_context = {
+            ev.evidence_id: {
+                "status": ev.status or "ACTIVE",
+                "verify_state": ev.verify_state or "VERIFIED",
+                "sha256": ev.sha256,
+            }
+            for ev in ev_rows
+        }
+        try:
+            corr_res = correlate_case_events(
+                case_id,
+                events_payload,
+                registry,
+                evidence_context=evidence_context,
+            )
+            relationships_payload = [
+                validate_relationship_payload(r, expected_case_id=case_id, events_by_id=events_by_id)
+                for r in corr_res.relationships
+            ]
+        except Exception as exc:
+            logger.warning(f"Correlation engine evaluation skipped due to event input format: {exc}")
+            relationships_payload = []
+    else:
+        relationships_payload = []
+
+    module_versions = build_module_versions(
+        engine_version=engine_version,
+        correlation_registry_version=resolved_corr_registry_version,
+    )
+
+    # 3b. Generate T5 candidate relationships and T6 claims
     claim_specs = generate_claims(events_payload, case_timezone=case_tz)
 
     # 4. Generate run_id and pre-build claim rows so every claim has its real content-addressed claim_id
@@ -276,15 +439,19 @@ def execute_analysis_run(
     template_dicts = [t.to_dict() for t in templates_used]
     template_hash = H(template_dicts)
 
-    # 5. Evaluate T7 competing hypotheses & residual H0 using real claim_ids and preserved templates
+    # 5. Evaluate T7 competing hypotheses & residual H0 using real claim_ids, relationships, and preserved templates
     hyp_result = evaluate_hypotheses(
         claims=claim_rows,
         events=events_payload,
         assumptions=case_assumptions,
         templates=templates_used,
+        relationships=relationships_payload,
+        case_id=case_id,
+        analysis_run_id=target_run_id,
+        correlation_config_version=resolved_corr_config_version,
     )
 
-    # 6. Reconstruct narrative for leading/top hypothesis using preserved templates
+    # 6. Reconstruct narrative for leading/top hypothesis using preserved templates and relationships
     top_hyp = hyp_result.ranked_hypotheses[0] if hyp_result.ranked_hypotheses else None
     reconstruction = None
     if top_hyp:
@@ -294,10 +461,61 @@ def execute_analysis_run(
             events=events_payload,
             h0_event_ids=hyp_result.h0_residual.unassigned_event_ids,
             templates=templates_used,
+            relationships=relationships_payload,
+            case_id=case_id,
+            analysis_run_id=target_run_id,
         )
+
+    completed_at_dt = datetime.now(timezone.utc)
+    completed_at_iso = completed_at_dt.isoformat()
+    run_status = "COMPLETED"
+
+    output_manifest_hash = compute_output_manifest_hash(
+        case_id=case_id,
+        input_evidence_hashes=input_evidence_hashes,
+        parser_versions=parser_versions,
+        correlation_config_version=resolved_corr_config_version,
+        module_versions=module_versions,
+        assumptions_hash=assumptions_hash,
+        template_hash=template_hash,
+        ranking_hash=hyp_result.ranking_hash,
+        outcome=hyp_result.outcome,
+        claim_ids=[c["claim_id"] for c in claim_rows],
+        relationship_ids=[r["relationship_id"] for r in relationships_payload],
+        h0_unassigned_event_ids=hyp_result.h0_residual.unassigned_event_ids,
+    )
+
+    enriched_manifest = {
+        "run_id": target_run_id,
+        "case_id": case_id,
+        "evidence": manifest,
+        "input_evidence_hashes": input_evidence_hashes,
+        "assumptions": case_assumptions,
+        "parser_versions": parser_versions,
+        "correlation_config_version": resolved_corr_config_version,
+        "correlation_registry_version": resolved_corr_registry_version,
+        "correlation_registry_hash": resolved_corr_registry_hash,
+        "module_versions": module_versions,
+        "started_at": started_at_iso,
+        "completed_at": completed_at_iso,
+        "status": run_status,
+        "output_manifest_hash": output_manifest_hash,
+    }
 
     # Build snapshot capturing complete historical conclusions and original inputs
     snapshot_data = {
+        "run_id": target_run_id,
+        "case_id": case_id,
+        "status": run_status,
+        "started_at": started_at_iso,
+        "completed_at": completed_at_iso,
+        "input_evidence_hashes": input_evidence_hashes,
+        "parser_versions": parser_versions,
+        "correlation_config_version": resolved_corr_config_version,
+        "correlation_registry_version": resolved_corr_registry_version,
+        "correlation_registry_hash": resolved_corr_registry_hash,
+        "module_versions": module_versions,
+        "output_manifest_hash": output_manifest_hash,
         "ranked_hypotheses": [h.to_dict() for h in hyp_result.ranked_hypotheses],
         "h0_residual": hyp_result.h0_residual.to_dict(),
         "reconstruction": reconstruction.to_dict() if reconstruction else None,
@@ -308,8 +526,10 @@ def execute_analysis_run(
         "engine_version": engine_version,
         "assumptions": case_assumptions,
         "assumptions_hash": H(case_assumptions),
-        "manifest": {"evidence": manifest, "assumptions": case_assumptions},
+        "manifest": enriched_manifest,
         "claims_count": len(claim_specs),
+        "relationships_count": len(relationships_payload),
+        "relationships": relationships_payload,
         "events": events_payload,
         "templates": template_dicts,
     }
@@ -339,12 +559,25 @@ def execute_analysis_run(
 
     return {
         "run_id": run.run_id,
+        "analysis_run_id": run.run_id,
         "case_id": case_id,
         "parent_run_id": parent_run_id,
+        "status": run_status,
+        "started_at": started_at_iso,
+        "completed_at": completed_at_iso,
         "engine_version": run.engine_version,
+        "parser_versions": run.parser_versions,
+        "input_evidence_hashes": input_evidence_hashes,
+        "correlation_config_version": resolved_corr_config_version,
+        "correlation_registry_version": resolved_corr_registry_version,
+        "correlation_registry_hash": resolved_corr_registry_hash,
+        "module_versions": module_versions,
+        "output_manifest_hash": output_manifest_hash,
         "assumptions_hash": run.assumptions_hash,
-        "manifest": run.manifest,
+        "manifest": enriched_manifest,
         "claims_count": len(run.claims),
+        "relationships_count": len(relationships_payload),
+        "relationships": relationships_payload,
         "ranking_hash": run.ranking_hash,
         "template_hash": template_hash,
         "ranked_hypotheses": [h.to_dict() for h in hyp_result.ranked_hypotheses],
@@ -446,6 +679,10 @@ def get_run_details(db: Session, run_id: str, verify: bool = False) -> dict[str,
                 events=pres_events,
                 assumptions=run.manifest.get("assumptions", {}),
                 templates=pres_templates,
+                relationships=snapshot_data.get("relationships"),
+                case_id=run.case_id,
+                analysis_run_id=run.run_id,
+                correlation_config_version=snapshot_data.get("correlation_config_version"),
             )
             snap_ranked = snapshot_data.get("ranked_hypotheses", [])
             snap_ranking_summary = [
@@ -466,14 +703,82 @@ def get_run_details(db: Session, run_id: str, verify: bool = False) -> dict[str,
             logger.warning(f"Failed to verify ranking hash via replay for run '{run_id}': {exc}")
             ranking_hash_verified = False
 
+    created_iso = run.created_at.isoformat() if run.created_at else None
+    input_evidence_hashes = (
+        snapshot_data.get("input_evidence_hashes")
+        if snapshot_data and snapshot_data.get("input_evidence_hashes") is not None
+        else [{"evidence_id": e["evidence_id"], "sha256": e["sha256"]} for e in manifest_evidence_list]
+    )
+    corr_config_version = (
+        snapshot_data.get("correlation_config_version")
+        if snapshot_data and snapshot_data.get("correlation_config_version")
+        else DEFAULT_CORRELATION_CONFIG_VERSION
+    )
+    corr_registry_version = (
+        snapshot_data.get("correlation_registry_version")
+        if snapshot_data and snapshot_data.get("correlation_registry_version")
+        else DEFAULT_REGISTRY_VERSION
+    )
+    module_versions = (
+        snapshot_data.get("module_versions")
+        if snapshot_data and isinstance(snapshot_data.get("module_versions"), dict)
+        else build_module_versions(run.engine_version, corr_registry_version)
+    )
+    started_at_iso = (snapshot_data.get("started_at") if snapshot_data else None) or created_iso
+    completed_at_iso = (snapshot_data.get("completed_at") if snapshot_data else None) or created_iso
+    run_status = (snapshot_data.get("status") if snapshot_data and snapshot_data.get("status") else "COMPLETED")
+    relationships_list = (snapshot_data.get("relationships", []) if snapshot_data else [])
+    h0_data = snapshot_data.get("h0_residual") if snapshot_data else None
+    output_manifest_hash = (
+        snapshot_data.get("output_manifest_hash")
+        if snapshot_data and snapshot_data.get("output_manifest_hash")
+        else compute_output_manifest_hash(
+            case_id=run.case_id,
+            input_evidence_hashes=input_evidence_hashes,
+            parser_versions=run.parser_versions,
+            correlation_config_version=corr_config_version,
+            module_versions=module_versions,
+            assumptions_hash=run.assumptions_hash,
+            template_hash=template_hash,
+            ranking_hash=run.ranking_hash,
+            outcome=(snapshot_data.get("outcome") or snapshot_data.get("ranking_outcome")) if snapshot_data else None,
+            claim_ids=[c["claim_id"] for c in claims_payload],
+            relationship_ids=[r.get("relationship_id") for r in relationships_list if isinstance(r, dict) and r.get("relationship_id")],
+            h0_unassigned_event_ids=(h0_data.get("unassigned_event_ids", []) if isinstance(h0_data, dict) else []),
+        )
+    )
+
+    manifest_out = dict(run.manifest) if isinstance(run.manifest, dict) else {"evidence": manifest_evidence_list, "assumptions": {}}
+    if snapshot_data and isinstance(snapshot_data.get("manifest"), dict):
+        manifest_out.update(snapshot_data["manifest"])
+    manifest_out.setdefault("run_id", run.run_id)
+    manifest_out.setdefault("case_id", run.case_id)
+    manifest_out.setdefault("input_evidence_hashes", input_evidence_hashes)
+    manifest_out.setdefault("parser_versions", run.parser_versions)
+    manifest_out.setdefault("correlation_config_version", corr_config_version)
+    manifest_out.setdefault("module_versions", module_versions)
+    manifest_out.setdefault("started_at", started_at_iso)
+    manifest_out.setdefault("completed_at", completed_at_iso)
+    manifest_out.setdefault("status", run_status)
+    manifest_out.setdefault("output_manifest_hash", output_manifest_hash)
+
     response = {
         "run_id": run.run_id,
+        "analysis_run_id": run.run_id,
         "case_id": run.case_id,
         "parent_run_id": run.parent_run_id,
+        "status": run_status,
+        "started_at": started_at_iso,
+        "completed_at": completed_at_iso,
         "engine_version": run.engine_version,
         "parser_versions": run.parser_versions,
+        "input_evidence_hashes": input_evidence_hashes,
+        "correlation_config_version": corr_config_version,
+        "correlation_registry_version": corr_registry_version,
+        "module_versions": module_versions,
+        "output_manifest_hash": output_manifest_hash,
         "assumptions_hash": run.assumptions_hash,
-        "manifest": run.manifest,
+        "manifest": manifest_out,
         "validity": validity_status,
         "is_valid": is_valid,
         "invalidation_reasons": invalidating_reasons,
@@ -486,12 +791,14 @@ def get_run_details(db: Session, run_id: str, verify: bool = False) -> dict[str,
         "snapshot_authoritative": snapshot_authoritative,
         "claims_count": len(claims),
         "claims": claims_payload,
+        "relationships_count": len(relationships_list),
+        "relationships": relationships_list,
         "ranked_hypotheses": snapshot_data.get("ranked_hypotheses", []) if snapshot_data else [],
-        "h0_residual": snapshot_data.get("h0_residual") if snapshot_data else None,
+        "h0_residual": h0_data,
         "reconstruction": snapshot_data.get("reconstruction") if snapshot_data else None,
         "next_best_evidence": snapshot_data.get("next_best_evidence", []) if snapshot_data else [],
         "outcome": (snapshot_data.get("outcome") or snapshot_data.get("ranking_outcome")) if snapshot_data else None,
-        "created_at": run.created_at.isoformat() if run.created_at else None,
+        "created_at": created_iso,
     }
 
     if snapshot_warning:
@@ -510,7 +817,7 @@ def get_run_details(db: Session, run_id: str, verify: bool = False) -> dict[str,
     return response
 
 
-def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
+def verify_run_reproducibility(db: Session, run: AnalysisRun | str) -> dict[str, Any]:
     """Independently verify an analysis run through two explicit operations:
     1. Historical Replay: Replays evaluation using the preserved original input events
        and preserved hypothesis templates stored in the immutable snapshot. Verifies
@@ -521,6 +828,12 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
     Does NOT mutate the database.
     """
     from intelligence.hyp.engine import HypothesisTemplate
+
+    if isinstance(run, str):
+        resolved_run = db.get(AnalysisRun, run)
+        if resolved_run is None:
+            raise ValueError(f"AnalysisRun '{run}' not found")
+        run = resolved_run
 
     # 1. Retrieve snapshot
     snap = db.get(RunSnapshot, run.run_id)
@@ -614,6 +927,10 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
             events=preserved_events,
             assumptions=assumptions,
             templates=templates,
+            relationships=snapshot_data.get("relationships"),
+            case_id=run.case_id,
+            analysis_run_id=run.run_id,
+            correlation_config_version=snapshot_data.get("correlation_config_version"),
         )
 
         # 1. Ranking Hash Match
@@ -735,6 +1052,9 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
                 events=preserved_events,
                 h0_event_ids=replay_result.h0_residual.unassigned_event_ids,
                 templates=templates,
+                relationships=snapshot_data.get("relationships"),
+                case_id=run.case_id,
+                analysis_run_id=run.run_id,
             )
         expected_recon = snapshot_data.get("reconstruction")
         if expected_recon is None and replay_reconstruction is None:
@@ -868,6 +1188,10 @@ def verify_run_reproducibility(db: Session, run: AnalysisRun) -> dict[str, Any]:
         events=current_events_payload,
         assumptions=run.manifest.get("assumptions", {}),
         templates=current_disk_templates,
+        relationships=snapshot_data.get("relationships") if snapshot_data else None,
+        case_id=run.case_id,
+        analysis_run_id=run.run_id,
+        correlation_config_version=snapshot_data.get("correlation_config_version") if snapshot_data else None,
     )
 
     matches_current_state = (

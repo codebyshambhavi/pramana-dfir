@@ -199,6 +199,9 @@ class ItemEvaluation:
     diagnostic: bool = True
     rationale: str = ""
     assumed_claim_ids: list[str] = field(default_factory=list)
+    matched_relationship_ids: list[str] = field(default_factory=list)
+    evidence_ids: list[str] = field(default_factory=list)
+    event_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -218,6 +221,22 @@ class RankedHypothesis:
     hard_violations_count: int = 0
     missing_expected_count: int = 0
     unobservable_count: int = 0
+    contradicting_claim_ids: list[str] = field(default_factory=list)
+    supporting_relationship_ids: list[str] = field(default_factory=list)
+    contradicting_relationship_ids: list[str] = field(default_factory=list)
+    primary_relationship_ids: list[str] = field(default_factory=list)
+    secondary_relationship_ids: list[str] = field(default_factory=list)
+    supporting_evidence_ids: list[str] = field(default_factory=list)
+    contradicting_evidence_ids: list[str] = field(default_factory=list)
+    evidence_ids: list[str] = field(default_factory=list)
+    supporting_event_ids: list[str] = field(default_factory=list)
+    contradicting_event_ids: list[str] = field(default_factory=list)
+    source_event_ids: list[str] = field(default_factory=list)
+    analysis_run_id: str | None = None
+    case_id: str | None = None
+    correlation_config_version: str | None = None
+    conclusion_type: str = "MACHINE_HYPOTHESIS"
+    investigator_confirmed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -258,6 +277,12 @@ class HypothesisEvaluationResult:
     diagnostic_items_count: int
     margin: float
     outcome: str  # LEADING, UNDETERMINED, REFUTED
+    case_id: str | None = None
+    analysis_run_id: str | None = None
+    correlation_config_version: str | None = None
+    consumed_relationships_count: int = 0
+    primary_relationships_count: int = 0
+    secondary_relationships_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -268,6 +293,12 @@ class HypothesisEvaluationResult:
             "diagnostic_items_count": self.diagnostic_items_count,
             "margin": self.margin,
             "outcome": self.outcome,
+            "case_id": self.case_id,
+            "analysis_run_id": self.analysis_run_id,
+            "correlation_config_version": self.correlation_config_version,
+            "consumed_relationships_count": self.consumed_relationships_count,
+            "primary_relationships_count": self.primary_relationships_count,
+            "secondary_relationships_count": self.secondary_relationships_count,
         }
 
 
@@ -322,8 +353,10 @@ def _normalize_source_kind(source: str) -> str:
         return "browser"
     if "chat" in s or "slack" in s or "teams" in s:
         return "chat"
-    if "pcap" in s or "network" in s or "dns" in s or "proxy" in s or "net" in s:
+    if "pcap" in s or "zeek" in s or "network" in s or "dns" in s or "proxy" in s or "net" in s or "conn" in s:
         return "network"
+    if "gmail" in s or "outlook" in s or "pst" in s or "mail" in s:
+        return "mail"
     if "photo" in s or "image" in s or "exif" in s:
         return "image"
     if "log" in s or "sys" in s:
@@ -554,6 +587,558 @@ def _source_demonstrably_covered(
     return True
 
 
+# --- Event & Relationship Contract Normalization and Validation ---
+
+RELATIONSHIP_TYPES = ("PRIMARY", "SECONDARY")
+
+
+def normalize_event_contract(event: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize an event dictionary across Event v1.1 and Section 5.6 Normalized Event contracts.
+
+    Preserves all original keys while ensuring both contract field sets are populated:
+    - event_id, case_id, evidence_id
+    - event_type <-> action
+    - event_time_utc <-> timestamp
+    - raw_timestamp
+    - source_locator <-> artifact_ref
+    - extraction_quality
+    """
+    if not isinstance(event, Mapping):
+        raise ValueError("Event must be a mapping")
+    out = dict(event)
+    raw = out.get("raw") if isinstance(out.get("raw"), Mapping) else (
+        out.get("attributes") if isinstance(out.get("attributes"), Mapping) else {}
+    )
+    if "raw" not in out and isinstance(raw, Mapping):
+        out["raw"] = dict(raw)
+
+    # 1. Action <-> event_type
+    event_type = out.get("event_type") or out.get("action")
+    if event_type is not None:
+        out.setdefault("event_type", str(event_type))
+        out.setdefault("action", str(event_type))
+
+    # 2. Timestamp <-> event_time_utc & raw_timestamp
+    raw_ts = (
+        out.get("raw_timestamp")
+        if "raw_timestamp" in out
+        else (
+            raw.get("raw_timestamp")
+            or raw.get("timestamp")
+            or raw.get("ts")
+            or raw.get("time")
+            or raw.get("date")
+            or raw.get("sentDateTime")
+            or raw.get("receivedDateTime")
+            or out.get("timestamp")
+            or out.get("event_time_utc")
+        )
+    )
+    out["raw_timestamp"] = raw_ts
+
+    ts_utc = out.get("timestamp") if out.get("timestamp") is not None else out.get("event_time_utc")
+    if ts_utc is not None:
+        out.setdefault("timestamp", ts_utc)
+        out.setdefault("event_time_utc", ts_utc)
+    else:
+        out.setdefault("event_time_utc", None)
+
+    # 3. Source locator <-> artifact_ref
+    locator = out.get("source_locator") or out.get("artifact_ref")
+    if locator is None and isinstance(raw, Mapping):
+        locator = (
+            raw.get("source_locator")
+            or raw.get("message_id")
+            or raw.get("internetMessageId")
+            or raw.get("uid")
+            or raw.get("item_identifier")
+        )
+    if locator is not None:
+        out.setdefault("source_locator", locator)
+        if "artifact_ref" not in out or out["artifact_ref"] is None:
+            out["artifact_ref"] = str(locator) if not isinstance(locator, str) else locator
+    else:
+        out.setdefault("source_locator", None)
+
+    # 4. Source inference if omitted in Section 5.6 payload
+    if not out.get("source"):
+        et_upper = str(event_type or "").upper()
+        loc_str = str(locator or "").lower()
+        fam_str = str(out.get("family") or "").lower()
+        if "pst" in loc_str or "pst" in fam_str:
+            out["source"] = "pst"
+        elif "outlook" in loc_str or "outlook" in fam_str:
+            out["source"] = "outlook"
+        elif "gmail" in loc_str or "gmail" in fam_str or et_upper in ("EMAIL_SENT", "EMAIL_RECEIVED"):
+            out["source"] = "gmail"
+        elif "zeek" in loc_str or "uid" in raw or et_upper in ("DNS_QUERY", "NETWORK_CONNECTION"):
+            out["source"] = "zeek"
+        elif "pcap" in loc_str or "packet" in loc_str or "frame" in loc_str:
+            out["source"] = "pcap"
+        elif "browser" in loc_str or "browser" in fam_str:
+            out["source"] = "browser"
+        elif "chat" in loc_str or "chat" in fam_str:
+            out["source"] = "chat"
+        else:
+            out["source"] = "log"
+
+    # 5. Actors / entities extraction if top-level actor/device/ip/object omitted
+    actors_field = out.get("actors") or out.get("entities")
+    if isinstance(actors_field, Mapping):
+        if not out.get("actor"):
+            out["actor"] = actors_field.get("actor") or actors_field.get("email") or actors_field.get("account")
+        if not out.get("device"):
+            out["device"] = actors_field.get("device") or actors_field.get("host")
+        if not out.get("ip"):
+            out["ip"] = actors_field.get("ip")
+        if not out.get("object"):
+            out["object"] = actors_field.get("object") or actors_field.get("file") or actors_field.get("file_hash")
+    elif isinstance(actors_field, Sequence) and not isinstance(actors_field, (str, bytes)):
+        for ent in actors_field:
+            if isinstance(ent, Mapping):
+                etype = str(ent.get("entity_type") or ent.get("type") or "").lower()
+                cval = ent.get("canonical_value") or ent.get("value")
+                if cval:
+                    if etype in ("email", "account", "actor", "user") and not out.get("actor"):
+                        out["actor"] = str(cval)
+                    elif etype in ("device", "host") and not out.get("device"):
+                        out["device"] = str(cval)
+                    elif etype == "ip" and not out.get("ip"):
+                        out["ip"] = str(cval)
+                    elif etype in ("file", "file_hash", "attachment", "domain") and not out.get("object"):
+                        out["object"] = str(cval)
+            elif isinstance(ent, str) and not out.get("actor"):
+                out["actor"] = ent
+
+    # 6. Extraction quality preservation
+    tz_assumption = out.get("tz_assumption")
+    eq = out.get("extraction_quality")
+    if isinstance(eq, Mapping):
+        eq_dict = dict(eq)
+        if tz_assumption and "tz_assumption" not in eq_dict:
+            eq_dict["tz_assumption"] = tz_assumption
+        if not tz_assumption and eq_dict.get("tz_assumption"):
+            out["tz_assumption"] = eq_dict["tz_assumption"]
+        if out.get("parser_version") and "parser_version" not in eq_dict:
+            eq_dict["parser_version"] = out["parser_version"]
+        out["extraction_quality"] = eq_dict
+    elif eq is not None:
+        # Scalar confidence or string quality
+        out["extraction_quality"] = {
+            "quality": eq,
+            "tz_assumption": tz_assumption or "unknown",
+            "parser_version": out.get("parser_version"),
+        }
+    else:
+        out["extraction_quality"] = {
+            "tz_assumption": tz_assumption or "unknown",
+            "parser_version": out.get("parser_version"),
+            "timestamp_quality": "valid" if ts_utc is not None else "missing",
+            "warnings": list(raw.get("warnings", [])) if isinstance(raw, Mapping) and isinstance(raw.get("warnings"), list) else [],
+        }
+
+    return out
+
+
+def validate_relationship_payload(
+    rel: Any,
+    *,
+    expected_case_id: str | None = None,
+    events_by_id: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Validate and normalize a relationship object from the Correlation Engine.
+
+    Supports both `contracts/relationship.schema.json` (Shambhavi's engine output)
+    and the Section 4.6 / 8.1 relationship payload format.
+    """
+    if not isinstance(rel, Mapping):
+        raise ValueError("Invalid relationship payload: must be a mapping")
+
+    for req_field in ("relationship_id", "case_id", "source_event_id", "target_event_id", "relationship_type"):
+        val = rel.get(req_field)
+        if not isinstance(val, str) or not val.strip():
+            raise ValueError(f"Invalid relationship payload: missing or empty '{req_field}'")
+
+    rel_id = str(rel["relationship_id"]).strip()
+    rel_case_id = str(rel["case_id"]).strip()
+    src_ev_id = str(rel["source_event_id"]).strip()
+    dst_ev_id = str(rel["target_event_id"]).strip()
+    rel_type = str(rel["relationship_type"]).strip().upper()
+
+    if rel_type not in RELATIONSHIP_TYPES:
+        raise ValueError(
+            f"Invalid relationship_type {rel['relationship_type']!r} on '{rel_id}'; expected PRIMARY or SECONDARY"
+        )
+    if src_ev_id == dst_ev_id:
+        raise ValueError(f"Invalid relationship '{rel_id}': source_event_id and target_event_id must be distinct")
+
+    if expected_case_id is not None and rel_case_id != expected_case_id:
+        raise ValueError(
+            f"Case isolation violation: relationship '{rel_id}' belongs to case '{rel_case_id}', "
+            f"expected '{expected_case_id}'"
+        )
+
+    if events_by_id is not None:
+        for ev_id in (src_ev_id, dst_ev_id):
+            ev = events_by_id.get(ev_id)
+            if ev is not None:
+                ev_case = ev.get("case_id")
+                if isinstance(ev_case, str) and ev_case.strip() and ev_case.strip() != rel_case_id:
+                    raise ValueError(
+                        f"Case isolation violation: relationship '{rel_id}' in case '{rel_case_id}' "
+                        f"references event '{ev_id}' belonging to case '{ev_case}'"
+                    )
+
+    # Validate score
+    raw_score = rel.get("score")
+    if rel_type == "SECONDARY":
+        if raw_score is None or isinstance(raw_score, bool) or not isinstance(raw_score, (int, float)):
+            raise ValueError(f"Invalid relationship '{rel_id}': SECONDARY relationship requires a numeric score")
+        score = float(raw_score)
+        if not (0.0 <= score <= 1.0):
+            raise ValueError(f"Invalid relationship '{rel_id}': score {score} must be in [0.0, 1.0]")
+    else:
+        if raw_score is not None:
+            if isinstance(raw_score, bool) or not isinstance(raw_score, (int, float)):
+                raise ValueError(f"Invalid relationship '{rel_id}': score must be numeric or null")
+            score = float(raw_score)
+            if not (0.0 <= score <= 1.0):
+                raise ValueError(f"Invalid relationship '{rel_id}': score {score} must be in [0.0, 1.0]")
+        else:
+            score = None
+
+    # Validate feature_contributions and counter_signals
+    fc = rel.get("feature_contributions", [])
+    if fc is None or not isinstance(fc, Sequence) or isinstance(fc, (str, bytes)):
+        raise ValueError(f"Invalid relationship '{rel_id}': feature_contributions must be a list")
+    feature_contributions: list[dict[str, Any]] = []
+    for idx, item in enumerate(fc):
+        if not isinstance(item, Mapping):
+            raise ValueError(f"Invalid relationship '{rel_id}': feature_contributions[{idx}] must be a mapping")
+        feature_contributions.append(dict(item))
+
+    cs = rel.get("counter_signals", [])
+    if cs is None or not isinstance(cs, Sequence) or isinstance(cs, (str, bytes)):
+        raise ValueError(f"Invalid relationship '{rel_id}': counter_signals must be a list")
+    counter_signals: list[dict[str, Any]] = []
+    for idx, item in enumerate(cs):
+        if not isinstance(item, Mapping):
+            raise ValueError(f"Invalid relationship '{rel_id}': counter_signals[{idx}] must be a mapping")
+        counter_signals.append(dict(item))
+
+    # Explanation validation
+    explanation = rel.get("explanation")
+    if "explanation" in rel and (not isinstance(explanation, str) or not explanation.strip()):
+        raise ValueError(f"Invalid relationship '{rel_id}': explanation must be a non-empty string")
+    if not explanation:
+        explanation = (
+            f"Primary direct relationship between {src_ev_id} and {dst_ev_id}."
+            if rel_type == "PRIMARY"
+            else f"Secondary contextual association (score={score:.3f}) between {src_ev_id} and {dst_ev_id}."
+        )
+
+    # Evidence references (from evidence_refs, evidence_pointers, and events_by_id)
+    raw_ev_refs = rel.get("evidence_refs")
+    if raw_ev_refs is not None and (not isinstance(raw_ev_refs, Sequence) or isinstance(raw_ev_refs, (str, bytes))):
+        raise ValueError(f"Invalid relationship '{rel_id}': evidence_refs must be a list")
+
+    collected_refs: list[str] = []
+    if raw_ev_refs:
+        for ref in raw_ev_refs:
+            if isinstance(ref, str) and ref.strip() and ref.strip() not in collected_refs:
+                collected_refs.append(ref.strip())
+
+    ev_pointers = rel.get("evidence_pointers")
+    if isinstance(ev_pointers, Mapping):
+        for side in ("source", "target"):
+            side_obj = ev_pointers.get(side)
+            if isinstance(side_obj, Mapping):
+                eid = side_obj.get("evidence_id")
+                if isinstance(eid, str) and eid.strip() and eid.strip() not in collected_refs:
+                    collected_refs.append(eid.strip())
+
+    src_ev = events_by_id.get(src_ev_id) if events_by_id else None
+    dst_ev = events_by_id.get(dst_ev_id) if events_by_id else None
+    for ev in (src_ev, dst_ev):
+        if isinstance(ev, Mapping):
+            eid = ev.get("evidence_id")
+            if isinstance(eid, str) and eid.strip() and eid.strip() not in collected_refs:
+                collected_refs.append(eid.strip())
+
+    missing_evidence_refs = (
+        len(collected_refs) == 0
+        or (events_by_id is not None and (src_ev is None or dst_ev is None))
+    )
+
+    config_version = (
+        rel.get("config_version")
+        or rel.get("threshold_version")
+        or rel.get("registry_version")
+        or "corr-config-v1"
+    )
+    threshold_version = (
+        rel.get("threshold_version")
+        or rel.get("config_version")
+        or rel.get("registry_version")
+        or "corr-config-v1"
+    )
+    review_status = (
+        rel.get("review_status")
+        or rel.get("status")
+        or ("VALIDATED_DIRECT" if rel_type == "PRIMARY" else "REQUIRES_REVIEW")
+    )
+    anchors = list(rel.get("anchors") or [])
+    unavailable_parameters = list(rel.get("unavailable_parameters") or [])
+
+    normalized = dict(rel)
+    normalized.update({
+        "relationship_id": rel_id,
+        "case_id": rel_case_id,
+        "source_event_id": src_ev_id,
+        "target_event_id": dst_ev_id,
+        "relationship_type": rel_type,
+        "score": score,
+        "threshold_version": str(threshold_version),
+        "config_version": str(config_version),
+        "feature_contributions": feature_contributions,
+        "counter_signals": counter_signals,
+        "unavailable_parameters": unavailable_parameters,
+        "explanation": explanation,
+        "evidence_refs": collected_refs,
+        "review_status": str(review_status),
+        "anchors": anchors,
+        "missing_evidence_refs": missing_evidence_refs,
+    })
+    return normalized
+
+
+def _relationship_has_contradiction(rel: Mapping[str, Any]) -> bool:
+    """Return True only when explicit counter-signals or contradiction contributions exist.
+
+    Missing evidence references and unavailable parameters are strictly excluded
+    and never treated as contradictory evidence.
+    """
+    if rel.get("counter_signals"):
+        return True
+    for fc in rel.get("feature_contributions") or []:
+        if isinstance(fc, Mapping) and fc.get("kind") == "contradiction" and float(fc.get("amount") or 0.0) < 0:
+            return True
+    return False
+
+
+def _contradiction_claim_types_for_relationship(rel: Mapping[str, Any]) -> list[str]:
+    """Identify which T7 contradiction claim types are signaled by a relationship's counter_signals."""
+    claim_types: list[str] = []
+    signals = list(rel.get("counter_signals") or [])
+    for fc in rel.get("feature_contributions") or []:
+        if isinstance(fc, Mapping) and fc.get("kind") == "contradiction":
+            signals.append(fc)
+
+    for sig in signals:
+        if not isinstance(sig, Mapping):
+            continue
+        pid = str(sig.get("parameter_id") or sig.get("type") or sig.get("reason") or "").upper()
+        if any(tok in pid for tok in ("LOCATION", "TRAVEL", "GEO", "ORDER", "TIMESTAMP", "TEMPORAL")):
+            if "LOCATION_CONFLICT" not in claim_types:
+                claim_types.append("LOCATION_CONFLICT")
+        if any(tok in pid for tok in ("ORIGIN", "SESSION", "IP", "ACTOR", "DEVICE", "IDENTITY", "MISMATCH")):
+            if "SESSION_ORIGIN_MISMATCH" not in claim_types:
+                claim_types.append("SESSION_ORIGIN_MISMATCH")
+
+    if signals and not claim_types:
+        claim_types.append("SESSION_ORIGIN_MISMATCH")
+    return claim_types
+
+
+def adapt_relationships_for_hypotheses(
+    relationships: Sequence[Mapping[str, Any]],
+    events: Sequence[Mapping[str, Any]],
+    *,
+    case_id: str | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Validate and adapt correlation relationships into T7 hypothesis inputs.
+
+    Preserves the strict distinction between:
+    - PRIMARY relationships: independently verifiable direct anchors (can support
+      direct object/artifact flow and identity consistency when anchor is validated).
+    - SECONDARY relationships: contextual/probabilistic associations (never treated
+      as direct object-flow anchors; high score never auto-confirms a hypothesis).
+    - Missing/unavailable evidence: never converted into contradictory claims.
+
+    Returns:
+        (normalized_relationships, derived_claim_dicts)
+    """
+    norm_events = [normalize_event_contract(e) for e in events if isinstance(e, Mapping)]
+    events_by_id = {str(e["event_id"]): e for e in norm_events if e.get("event_id")}
+
+    event_case_ids = {
+        str(e["case_id"]).strip()
+        for e in norm_events
+        if isinstance(e.get("case_id"), str) and str(e["case_id"]).strip()
+    }
+    if len(event_case_ids) > 1:
+        raise ValueError(f"Case isolation violation: events span multiple cases {sorted(event_case_ids)}")
+
+    resolved_case_id = case_id or (next(iter(event_case_ids)) if event_case_ids else None)
+    if case_id and event_case_ids and event_case_ids != {case_id}:
+        raise ValueError(
+            f"Case isolation violation: events belong to {sorted(event_case_ids)}, expected '{case_id}'"
+        )
+
+    normalized_rels: list[dict[str, Any]] = []
+    derived_claims: list[dict[str, Any]] = []
+
+    for rel in relationships:
+        norm_rel = validate_relationship_payload(
+            rel,
+            expected_case_id=resolved_case_id,
+            events_by_id=events_by_id,
+        )
+        if resolved_case_id is None:
+            resolved_case_id = norm_rel["case_id"]
+        normalized_rels.append(norm_rel)
+
+        rel_id = norm_rel["relationship_id"]
+        rel_type = norm_rel["relationship_type"]
+        src_id = norm_rel["source_event_id"]
+        dst_id = norm_rel["target_event_id"]
+        ev_a = events_by_id.get(src_id)
+        ev_b = events_by_id.get(dst_id)
+        has_contra = _relationship_has_contradiction(norm_rel)
+
+        # Build edges only for events that actually exist in the case
+        edges: list[dict[str, Any]] = []
+        families: set[str] = set()
+        for ev in (ev_a, ev_b):
+            if ev is not None:
+                fam = str(ev.get("family") or f"{ev.get('source', 'unknown')}:{ev.get('device') or 'unknown'}")
+                families.add(fam)
+                edges.append({
+                    "ref_kind": "event",
+                    "ref_id": ev["event_id"],
+                    "role": "SUPPORTS",
+                    "weight": 1.0 if rel_type == "PRIMARY" else float(norm_rel["score"] or 0.5),
+                    "reason_code": f"REL_{rel_type}",
+                    "family": fam,
+                })
+
+        # If both events are missing from the case, do not invent evidence or treat as contradiction
+        if not edges:
+            continue
+
+        actor_val = (ev_a or {}).get("actor") or (ev_b or {}).get("actor")
+        device_val = (ev_a or {}).get("device") or (ev_b or {}).get("device")
+        obj_val = (ev_a or {}).get("object") or (ev_b or {}).get("object") or rel_id
+
+        if rel_type == "PRIMARY":
+            # PRIMARY: Direct verified anchor
+            anchors = norm_rel.get("anchors") or []
+            all_anchors_rejected = bool(anchors) and all(
+                isinstance(a, Mapping) and a.get("status") == "REJECTED" for a in anchors
+            )
+            if norm_rel["review_status"] != "REJECTED" and not all_anchors_rejected:
+                status = "CONTESTED" if has_contra else ("CORROBORATED" if len(families) >= 2 else "ASSERTED")
+                grade = "C" if has_contra else ("A" if len(families) >= 2 else "B")
+                derived_claims.append({
+                    "claim_id": f"REL-PRIMARY-FLOW-{rel_id}",
+                    "claim_key": f"KEY-PRIMARY-FLOW-{rel_id}",
+                    "type": "SAME_OBJECT_FLOW",
+                    "status": status,
+                    "grade": grade,
+                    "params": {
+                        "object": obj_val,
+                        "source_event_id": src_id,
+                        "target_event_id": dst_id,
+                        "relationship_id": rel_id,
+                        "relationship_type": "PRIMARY",
+                        "device": device_val,
+                        "actor": actor_val,
+                    },
+                    "edges": list(edges),
+                    "relationship_id": rel_id,
+                    "relationship_type": "PRIMARY",
+                    "evidence_refs": list(norm_rel["evidence_refs"]),
+                    "relationship_backed": True,
+                })
+                # If the primary relationship also shares actor or device, record consistency
+                if actor_val or device_val:
+                    derived_claims.append({
+                        "claim_id": f"REL-PRIMARY-ACTOR-{rel_id}",
+                        "claim_key": f"KEY-PRIMARY-ACTOR-{rel_id}",
+                        "type": "ACTOR_DEVICE_CONSISTENT",
+                        "status": status,
+                        "grade": grade,
+                        "params": {
+                            "actor": actor_val or "unknown",
+                            "device": device_val or "unknown",
+                            "relationship_id": rel_id,
+                            "relationship_type": "PRIMARY",
+                        },
+                        "edges": list(edges),
+                        "relationship_id": rel_id,
+                        "relationship_type": "PRIMARY",
+                        "evidence_refs": list(norm_rel["evidence_refs"]),
+                        "relationship_backed": True,
+                    })
+        else:
+            # SECONDARY: Contextual/probabilistic association.
+            # NEVER emits SAME_OBJECT_FLOW (which requires a direct verified anchor),
+            # ensuring a high secondary score never auto-confirms exfiltration/transfer.
+            score_val = float(norm_rel["score"] or 0.0)
+            if norm_rel["review_status"] != "BELOW_THRESHOLD" and score_val > 0 and not has_contra:
+                derived_claims.append({
+                    "claim_id": f"REL-SECONDARY-CTX-{rel_id}",
+                    "claim_key": f"KEY-SECONDARY-CTX-{rel_id}",
+                    "type": "ACTOR_DEVICE_CONSISTENT",
+                    "status": "CONTESTED" if has_contra else "ASSERTED",
+                    "grade": "C",  # Contextual/probabilistic association is always Grade C
+                    "params": {
+                        "actor": actor_val or "unknown",
+                        "device": device_val or "unknown",
+                        "relationship_id": rel_id,
+                        "relationship_type": "SECONDARY",
+                        "score": score_val,
+                        "review_status": norm_rel["review_status"],
+                        "threshold_version": norm_rel["threshold_version"],
+                    },
+                    "edges": list(edges),
+                    "relationship_id": rel_id,
+                    "relationship_type": "SECONDARY",
+                    "evidence_refs": list(norm_rel["evidence_refs"]),
+                    "relationship_backed": True,
+                })
+
+        # Explicit counter-signals -> contradiction claim inputs
+        if has_contra:
+            for c_type in _contradiction_claim_types_for_relationship(norm_rel):
+                contra_edges = [
+                    {**ed, "role": "CONTRADICTS", "reason_code": f"COUNTER_SIGNAL_{c_type}"}
+                    for ed in edges
+                ]
+                derived_claims.append({
+                    "claim_id": f"REL-CONTRA-{c_type}-{rel_id}",
+                    "claim_key": f"KEY-CONTRA-{c_type}-{rel_id}",
+                    "type": c_type,
+                    "status": "ASSERTED",
+                    "grade": "B",
+                    "params": {
+                        "actor": actor_val or "unknown",
+                        "device": device_val or "unknown",
+                        "relationship_id": rel_id,
+                        "relationship_type": rel_type,
+                        "counter_signals": norm_rel["counter_signals"],
+                    },
+                    "edges": list(edges) + contra_edges,
+                    "relationship_id": rel_id,
+                    "relationship_type": rel_type,
+                    "evidence_refs": list(norm_rel["evidence_refs"]),
+                    "relationship_backed": True,
+                    "is_contradiction_signal": True,
+                })
+
+    return normalized_rels, derived_claims
+
+
 # --- Claims and Events Matching Helpers ---
 
 def _claim_to_dict(c: Any) -> dict[str, Any]:
@@ -589,7 +1174,21 @@ def _matches_item(
             if isinstance(value, str) and value.strip()
         }
         if expected_source_kind not in provenance_kinds:
-            return False
+            if claim.get("relationship_backed"):
+                if item.claim_type == "SAME_OBJECT_FLOW" and expected_source_kind == "browser":
+                    if not (provenance_kinds & {"browser", "network", "mail"}):
+                        return False
+                elif item.claim_type == "ACTOR_DEVICE_CONSISTENT" and expected_source_kind == "system_log":
+                    has_sys_log_in_case = any(
+                        _normalize_source_kind(str(e.get("source") or "")) == "system_log"
+                        for e in events_by_id.values()
+                    )
+                    if has_sys_log_in_case or not (provenance_kinds & {"system_log", "auth", "mail", "network"}):
+                        return False
+                else:
+                    return False
+            else:
+                return False
     if item.params:
         c_params = claim.get("params") or {}
         for k, v in item.params.items():
@@ -653,30 +1252,155 @@ def evaluate_hypotheses(
     assumptions: Mapping[str, Any] | None = None,
     templates: Sequence[HypothesisTemplate] | None = None,
     margin: float = 0.15,
+    *,
+    relationships: Sequence[Mapping[str, Any]] | None = None,
+    case_id: str | None = None,
+    analysis_run_id: str | None = None,
+    correlation_config_version: str | None = None,
 ) -> HypothesisEvaluationResult:
     """Evaluate competing hypotheses and compute disconfirmation ranking.
 
     Args:
         claims: Sequence of Claim records or ClaimSpec objects.
-        events: Ingested case events.
+        events: Ingested case events (Event v1.1 or Section 5.6 Normalized Event format).
         assumptions: Case assumptions (e.g. timezone).
         templates: Optional custom templates (defaults to bundled templates).
         margin: Score difference required between 1st and 2nd for LEADING.
+        relationships: Optional sequence of Correlation Engine relationship payloads.
+        case_id: Optional case identifier for strict case-isolation verification.
+        analysis_run_id: Optional analysis run identifier to attach to outputs.
+        correlation_config_version: Optional correlation configuration version consumed.
 
     Returns:
         HypothesisEvaluationResult with ranked hypotheses, H0 residual, next-best evidence.
     """
     loaded_templates = list(templates) if templates is not None else load_templates()
+    norm_events = [normalize_event_contract(e) for e in events]
+
+    # Enforce case isolation across events and claims
+    event_case_ids = {
+        str(e["case_id"]).strip()
+        for e in norm_events
+        if isinstance(e.get("case_id"), str) and str(e["case_id"]).strip()
+    }
+    if len(event_case_ids) > 1:
+        raise ValueError(f"Case isolation violation: events belong to multiple cases {sorted(event_case_ids)}")
+
+    resolved_case_id = case_id or (next(iter(event_case_ids)) if event_case_ids else None)
+    if case_id and event_case_ids and event_case_ids != {case_id}:
+        raise ValueError(
+            f"Case isolation violation: events belong to {sorted(event_case_ids)}, expected '{case_id}'"
+        )
+
     dict_claims = [_claim_to_dict(c) for c in claims]
+    for c in dict_claims:
+        c_case = c.get("case_id")
+        if isinstance(c_case, str) and c_case.strip():
+            if resolved_case_id is None:
+                resolved_case_id = c_case.strip()
+            elif c_case.strip() != resolved_case_id:
+                raise ValueError(
+                    f"Case isolation violation: claim '{c.get('claim_id')}' belongs to case '{c_case}', "
+                    f"expected '{resolved_case_id}'"
+                )
+
+    events_by_id = {e["event_id"]: e for e in norm_events if "event_id" in e}
+
+    # Validate and adapt relationships if provided
+    norm_relationships: list[dict[str, Any]] = []
+    rel_derived_claims: list[dict[str, Any]] = []
+    if relationships is not None:
+        if not isinstance(relationships, Sequence) or isinstance(relationships, (str, bytes)):
+            raise ValueError("relationships must be a sequence of relationship mappings")
+        norm_relationships, rel_derived_claims = adapt_relationships_for_hypotheses(
+            relationships,
+            norm_events,
+            case_id=resolved_case_id,
+        )
+        if resolved_case_id is None and norm_relationships:
+            resolved_case_id = norm_relationships[0]["case_id"]
+
+    resolved_corr_version = correlation_config_version
+    if resolved_corr_version is None and norm_relationships:
+        resolved_corr_version = norm_relationships[0].get("config_version") or norm_relationships[0].get("threshold_version")
+
+    # Determine whether claims are pre-persisted DB claim rows (which carry run_id).
+    # When claims are not pre-persisted DB rows, merge relationship-derived claims so T7
+    # can evaluate templates directly from relationship payloads.
+    has_persisted_run_claims = any(isinstance(c.get("run_id"), str) and c.get("run_id") for c in dict_claims)
+    if rel_derived_claims and not has_persisted_run_claims:
+        existing_type_event_pairs: set[tuple[str, frozenset[str]]] = set()
+        for c in dict_claims:
+            c_ev_ids = frozenset(ev["event_id"] for ev in _extract_claim_events(c, events_by_id) if "event_id" in ev)
+            existing_type_event_pairs.add((str(c.get("type")), c_ev_ids))
+        for rc in rel_derived_claims:
+            rc_ev_ids = frozenset(ev["event_id"] for ev in _extract_claim_events(rc, events_by_id) if "event_id" in ev)
+            if (str(rc.get("type")), rc_ev_ids) not in existing_type_event_pairs:
+                dict_claims.append(rc)
+
     # ASSUMED claims are unbacked assumptions and must NEVER count as evidence
     evidence_claims = [c for c in dict_claims if c.get("status") != "ASSUMED"]
     assumed_claims = [c for c in dict_claims if c.get("status") == "ASSUMED"]
-    events_by_id = {e["event_id"]: e for e in events if "event_id" in e}
-    coverage = compute_source_coverage(events)
+    coverage = compute_source_coverage(norm_events)
+
+    # Index relationships by event_id and event pair for fast traceability lookup
+    rels_by_id: dict[str, dict[str, Any]] = {r["relationship_id"]: r for r in norm_relationships}
+    rels_by_pair: dict[frozenset[str], list[dict[str, Any]]] = {}
+    rels_by_event: dict[str, list[dict[str, Any]]] = {}
+    for r in norm_relationships:
+        pair_key = frozenset({r["source_event_id"], r["target_event_id"]})
+        rels_by_pair.setdefault(pair_key, []).append(r)
+        rels_by_event.setdefault(r["source_event_id"], []).append(r)
+        rels_by_event.setdefault(r["target_event_id"], []).append(r)
+
+    def _claim_traceability(claim_dict: dict[str, Any]) -> tuple[list[str], list[str], list[str]]:
+        """Return (event_ids, evidence_ids, relationship_ids) for a matched claim."""
+        c_evs = _extract_claim_events(claim_dict, events_by_id)
+        ev_ids: list[str] = []
+        evid_ids: list[str] = []
+        rel_ids: list[str] = []
+
+        if claim_dict.get("relationship_id"):
+            rid = str(claim_dict["relationship_id"])
+            if rid not in rel_ids:
+                rel_ids.append(rid)
+            r_obj = rels_by_id.get(rid)
+            if r_obj:
+                for er in r_obj.get("evidence_refs") or []:
+                    if er and er not in evid_ids:
+                        evid_ids.append(str(er))
+                for se in (r_obj["source_event_id"], r_obj["target_event_id"]):
+                    if se in events_by_id and se not in ev_ids:
+                        ev_ids.append(se)
+
+        for ev in c_evs:
+            eid = ev.get("event_id")
+            if isinstance(eid, str) and eid and eid not in ev_ids:
+                ev_ids.append(eid)
+            evid = ev.get("evidence_id")
+            if isinstance(evid, str) and evid and evid not in evid_ids:
+                evid_ids.append(evid)
+
+        for er in claim_dict.get("evidence_refs") or []:
+            if isinstance(er, str) and er and er not in evid_ids:
+                evid_ids.append(er)
+
+        # Link any relationship connecting events of this claim
+        if len(ev_ids) >= 2:
+            for i in range(len(ev_ids)):
+                for j in range(i + 1, len(ev_ids)):
+                    for r in rels_by_pair.get(frozenset({ev_ids[i], ev_ids[j]}), ()):
+                        if r["relationship_id"] not in rel_ids:
+                            rel_ids.append(r["relationship_id"])
+                        for er in r.get("evidence_refs") or []:
+                            if er and er not in evid_ids:
+                                evid_ids.append(str(er))
+
+        return sorted(ev_ids), sorted(evid_ids), sorted(rel_ids)
 
     # Determine case-wide temporal boundaries
     all_dts: list[datetime] = []
-    for e in events:
+    for e in norm_events:
         ts_val = e.get("timestamp")
         if isinstance(ts_val, str):
             try:
@@ -736,7 +1460,7 @@ def evaluate_hypotheses(
             w_end = min(case_window[1], w_end)
         flow_window = (w_start, w_end)
 
-    def _resolve_item_window(it: HypothesisItem) -> tuple[datetime | None, datetime | None] | None:
+    def _resolve_item_window(it: TemplateItem) -> tuple[datetime | None, datetime | None] | None:
         if it.params and "window" in it.params:
             w = it.params["window"]
             if isinstance(w, (list, tuple)) and len(w) == 2:
@@ -761,7 +1485,7 @@ def evaluate_hypotheses(
     target_flow = flow_window or case_window
     if target_flow and target_flow[0] and target_flow[1]:
         f_start, f_end = target_flow
-        for e in events:
+        for e in norm_events:
             if e.get("action") == "scheduled_backup":
                 ts = e.get("timestamp")
                 if isinstance(ts, str):
@@ -791,6 +1515,13 @@ def evaluate_hypotheses(
     for tmpl in loaded_templates:
         evaluations: list[ItemEvaluation] = []
         hyp_claim_ids: set[str] = set()
+        hyp_contra_claim_ids: set[str] = set()
+        hyp_supporting_rel_ids: set[str] = set()
+        hyp_contradicting_rel_ids: set[str] = set()
+        hyp_supporting_evid_ids: set[str] = set()
+        hyp_contradicting_evid_ids: set[str] = set()
+        hyp_supporting_event_ids: set[str] = set()
+        hyp_contradicting_event_ids: set[str] = set()
         hyp_explained_events: set[str] = set()
         hard_violations = 0
         missing_count = 0
@@ -808,10 +1539,19 @@ def evaluate_hypotheses(
                 item,
                 matching_ev[0] if matching_ev else None,
                 _extract_claim_events(matching_ev[0], events_by_id) if matching_ev else [],
-                all_events=events,
+                all_events=norm_events,
             )
+            item_ev_ids: set[str] = set()
+            item_evid_ids: set[str] = set()
+            item_rel_ids: set[str] = set()
 
             if matching_ev:
+                for c in matching_ev:
+                    c_ev_ids, c_evid_ids, c_rel_ids = _claim_traceability(c)
+                    item_ev_ids.update(c_ev_ids)
+                    item_evid_ids.update(c_evid_ids)
+                    item_rel_ids.update(c_rel_ids)
+
                 # Check status among evidence claims
                 refuted = any(c.get("status") == "REFUTED" for c in matching_ev)
                 if refuted:
@@ -819,18 +1559,38 @@ def evaluate_hypotheses(
                     penalty = 2.0 if item.critical else 1.0
                     hard_violations += 1
                     rationale = f"Required claim {item.claim_type} is REFUTED by evidence."
+                    for c in matching_ev:
+                        if c.get("status") == "REFUTED":
+                            cid = c.get("claim_id") or c.get("claim_key", "")
+                            if cid:
+                                hyp_contra_claim_ids.add(cid)
+                    hyp_contradicting_evid_ids.update(item_evid_ids)
+                    hyp_contradicting_event_ids.update(item_ev_ids)
+                    hyp_contradicting_rel_ids.update(item_rel_ids)
                 else:
                     state = STATE_SATISFIED
                     penalty = 0.0
                     rationale = f"Required claim {item.claim_type} is present and supported."
                     item_satisfaction_map.setdefault(item.id, set()).add(tmpl.id)
                     for c in matching_ev:
-                        hyp_claim_ids.add(c.get("claim_id") or c.get("claim_key", ""))
+                        cid = c.get("claim_id") or c.get("claim_key", "")
+                        if cid and not c.get("relationship_backed"):
+                            hyp_claim_ids.add(cid)
+                        elif cid and not has_persisted_run_claims:
+                            hyp_claim_ids.add(cid)
                         c_evs = _extract_claim_events(c, events_by_id)
                         stage_events[item.stage].extend(c_evs)
                         stage_claims[item.stage].append(c)
                         for ev in c_evs:
                             hyp_explained_events.add(ev["event_id"])
+                    hyp_supporting_evid_ids.update(item_evid_ids)
+                    hyp_supporting_event_ids.update(item_ev_ids)
+                    for rid in item_rel_ids:
+                        r_obj = rels_by_id.get(rid)
+                        if r_obj and _relationship_has_contradiction(r_obj) and item.claim_type != "SESSION_ORIGIN_MISMATCH":
+                            hyp_contradicting_rel_ids.add(rid)
+                        else:
+                            hyp_supporting_rel_ids.add(rid)
             else:
                 # Absence of required evidence (ASSUMED claims NEVER satisfy required evidence)
                 item_win = _resolve_item_window(item)
@@ -873,6 +1633,9 @@ def evaluate_hypotheses(
                     disconfirmation_penalty=penalty,
                     rationale=rationale,
                     assumed_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_assumed],
+                    matched_relationship_ids=sorted(item_rel_ids),
+                    evidence_ids=sorted(item_evid_ids),
+                    event_ids=sorted(item_ev_ids),
                 )
             )
 
@@ -884,21 +1647,42 @@ def evaluate_hypotheses(
                 item,
                 matching_ev[0] if matching_ev else None,
                 _extract_claim_events(matching_ev[0], events_by_id) if matching_ev else [],
-                all_events=events,
+                all_events=norm_events,
             )
+            item_ev_ids = set()
+            item_evid_ids = set()
+            item_rel_ids = set()
 
             if matching_ev:
+                for c in matching_ev:
+                    c_ev_ids, c_evid_ids, c_rel_ids = _claim_traceability(c)
+                    item_ev_ids.update(c_ev_ids)
+                    item_evid_ids.update(c_evid_ids)
+                    item_rel_ids.update(c_rel_ids)
+
                 state = STATE_SATISFIED
                 penalty = 0.0
                 rationale = f"Expected claim {item.claim_type} is present."
                 item_satisfaction_map.setdefault(item.id, set()).add(tmpl.id)
                 for c in matching_ev:
-                    hyp_claim_ids.add(c.get("claim_id") or c.get("claim_key", ""))
+                    cid = c.get("claim_id") or c.get("claim_key", "")
+                    if cid and not c.get("relationship_backed"):
+                        hyp_claim_ids.add(cid)
+                    elif cid and not has_persisted_run_claims:
+                        hyp_claim_ids.add(cid)
                     c_evs = _extract_claim_events(c, events_by_id)
                     stage_events[item.stage].extend(c_evs)
                     stage_claims[item.stage].append(c)
                     for ev in c_evs:
                         hyp_explained_events.add(ev["event_id"])
+                hyp_supporting_evid_ids.update(item_evid_ids)
+                hyp_supporting_event_ids.update(item_ev_ids)
+                for rid in item_rel_ids:
+                    r_obj = rels_by_id.get(rid)
+                    if r_obj and _relationship_has_contradiction(r_obj):
+                        hyp_contradicting_rel_ids.add(rid)
+                    else:
+                        hyp_supporting_rel_ids.add(rid)
             else:
                 item_win = _resolve_item_window(item)
                 is_covered = _source_demonstrably_covered(
@@ -933,6 +1717,9 @@ def evaluate_hypotheses(
                     disconfirmation_penalty=penalty,
                     rationale=rationale,
                     assumed_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_assumed],
+                    matched_relationship_ids=sorted(item_rel_ids),
+                    evidence_ids=sorted(item_evid_ids),
+                    event_ids=sorted(item_ev_ids),
                 )
             )
 
@@ -944,15 +1731,30 @@ def evaluate_hypotheses(
                 item,
                 matching_ev[0] if matching_ev else None,
                 _extract_claim_events(matching_ev[0], events_by_id) if matching_ev else [],
-                all_events=events,
+                all_events=norm_events,
             )
+            item_ev_ids = set()
+            item_evid_ids = set()
+            item_rel_ids = set()
 
             if matching_ev:
+                for c in matching_ev:
+                    c_ev_ids, c_evid_ids, c_rel_ids = _claim_traceability(c)
+                    item_ev_ids.update(c_ev_ids)
+                    item_evid_ids.update(c_evid_ids)
+                    item_rel_ids.update(c_rel_ids)
+                    cid = c.get("claim_id") or c.get("claim_key", "")
+                    if cid:
+                        hyp_contra_claim_ids.add(cid)
+
                 # Forbidden item is present as real evidence -> Contradiction / Violation!
                 state = STATE_VIOLATED
                 penalty = 2.0 if item.critical else 1.2
                 hard_violations += 1
                 rationale = f"FORBIDDEN claim {item.claim_type} is present! Direct contradiction."
+                hyp_contradicting_evid_ids.update(item_evid_ids)
+                hyp_contradicting_event_ids.update(item_ev_ids)
+                hyp_contradicting_rel_ids.update(item_rel_ids)
             else:
                 # No evidence exists for the forbidden item (ASSUMED claims cannot violate forbidden items)
                 item_win = _resolve_item_window(item)
@@ -1001,6 +1803,9 @@ def evaluate_hypotheses(
                     disconfirmation_penalty=penalty,
                     rationale=rationale,
                     assumed_claim_ids=[c.get("claim_id") or c.get("claim_key", "") for c in matching_assumed],
+                    matched_relationship_ids=sorted(item_rel_ids),
+                    evidence_ids=sorted(item_evid_ids),
+                    event_ids=sorted(item_ev_ids),
                 )
             )
 
@@ -1032,8 +1837,8 @@ def evaluate_hypotheses(
                 evs_b = stage_events.get(st_b or "", [])
                 if evs_a and evs_b:
                     # Parse timestamps
-                    times_a = [e["timestamp"] for e in evs_a if "timestamp" in e]
-                    times_b = [e["timestamp"] for e in evs_b if "timestamp" in e]
+                    times_a = [e["timestamp"] for e in evs_a if "timestamp" in e and e["timestamp"] is not None]
+                    times_b = [e["timestamp"] for e in evs_b if "timestamp" in e and e["timestamp"] is not None]
                     if times_a and times_b:
                         min_a = min(times_a)
                         min_b = min(times_b)
@@ -1076,6 +1881,39 @@ def evaluate_hypotheses(
                     )
                 )
 
+        # Also associate any case relationships whose events intersect this hypothesis's stage events
+        all_hyp_event_ids = hyp_supporting_event_ids | hyp_contradicting_event_ids | hyp_explained_events
+        for r in norm_relationships:
+            rid = r["relationship_id"]
+            if rid in hyp_supporting_rel_ids or rid in hyp_contradicting_rel_ids:
+                continue
+            r_ev_set = {r["source_event_id"], r["target_event_id"]}
+            if r_ev_set & all_hyp_event_ids:
+                if _relationship_has_contradiction(r):
+                    hyp_contradicting_rel_ids.add(rid)
+                    for er in r.get("evidence_refs") or []:
+                        if er:
+                            hyp_contradicting_evid_ids.add(str(er))
+                    for se in r_ev_set:
+                        if se in events_by_id:
+                            hyp_contradicting_event_ids.add(se)
+                elif r.get("review_status") not in ("REJECTED", "BELOW_THRESHOLD"):
+                    hyp_supporting_rel_ids.add(rid)
+                    for er in r.get("evidence_refs") or []:
+                        if er:
+                            hyp_supporting_evid_ids.add(str(er))
+                    for se in r_ev_set:
+                        if se in events_by_id:
+                            hyp_supporting_event_ids.add(se)
+
+        all_hyp_rel_ids = hyp_supporting_rel_ids | hyp_contradicting_rel_ids
+        primary_rel_ids = sorted(
+            rid for rid in all_hyp_rel_ids if rels_by_id.get(rid, {}).get("relationship_type") == "PRIMARY"
+        )
+        secondary_rel_ids = sorted(
+            rid for rid in all_hyp_rel_ids if rels_by_id.get(rid, {}).get("relationship_type") == "SECONDARY"
+        )
+
         # 5. Witness Family Deduplication for Disconfirmation Score
         # Group penalties by witness family: family -> max(penalties in this family)
         family_penalties: dict[str, float] = {}
@@ -1109,6 +1947,22 @@ def evaluate_hypotheses(
                 hard_violations_count=hard_violations,
                 missing_expected_count=missing_count,
                 unobservable_count=unobservable_count,
+                contradicting_claim_ids=sorted(hyp_contra_claim_ids),
+                supporting_relationship_ids=sorted(hyp_supporting_rel_ids),
+                contradicting_relationship_ids=sorted(hyp_contradicting_rel_ids),
+                primary_relationship_ids=primary_rel_ids,
+                secondary_relationship_ids=secondary_rel_ids,
+                supporting_evidence_ids=sorted(hyp_supporting_evid_ids),
+                contradicting_evidence_ids=sorted(hyp_contradicting_evid_ids),
+                evidence_ids=sorted(hyp_supporting_evid_ids | hyp_contradicting_evid_ids),
+                supporting_event_ids=sorted(hyp_supporting_event_ids),
+                contradicting_event_ids=sorted(hyp_contradicting_event_ids),
+                source_event_ids=sorted(hyp_supporting_event_ids | hyp_contradicting_event_ids | hyp_explained_events),
+                analysis_run_id=analysis_run_id,
+                case_id=resolved_case_id,
+                correlation_config_version=resolved_corr_version,
+                conclusion_type="MACHINE_HYPOTHESIS",
+                investigator_confirmed=False,
             )
         )
         all_explained_event_ids.update(hyp_explained_events)
@@ -1189,7 +2043,7 @@ def evaluate_hypotheses(
             outcome = STATUS_REFUTED
 
     # 8. Compute H0 Residual
-    all_case_event_ids = {e["event_id"] for e in events if "event_id" in e}
+    all_case_event_ids = {e["event_id"] for e in norm_events if "event_id" in e}
     unassigned_ids = sorted(all_case_event_ids - all_explained_event_ids)
     h0 = ResidualH0(
         id="H0",
@@ -1243,6 +2097,9 @@ def evaluate_hypotheses(
         1 for h in evaluated_hypotheses for e in h.evaluations if e.state == STATE_SATISFIED and e.diagnostic
     )
 
+    primary_count = sum(1 for r in norm_relationships if r["relationship_type"] == "PRIMARY")
+    secondary_count = sum(1 for r in norm_relationships if r["relationship_type"] == "SECONDARY")
+
     return HypothesisEvaluationResult(
         ranked_hypotheses=evaluated_hypotheses,
         h0_residual=h0,
@@ -1251,4 +2108,10 @@ def evaluate_hypotheses(
         diagnostic_items_count=diagnostic_count,
         margin=margin,
         outcome=outcome,
+        case_id=resolved_case_id,
+        analysis_run_id=analysis_run_id,
+        correlation_config_version=resolved_corr_version,
+        consumed_relationships_count=len(norm_relationships),
+        primary_relationships_count=primary_count,
+        secondary_relationships_count=secondary_count,
     )
