@@ -99,6 +99,9 @@ def test_migrate_pre_t3_adds_columns_tables_and_guards(legacy_engine):
         "evidence.parse_status", "evidence.parser_warnings",
         "evidence.covered_time_range", "evidence.source_locator",
         "evidence.parent_evidence_id",
+        # Role 3 case workflow metadata (#23; dropped from this list in merge 85546f2)
+        "cases.description", "cases.scope", "cases.tags", "cases.owner", "cases.status",
+        "cases.updated_at", "cases.closed_at",
     }
     assert NEW_TABLES <= _tables(legacy_engine)
     assert {"trg_evidence_no_delete", "trg_custody_no_delete", "trg_analysis_run_validate",

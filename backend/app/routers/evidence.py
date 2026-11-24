@@ -18,7 +18,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.db.models import Case, Entity, EventModel, Evidence, utc_now
+from app.db.models import CASE_STATUS_CLOSED, Case, Entity, EventModel, Evidence, utc_now
 from app.db.session import append_custody_record, get_db
 from app.services.pipeline import execute_parse_evidence
 
