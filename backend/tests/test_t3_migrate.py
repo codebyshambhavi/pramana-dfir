@@ -91,6 +91,8 @@ def _triggers(engine) -> set[str]:
 def test_migrate_pre_t3_adds_columns_tables_and_guards(legacy_engine):
     added = migrate(legacy_engine)
     assert set(added) == {
+        "cases.description", "cases.scope", "cases.tags",
+        "cases.owner", "cases.status", "cases.updated_at", "cases.closed_at",
         "evidence.status", "evidence.verified_at", "evidence.verify_state",
         "events.parser_version", "events.tz_assumption", "events.family",
         "evidence.source_type", "evidence.source_identifier",
